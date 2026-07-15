@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  
+  --color-white-chalk: #F6F4F1;
+  --color-silver-haze: #E2E4E7;
+  --color-cosmic-black: #0A0D0F;
+  --color-celestial-canvas: #0A2538;
+  --color-prairie-land: #E2CC9C;
+  --color-tomato-curry: #E84A2E;
+}

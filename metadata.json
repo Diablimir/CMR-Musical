@@ -1,0 +1,6 @@
+{
+  "name": "Flamo CRM",
+  "description": "SaaS CRM de clase empresarial especializado en Artist Development, Booking, Management y Tour Management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
