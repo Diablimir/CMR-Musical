@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Artist, Event, Venue, Tour, PipelineItem, HistoryEvent, Contract, RecordingProject
+  Artist, Event, Venue, Tour, PipelineItem, HistoryEvent, Contract, RecordingProject, MemberHistory
 } from '../types';
 import {
   TrendingUp, Award, Calendar, DollarSign, BarChart3, Users,
   Heart, Plus, Check, Globe, Instagram, Youtube, Phone, Music,
   CheckSquare, Square, ChevronRight, User, Shield, Info, Radio, Trash2,
   Upload, FileText, Eye, Download, Building2, Layers, Facebook, RefreshCw, CheckCircle2,
-  Database, Copy, Lock, Unlock, AlertTriangle, Sparkles
+  Database, Copy, Lock, Unlock, AlertTriangle, Sparkles, X, RotateCw, Sliders, Image
 } from 'lucide-react';
 
 interface ArtistProfileProps {
@@ -36,6 +36,78 @@ export default function ArtistProfile({
   const [activeSubTab, setActiveSubTab] = useState<'360' | 'pipeline' | 'contracts' | 'shows' | 'history' | 'social'>('360');
   const [isSyncingSocial, setIsSyncingSocial] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronización inicial');
+
+  // NEW: MemberHistory and Photo Editor States
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [selectedMemberForEdit, setSelectedMemberForEdit] = useState<MemberHistory | null>(null);
+  const [newMemberForm, setNewMemberForm] = useState<{
+    name: string;
+    role: string;
+    startDate: string;
+    endDate: string;
+    venueName: string;
+    active: boolean;
+  }>({
+    name: '',
+    role: '',
+    startDate: new Date().toISOString().substring(0, 10),
+    endDate: '',
+    venueName: '',
+    active: true
+  });
+
+  // Photo Editor States
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoUrlInput, setPhotoUrlInput] = useState(artist.photo);
+  const [photoZoom, setPhotoZoom] = useState(artist.photoStyle?.zoom ?? 1);
+  const [photoRotation, setPhotoRotation] = useState(artist.photoStyle?.rotation ?? 0);
+  const [photoContrast, setPhotoContrast] = useState(artist.photoStyle?.contrast ?? 1);
+  const [photoBrightness, setPhotoBrightness] = useState(artist.photoStyle?.brightness ?? 1);
+  const [photoGrayscale, setPhotoGrayscale] = useState(artist.photoStyle?.grayscale ?? 0);
+  const [photoSepia, setPhotoSepia] = useState(artist.photoStyle?.sepia ?? 0);
+  const [photoBlur, setPhotoBlur] = useState(artist.photoStyle?.blur ?? 0);
+
+  // Sync state if artist changes
+  React.useEffect(() => {
+    setPhotoUrlInput(artist.photo);
+    setPhotoZoom(artist.photoStyle?.zoom ?? 1);
+    setPhotoRotation(artist.photoStyle?.rotation ?? 0);
+    setPhotoContrast(artist.photoStyle?.contrast ?? 1);
+    setPhotoBrightness(artist.photoStyle?.brightness ?? 1);
+    setPhotoGrayscale(artist.photoStyle?.grayscale ?? 0);
+    setPhotoSepia(artist.photoStyle?.sepia ?? 0);
+    setPhotoBlur(artist.photoStyle?.blur ?? 0);
+  }, [artist]);
+
+  // Member History Helpers
+  const getMemberHistory = (): MemberHistory[] => {
+    if (artist.memberHistory && artist.memberHistory.length > 0) {
+      return artist.memberHistory;
+    }
+    return artist.members.map((m, idx) => {
+      const parts = m.split('(');
+      const name = parts[0].trim();
+      const role = parts[1] ? parts[1].replace(')', '').trim() : 'Músico';
+      return {
+        id: `m-${idx}-${artist.id}`,
+        name,
+        role,
+        startDate: artist.startDate || '2025-01-01',
+        active: true,
+        venueName: 'Auditorio Nacional (Inicio)'
+      };
+    });
+  };
+
+  const saveMemberHistory = (newHistory: MemberHistory[]) => {
+    const updatedArtist: Artist = {
+      ...artist,
+      memberHistory: newHistory,
+      members: newHistory.filter(m => m.active).map(m => `${m.name} (${m.role})`),
+      updated_at: new Date().toISOString()
+    };
+    onUpdateArtist(updatedArtist);
+  };
 
   // Social specific state
   const [activeOAuthModal, setActiveOAuthModal] = useState<'instagram' | 'tiktok' | null>(null);
@@ -256,11 +328,36 @@ export default function ArtistProfile({
       {/* Profile Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-6 border-b border-slate-100">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-          <img
-            src={artist.photo}
-            alt={artist.artisticName}
-            className="w-16 h-16 rounded-full object-cover border border-slate-200 shadow-sm"
-          />
+          <div 
+            onClick={() => {
+              setPhotoUrlInput(artist.photo);
+              setPhotoZoom(artist.photoStyle?.zoom ?? 1);
+              setPhotoRotation(artist.photoStyle?.rotation ?? 0);
+              setPhotoContrast(artist.photoStyle?.contrast ?? 1);
+              setPhotoBrightness(artist.photoStyle?.brightness ?? 1);
+              setPhotoGrayscale(artist.photoStyle?.grayscale ?? 0);
+              setPhotoSepia(artist.photoStyle?.sepia ?? 0);
+              setPhotoBlur(artist.photoStyle?.blur ?? 0);
+              setIsPhotoModalOpen(true);
+            }}
+            className="group relative w-16 h-16 rounded-full overflow-hidden border border-slate-200 shadow-sm cursor-pointer shrink-0"
+            title="Haga clic para cambiar o editar la fotografía del artista"
+          >
+            <img
+              src={artist.photo}
+              alt={artist.artisticName}
+              style={{
+                filter: `contrast(${artist.photoStyle?.contrast ?? 1}) brightness(${artist.photoStyle?.brightness ?? 1}) grayscale(${artist.photoStyle?.grayscale ?? 0}) sepia(${artist.photoStyle?.sepia ?? 0}) blur(${artist.photoStyle?.blur ?? 0}px)`,
+                transform: `rotate(${artist.photoStyle?.rotation ?? 0}deg) scale(${artist.photoStyle?.zoom ?? 1})`,
+                transition: 'all 0.3s ease',
+              }}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[8px] font-bold uppercase tracking-wider">
+              <Upload className="w-3.5 h-3.5 text-white mb-0.5" />
+              <span>Editar</span>
+            </div>
+          </div>
           <div className="text-center sm:text-left">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <h2 className="text-xl font-bold text-slate-800 tracking-tight">{artist.artisticName}</h2>
@@ -486,15 +583,141 @@ export default function ArtistProfile({
               </div>
 
               {/* Members */}
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-sm">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Integrantes de Gira (Lineup)</h3>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {artist.members.map((m, idx) => (
-                    <span key={idx} className="bg-white text-slate-600 text-xs px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5 font-semibold shadow-sm">
-                      <User className="w-3 h-3 text-indigo-500" />
-                      {m}
-                    </span>
-                  ))}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200/50 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-celestial-canvas" />
+                    <h3 className="text-xs font-bold uppercase text-slate-700 tracking-wider">Integrantes de Gira (Lineup)</h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setNewMemberForm({
+                        name: '',
+                        role: '',
+                        startDate: new Date().toISOString().substring(0, 10),
+                        endDate: '',
+                        venueName: '',
+                        active: true
+                      });
+                      setSelectedMemberForEdit(null);
+                      setIsMemberModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] bg-celestial-canvas hover:bg-celestial-canvas/90 text-white font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-3xs"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Agregar</span>
+                  </button>
+                </div>
+
+                {/* Active lineup */}
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Alineación Activa (Click para dar de baja / Editar)</span>
+                  {getMemberHistory().filter(m => m.active).length === 0 ? (
+                    <p className="text-[10px] text-slate-400 italic">No hay integrantes activos en esta gira.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {getMemberHistory().filter(m => m.active).map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setSelectedMemberForEdit(m);
+                            setNewMemberForm({
+                              name: m.name,
+                              role: m.role,
+                              startDate: m.startDate,
+                              endDate: m.endDate || new Date().toISOString().substring(0, 10),
+                              venueName: m.venueName || '',
+                              active: m.active
+                            });
+                            setIsMemberModalOpen(true);
+                          }}
+                          className="bg-white hover:bg-slate-100 hover:border-celestial-canvas text-slate-700 text-xs px-2.5 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5 font-bold shadow-3xs transition-all cursor-pointer text-left"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <div>
+                            <span className="text-[11px] text-slate-800 font-bold block">{m.name}</span>
+                            <span className="text-[9px] text-slate-400 block leading-none mt-0.5">{m.role}</span>
+                          </div>
+                          {m.venueName && (
+                            <span className="text-[9px] bg-slate-50 text-slate-400 border border-slate-100 px-1 py-0.5 rounded ml-1 font-semibold truncate max-w-[100px]">
+                              📍 {m.venueName}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Historical Records */}
+                <div className="pt-2 border-t border-slate-200/55">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Registro Histórico (Tiempo de Estancia y Último Venue)</span>
+                  {getMemberHistory().filter(m => !m.active).length === 0 ? (
+                    <p className="text-[10px] text-slate-400 italic">No hay ex-integrantes registrados en el historial de la gira.</p>
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-200/60 rounded-xl bg-white shadow-3xs">
+                      <table className="w-full text-left border-collapse text-[10px]">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200/60 text-slate-400 uppercase text-[8px] font-bold tracking-wider">
+                            <th className="p-2">Músico / Rol</th>
+                            <th className="p-2">Periodo</th>
+                            <th className="p-2">Estancia</th>
+                            <th className="p-2">Último Venue</th>
+                            <th className="p-2 text-right">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-600">
+                          {getMemberHistory().filter(m => !m.active).map((m) => {
+                            const start = new Date(m.startDate);
+                            const end = m.endDate ? new Date(m.endDate) : new Date();
+                            const diffTime = Math.abs(end.getTime() - start.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+                            let durationText = `${diffDays} d`;
+                            if (diffDays >= 365) {
+                              durationText = `${(diffDays / 365).toFixed(1)} a`;
+                            } else if (diffDays >= 30) {
+                              durationText = `${(diffDays / 30).toFixed(1)} m`;
+                            }
+
+                            return (
+                              <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="p-2">
+                                  <div>
+                                    <span className="font-bold text-slate-800 block">{m.name}</span>
+                                    <span className="text-[9px] text-slate-400 block">{m.role}</span>
+                                  </div>
+                                </td>
+                                <td className="p-2 font-mono text-slate-500 text-[9px]">
+                                  {m.startDate} / {m.endDate}
+                                </td>
+                                <td className="p-2">
+                                  <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[9px] rounded font-bold font-mono">
+                                    {durationText}
+                                  </span>
+                                </td>
+                                <td className="p-2 font-bold text-slate-500 max-w-[100px] truncate">
+                                  📍 {m.venueName || 'N/D'}
+                                </td>
+                                <td className="p-2 text-right">
+                                  <button
+                                    onClick={() => {
+                                      const updated = getMemberHistory().map(x => 
+                                        x.id === m.id ? { ...x, active: true, endDate: undefined } : x
+                                      );
+                                      saveMemberHistory(updated);
+                                    }}
+                                    className="text-[9px] text-celestial-canvas hover:text-white bg-celestial-canvas/10 hover:bg-celestial-canvas px-2 py-0.5 rounded font-bold cursor-pointer transition-all"
+                                  >
+                                    Activar
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1371,6 +1594,10 @@ export default function ArtistProfile({
                           <img
                             src={artist.photo}
                             alt={artist.artisticName}
+                            style={{
+                              filter: `contrast(${artist.photoStyle?.contrast ?? 1}) brightness(${artist.photoStyle?.brightness ?? 1}) grayscale(${artist.photoStyle?.grayscale ?? 0}) sepia(${artist.photoStyle?.sepia ?? 0}) blur(${artist.photoStyle?.blur ?? 0}px)`,
+                              transform: `rotate(${artist.photoStyle?.rotation ?? 0}deg) scale(${artist.photoStyle?.zoom ?? 1})`,
+                            }}
                             className="w-7 h-7 rounded-full object-cover border"
                           />
                           <div>
@@ -1956,6 +2183,492 @@ DOCUMENTO OFICIAL DIGITALIZADO Y GUARDADO EN EL CRM`}
               </form>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: GESTIÓN DE INTEGRANTE DE GIRA */}
+      {isMemberModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in text-xs">
+            {/* Header */}
+            <div className="bg-slate-50 border-b border-slate-200/60 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-celestial-canvas" />
+                <h3 className="font-bold text-slate-800 text-sm">
+                  {selectedMemberForEdit ? 'Editar Integrante de Gira' : 'Agregar Integrante a la Gira'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsMemberModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="p-5 space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400">Nombre del Músico / Staff *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Vladimir Belmont"
+                  value={newMemberForm.name}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-slate-800 focus:outline-none focus:border-celestial-canvas"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400">Instrumento / Rol *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Teclados, Sintetizadores"
+                  value={newMemberForm.role}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, role: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-slate-800 focus:outline-none focus:border-celestial-canvas"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Fecha de Alta *</label>
+                  <input
+                    type="date"
+                    required
+                    value={newMemberForm.startDate}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, startDate: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-800 focus:outline-none focus:border-celestial-canvas"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Recinto / Venue Inicio</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Auditorio Nacional"
+                    value={newMemberForm.venueName}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, venueName: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-800 focus:outline-none focus:border-celestial-canvas"
+                  />
+                </div>
+              </div>
+
+              {selectedMemberForEdit && selectedMemberForEdit.active && (
+                <div className="bg-rose-50 border border-rose-100 rounded-xl p-3.5 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-rose-500 block">Dar de Baja de Gira (Archivo Histórico)</span>
+                  <p className="text-[10px] text-rose-600">Al dar de baja, se conservará el registro histórico de estancia y el recinto de despedida.</p>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase font-bold text-rose-400">Fecha de Salida</label>
+                      <input
+                        type="date"
+                        value={newMemberForm.endDate}
+                        onChange={(e) => setNewMemberForm({ ...newMemberForm, endDate: e.target.value })}
+                        className="w-full bg-white border border-rose-200 rounded-lg p-1.5 font-semibold text-rose-800"
+                      />
+                    </div>
+                    <div className="space-y-1 flex flex-col justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = getMemberHistory().map(x => {
+                            if (x.id === selectedMemberForEdit.id) {
+                              return {
+                                ...x,
+                                active: false,
+                                endDate: newMemberForm.endDate || new Date().toISOString().substring(0, 10),
+                                venueName: newMemberForm.venueName || 'Último Venue de Gira'
+                              };
+                            }
+                            return x;
+                          });
+                          saveMemberHistory(updated);
+                          setIsMemberModalOpen(false);
+                          alert(`¡${selectedMemberForEdit.name} ha sido dado de baja en la gira! Registro histórico guardado.`);
+                        }}
+                        className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg transition-colors cursor-pointer text-center text-[10px] uppercase tracking-wider animate-pulse"
+                      >
+                        Baja de Gira
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer buttons */}
+            <div className="bg-slate-50 border-t border-slate-200/60 p-4 flex items-center justify-between">
+              <div>
+                {selectedMemberForEdit && (
+                  <button
+                    onClick={() => {
+                      if (confirm('¿Estás seguro de que deseas eliminar permanentemente este registro del historial?')) {
+                        const updated = getMemberHistory().filter(x => x.id !== selectedMemberForEdit.id);
+                        saveMemberHistory(updated);
+                        setIsMemberModalOpen(false);
+                      }
+                    }}
+                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1.5 rounded-lg font-bold cursor-pointer"
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsMemberModalOpen(false)}
+                  className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    if (!newMemberForm.name || !newMemberForm.role) {
+                      alert('Nombre y Rol son obligatorios.');
+                      return;
+                    }
+
+                    let updated: MemberHistory[];
+                    if (selectedMemberForEdit) {
+                      updated = getMemberHistory().map(x => 
+                        x.id === selectedMemberForEdit.id 
+                          ? { 
+                              ...x, 
+                              name: newMemberForm.name, 
+                              role: newMemberForm.role, 
+                              startDate: newMemberForm.startDate, 
+                              venueName: newMemberForm.venueName || undefined 
+                            } 
+                          : x
+                      );
+                    } else {
+                      const newM: MemberHistory = {
+                        id: `m-${Date.now()}`,
+                        name: newMemberForm.name,
+                        role: newMemberForm.role,
+                        startDate: newMemberForm.startDate,
+                        venueName: newMemberForm.venueName || undefined,
+                        active: true
+                      };
+                      updated = [...getMemberHistory(), newM];
+                    }
+
+                    saveMemberHistory(updated);
+                    setIsMemberModalOpen(false);
+                  }}
+                  className="bg-celestial-canvas hover:bg-celestial-canvas/90 text-white font-bold px-4 py-1.5 rounded-lg shadow-sm cursor-pointer"
+                >
+                  {selectedMemberForEdit ? 'Guardar Cambios' : 'Agregar Integrante'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDITOR DE FOTOGRAFÍA */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-55 p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in text-xs flex flex-col md:flex-row h-[90vh] md:h-auto max-h-[90vh]">
+            {/* Left side: Preview & Preset Selection */}
+            <div className="bg-slate-50 p-5 border-r border-slate-200/60 flex-1 flex flex-col items-center justify-between space-y-4">
+              <div className="text-center w-full">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-widest mb-1">Vista Previa (Alineación / Filtro)</span>
+                {/* Circular Preview Area */}
+                <div className="w-40 h-40 rounded-full border-4 border-white shadow-md mx-auto overflow-hidden relative bg-slate-200 flex items-center justify-center">
+                  {photoUrlInput ? (
+                    <img
+                      src={photoUrlInput}
+                      alt="Preview"
+                      style={{
+                        filter: `contrast(${photoContrast}) brightness(${photoBrightness}) grayscale(${photoGrayscale}) sepia(${photoSepia}) blur(${photoBlur}px)`,
+                        transform: `rotate(${photoRotation}deg) scale(${photoZoom})`,
+                        transition: 'none' // Immediate update while editing
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Image className="w-12 h-12 text-slate-300" />
+                  )}
+                </div>
+              </div>
+
+              {/* Preset Curated Images */}
+              <div className="w-full space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Ajuste de Fotos (Presets Flamo)</span>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[
+                    { label: 'Mic', url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80' },
+                    { label: 'Guitar', url: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=80' },
+                    { label: 'Synth', url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=80' },
+                    { label: 'Singer', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80' },
+                    { label: 'Vintage', url: 'https://images.unsplash.com/photo-1486591978090-58e619d37fe7?w=500&auto=format&fit=crop&q=80' }
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setPhotoUrlInput(preset.url)}
+                      className={`h-11 rounded-lg border overflow-hidden relative group cursor-pointer ${
+                        photoUrlInput === preset.url ? 'border-celestial-canvas ring-2 ring-celestial-canvas/25' : 'border-slate-200'
+                      }`}
+                    >
+                      <img src={preset.url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                      <div className="absolute inset-x-0 bottom-0 bg-black/50 text-[8px] font-bold text-white text-center py-0.5 leading-none">
+                        {preset.label}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Drag and Drop Mock File Selector */}
+              <div className="w-full bg-white border border-dashed border-slate-200 rounded-xl p-3 text-center shadow-3xs">
+                <Upload className="w-4 h-4 text-celestial-canvas mx-auto mb-1" />
+                <span className="font-bold text-slate-700 text-[10px] block">Simular Carga de Fotografía Local</span>
+                <p className="text-[9px] text-slate-400 mt-0.5 mb-1.5">Arrastre un archivo o haga clic para procesar imagen de prensa</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={() => {
+                    // Simulate random professional unsplash photo on file select to give real functional experience
+                    const simulatedPhotos = [
+                      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=80',
+                      'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=80',
+                      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=80',
+                      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=500&auto=format&fit=crop&q=80'
+                    ];
+                    const rand = simulatedPhotos[Math.floor(Math.random() * simulatedPhotos.length)];
+                    setPhotoUrlInput(rand);
+                    alert('¡Archivo de imagen procesado y cargado en el editor de forma segura!');
+                  }}
+                  className="hidden"
+                  id="simulated-file-upload"
+                />
+                <label
+                  htmlFor="simulated-file-upload"
+                  className="inline-block bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[9px] font-bold px-2 py-1 rounded cursor-pointer transition-all uppercase"
+                >
+                  Examinar Archivo
+                </label>
+              </div>
+            </div>
+
+            {/* Right side: Editing Controls Sliders */}
+            <div className="flex-1 p-5 flex flex-col justify-between overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/50">
+                <div className="flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-celestial-canvas" />
+                  <span className="font-bold text-slate-800 text-sm">Controles de Edición</span>
+                </div>
+                <button
+                  onClick={() => setIsPhotoModalOpen(false)}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* URL input */}
+              <div className="space-y-1 py-3">
+                <label className="text-[10px] uppercase font-bold text-slate-400">URL de la Imagen del Artista</label>
+                <input
+                  type="text"
+                  value={photoUrlInput}
+                  onChange={(e) => setPhotoUrlInput(e.target.value)}
+                  placeholder="Pegue el enlace de cualquier imagen de internet..."
+                  className="w-full bg-white border border-slate-200 rounded-lg p-2 font-mono text-[10px] text-slate-700 focus:outline-none focus:border-celestial-canvas"
+                />
+              </div>
+
+              {/* Sliders container */}
+              <div className="space-y-3 flex-1 pb-4">
+                {/* Scale / Zoom Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Encuadre / Zoom</span>
+                    <span>{photoZoom.toFixed(2)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="2.5"
+                    step="0.05"
+                    value={photoZoom}
+                    onChange={(e) => setPhotoZoom(parseFloat(e.target.value))}
+                    className="w-full accent-celestial-canvas"
+                  />
+                </div>
+
+                {/* Rotation Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Rotación de Ángulo</span>
+                    <span>{photoRotation}°</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min="0"
+                      max="360"
+                      step="5"
+                      value={photoRotation}
+                      onChange={(e) => setPhotoRotation(parseInt(e.target.value))}
+                      className="w-full accent-celestial-canvas flex-1"
+                    />
+                    <button
+                      onClick={() => setPhotoRotation((prev) => (prev + 90) % 360)}
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-600 cursor-pointer shadow-3xs"
+                      title="Girar 90 grados"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Brightness Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Brillo / Luminosidad</span>
+                    <span>{Math.round(photoBrightness * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="1.8"
+                    step="0.05"
+                    value={photoBrightness}
+                    onChange={(e) => setPhotoBrightness(parseFloat(e.target.value))}
+                    className="w-full accent-celestial-canvas"
+                  />
+                </div>
+
+                {/* Contrast Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Contraste Dinámico</span>
+                    <span>{Math.round(photoContrast * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="1.8"
+                    step="0.05"
+                    value={photoContrast}
+                    onChange={(e) => setPhotoContrast(parseFloat(e.target.value))}
+                    className="w-full accent-celestial-canvas"
+                  />
+                </div>
+
+                {/* Grayscale Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Filtro Blanco y Negro (Grayscale)</span>
+                    <span>{Math.round(photoGrayscale * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={photoGrayscale}
+                    onChange={(e) => setPhotoGrayscale(parseFloat(e.target.value))}
+                    className="w-full accent-celestial-canvas"
+                  />
+                </div>
+
+                {/* Sepia Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Filtro Sepia (Vintage vibe)</span>
+                    <span>{Math.round(photoSepia * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={photoSepia}
+                    onChange={(e) => setPhotoSepia(parseFloat(e.target.value))}
+                    className="w-full accent-celestial-canvas"
+                  />
+                </div>
+
+                {/* Blur Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>Desenfoque (Blur)</span>
+                    <span>{photoBlur}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="8"
+                    step="0.5"
+                    value={photoBlur}
+                    onChange={(e) => setPhotoBlur(parseFloat(e.target.value))}
+                    className="w-full accent-celestial-canvas"
+                  />
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200/50">
+                <button
+                  onClick={() => {
+                    // Reset all filters
+                    setPhotoZoom(1);
+                    setPhotoRotation(0);
+                    setPhotoContrast(1);
+                    setPhotoBrightness(1);
+                    setPhotoGrayscale(0);
+                    setPhotoSepia(0);
+                    setPhotoBlur(0);
+                  }}
+                  className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-bold px-3 py-2 rounded-xl cursor-pointer transition-all shadow-3xs"
+                >
+                  Restaurar Filtros
+                </button>
+                <button
+                  onClick={() => setIsPhotoModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-2 rounded-xl cursor-pointer transition-all"
+                >
+                  Cerrar
+                </button>
+                <button
+                  onClick={() => {
+                    if (!photoUrlInput) {
+                      alert('Ingrese una URL válida o seleccione un preset.');
+                      return;
+                    }
+                    const updatedArtist: Artist = {
+                      ...artist,
+                      photo: photoUrlInput,
+                      photoStyle: {
+                        zoom: photoZoom,
+                        rotation: photoRotation,
+                        contrast: photoContrast,
+                        brightness: photoBrightness,
+                        grayscale: photoGrayscale,
+                        sepia: photoSepia,
+                        blur: photoBlur
+                      },
+                      updated_at: new Date().toISOString()
+                    };
+                    onUpdateArtist(updatedArtist);
+                    setIsPhotoModalOpen(false);
+                    alert('¡Fotografía de prensa guardada y filtros de renderizado aplicados exitosamente!');
+                  }}
+                  className="bg-tomato-curry hover:bg-tomato-curry/90 text-white font-bold px-4 py-2 rounded-xl shadow-md cursor-pointer transition-all"
+                >
+                  Guardar Imagen Editada
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

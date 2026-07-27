@@ -4,16 +4,8 @@ import {
   Check, AlertCircle, RefreshCw, Layers, DollarSign, Award, Clock,
   ChevronLeft, ChevronRight, MapPin, Eye, Info, List, CalendarDays, X, Phone, Globe, Star
 } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import LeafletMap from './LeafletMap';
 import { Event, Artist, Venue, Tour } from '../types';
-
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
-const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY' && API_KEY.trim().length > 10;
 
 interface HomeDashboardProps {
   events: Event[];
@@ -46,7 +38,6 @@ export default function HomeDashboard({
   // Map state
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(venues[0]?.id || null);
   const [hoveredVenueId, setHoveredVenueId] = useState<string | null>(null);
-  const [mapMode, setMapMode] = useState<'vector' | 'leaflet' | 'satellite'>('leaflet');
 
   // Calendar states
   // We initialize the calendar to July 2026 since local time is July 2026 and mock data events live around there
@@ -66,21 +57,6 @@ export default function HomeDashboard({
   const [status, setStatus] = useState<'Draft' | 'Confirmed' | 'Completed' | 'Cancelled'>('Confirmed');
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
-
-  // Map Projection calculations for Mexico
-  // Longitude range: -118° (West) to -86° (East)
-  // Latitude range: 14° (South) to 33° (North)
-  const mapLngToX = (lng: number) => {
-    const minLng = -118;
-    const maxLng = -86;
-    return ((lng - minLng) / (maxLng - minLng)) * 100;
-  };
-
-  const mapLatToY = (lat: number) => {
-    const minLat = 14;
-    const maxLat = 33;
-    return 100 - (((lat - minLat) / (maxLat - minLat)) * 100);
-  };
 
   // Get status state for each venue based on events
   const venuesWithStatus = venues.map(v => {
@@ -316,280 +292,20 @@ export default function HomeDashboard({
           {/* SVG Map (7cols) */}
           <div className="lg:col-span-7 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 p-4 flex flex-col justify-between relative min-h-[340px]">
             
-            {/* Map Mode Toggles */}
-            <div className="absolute top-3 right-3 z-30 flex items-center gap-1 bg-slate-950/90 backdrop-blur-xs p-1 rounded-lg border border-slate-800">
-              <button
-                onClick={() => setMapMode('vector')}
-                className={`px-2 py-1 text-[10px] font-bold rounded transition-all cursor-pointer ${
-                  mapMode === 'vector' ? 'bg-slate-800 text-amber-400' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Mapa Vectorial
-              </button>
-              <button
-                onClick={() => setMapMode('leaflet')}
-                className={`px-2 py-1 text-[10px] font-bold rounded transition-all cursor-pointer ${
-                  mapMode === 'leaflet' ? 'bg-slate-800 text-amber-400' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Mapa Interactivo (OSM)
-              </button>
-              <button
-                onClick={() => {
-                  if (hasValidKey) {
-                    setMapMode('satellite');
-                  } else {
-                    alert('Para activar la vista de Google Maps, configura tu secreto GOOGLE_MAPS_PLATFORM_KEY en la configuración del proyecto (icono de engranaje ⚙️ arriba a la derecha).');
-                  }
-                }}
-                className={`px-2 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1 cursor-pointer ${
-                  mapMode === 'satellite' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <span>Google Maps</span>
-                {!hasValidKey && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
-              </button>
-            </div>
-
             {/* Georeference Box Title */}
             <div className="absolute top-3 left-3 bg-slate-800/80 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-slate-700/50 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest z-10 flex items-center gap-2">
               <Globe className="w-3 h-3 text-sky-400" />
-              <span>
-                {mapMode === 'leaflet' ? 'OPEN STREET MAP : LIVE' : mapMode === 'satellite' ? 'GOOGLE MAPS LIVE' : 'MÉXICO GPS SYSTEM : UTM PROJ'}
-              </span>
+              <span>MAPA DE VENUES : OPENSTREETMAP</span>
             </div>
 
-            {mapMode === 'leaflet' ? (
-              <div className="relative w-full flex-1 min-h-[300px] rounded-lg overflow-hidden border border-slate-800 mt-8">
-                <LeafletMap
-                  venues={venuesWithStatus}
-                  selectedVenueId={selectedVenueId}
-                  onSelectVenue={(id) => setSelectedVenueId(id)}
-                />
-              </div>
-            ) : mapMode === 'satellite' && hasValidKey ? (
-              <div className="relative w-full flex-1 min-h-[300px] rounded-lg overflow-hidden border border-slate-800 mt-8">
-                <APIProvider apiKey={API_KEY} version="weekly">
-                  <Map
-                    defaultCenter={{ lat: 23.6345, lng: -102.5528 }}
-                    defaultZoom={5}
-                    mapId="DEMO_MAP_ID"
-                    internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                    style={{ width: '100%', height: '100%' }}
-                    gestureHandling={'cooperative'}
-                    disableDefaultUI={false}
-                  >
-                    {venuesWithStatus.map((v) => {
-                      const lat = Number(v.lat) || 19.42;
-                      const lng = Number(v.lng) || -99.13;
-                      const isSelected = selectedVenueId === v.id;
-                      
-                      // Color based on status: Completed (Green), Upcoming (Yellow), None (Gray)
-                      let pinColor = '#94a3b8'; // gray
-                      let glyphColor = '#fff';
-                      let borderColor = '#64748b';
-                      
-                      if (v.statusState === 'completed') {
-                        pinColor = '#10b981'; // emerald-500
-                        borderColor = '#047857';
-                      } else if (v.statusState === 'upcoming') {
-                        pinColor = '#fbbf24'; // amber-400
-                        borderColor = '#b45309';
-                      }
+            <div className="relative w-full flex-1 min-h-[300px] rounded-lg overflow-hidden border border-slate-800 mt-8 mb-2">
+              <LeafletMap
+                venues={venuesWithStatus}
+                selectedVenueId={selectedVenueId}
+                onSelectVenue={(id) => setSelectedVenueId(id)}
+              />
+            </div>
 
-                      return (
-                        <AdvancedMarker
-                          key={v.id}
-                          position={{ lat, lng }}
-                          title={v.name}
-                          onClick={() => setSelectedVenueId(v.id)}
-                        >
-                          <Pin 
-                            background={pinColor} 
-                            glyphColor={glyphColor} 
-                            borderColor={borderColor}
-                            scale={isSelected ? 1.25 : 1.0}
-                          />
-                        </AdvancedMarker>
-                      );
-                    })}
-                  </Map>
-                </APIProvider>
-              </div>
-            ) : (
-              <>
-                {/* Background Map Graphic Overlay */}
-                <div className="absolute inset-0 pointer-events-none opacity-10 select-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
-
-                {/* SVG Canvas Area */}
-                <div className="relative w-full flex-1 flex items-center justify-center pt-6">
-                  <svg 
-                    viewBox="0 0 500 300" 
-                    className="w-full max-w-lg aspect-[5/3] text-slate-700"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <defs>
-                      <linearGradient id="mexicoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#1e293b" />
-                        <stop offset="100%" stopColor="#0f172a" />
-                      </linearGradient>
-                      <linearGradient id="bajaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#1e293b" />
-                        <stop offset="100%" stopColor="#111827" />
-                      </linearGradient>
-                    </defs>
-
-                    {/* Grid coordinates */}
-                    <line x1="50" y1="0" x2="50" y2="300" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <line x1="150" y1="0" x2="150" y2="300" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <line x1="250" y1="0" x2="250" y2="300" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <line x1="350" y1="0" x2="350" y2="300" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <line x1="450" y1="0" x2="450" y2="300" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    
-                    <line x1="0" y1="60" x2="500" y2="60" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <line x1="0" y1="140" x2="500" y2="140" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <line x1="0" y1="220" x2="500" y2="220" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-
-                    {/* Oceans & Gulfs labels */}
-                    <text x="80" y="220" fill="#475569" fontSize="7" fontWeight="bold" fontFamily="monospace" letterSpacing="2">OCÉANO PACÍFICO</text>
-                    <text x="350" y="160" fill="#475569" fontSize="7" fontWeight="bold" fontFamily="monospace" letterSpacing="2">GOLFO DE MÉXICO</text>
-
-                    {/* Stylized Abstract Coastlines of Mexico */}
-                    {/* Baja Peninsula */}
-                    <path
-                      d="M 15,35 
-                         C 20,45 35,65 40,85
-                         C 45,105 55,120 60,135
-                         C 62,139 65,140 65,135
-                         C 60,120 50,100 45,80
-                         C 40,60 30,45 25,35
-                         Z"
-                      fill="url(#bajaGradient)"
-                      stroke="#334155"
-                      strokeWidth="1.2"
-                    />
-
-                    {/* Mainland Mexico Silhouette */}
-                    <path
-                      d="M 68,90 
-                         C 80,85 100,75 120,70
-                         C 150,65 170,75 200,65
-                         C 220,55 240,40 280,35
-                         C 310,30 330,40 360,40
-                         C 390,40 400,65 410,75
-                         C 420,85 415,100 395,115
-                         C 385,120 375,130 365,140
-                         C 355,150 370,165 385,185
-                         C 395,195 425,195 445,190
-                         C 465,185 480,195 490,210
-                         C 495,220 480,230 460,225
-                         C 440,220 420,210 405,200
-                         C 390,190 380,185 365,185
-                         C 350,185 330,195 320,210
-                         C 310,225 290,240 270,255
-                         C 250,270 210,285 190,285
-                         C 170,285 150,275 130,260
-                         C 115,250 100,240 95,230
-                         C 90,220 100,210 110,195
-                         C 115,185 105,175 95,160
-                         C 85,145 70,135 72,125
-                         C 74,115 68,100 68,90
-                         Z"
-                      fill="url(#mexicoGradient)"
-                      stroke="#334155"
-                      strokeWidth="1.2"
-                    />
-
-                    {/* Major Reference City Dots (CDMX, Monterrey, Guadalajara, Mérida, Tijuana) */}
-                    <circle cx="294" cy="214" r="2" fill="#475569" />
-                    <text x="298" y="217" fill="#64748b" fontSize="6" fontWeight="bold">CDMX</text>
-
-                    <circle cx="276" cy="116" r="2" fill="#475569" />
-                    <text x="280" y="119" fill="#64748b" fontSize="6" fontWeight="bold">MTY</text>
-
-                    <circle cx="229" cy="195" r="2" fill="#475569" />
-                    <text x="202" y="198" fill="#64748b" fontSize="6" fontWeight="bold">GDL</text>
-
-                    <circle cx="456" cy="190" r="2" fill="#475569" />
-                    <text x="450" y="184" fill="#64748b" fontSize="6" fontWeight="bold">MID</text>
-
-                    <circle cx="33" cy="34" r="2" fill="#475569" />
-                    <text x="37" y="37" fill="#64748b" fontSize="6" fontWeight="bold">TIJ</text>
-                  </svg>
-
-                  {/* DOM Overlay of Interactive Venue Pins */}
-                  {venuesWithStatus.map((v) => {
-                    const lat = typeof v.lat === 'number' ? v.lat : 19.42;
-                    const lng = typeof v.lng === 'number' ? v.lng : -99.13;
-                    const xPct = mapLngToX(lng);
-                    const yPct = mapLatToY(lat);
-
-                    // Skip drawing pins that fallback outside valid coordinates or map ranges
-                    if (xPct < 0 || xPct > 100 || yPct < 0 || yPct > 100) return null;
-
-                    const isSelected = selectedVenueId === v.id;
-                    const isHovered = hoveredVenueId === v.id;
-
-                    // Color based on status: Completed (Green), Upcoming (Yellow), None (Gray)
-                    let pinBgColor = 'bg-slate-400';
-                    let pinBorderColor = 'border-slate-500';
-                    let pinRingColor = 'ring-slate-400/20';
-
-                    if (v.statusState === 'completed') {
-                      pinBgColor = 'bg-emerald-500';
-                      pinBorderColor = 'border-emerald-300';
-                      pinRingColor = 'ring-emerald-500/30';
-                    } else if (v.statusState === 'upcoming') {
-                      pinBgColor = 'bg-amber-400';
-                      pinBorderColor = 'border-amber-200';
-                      pinRingColor = 'ring-amber-400/30';
-                    }
-
-                    return (
-                      <div
-                        key={v.id}
-                        className="absolute cursor-pointer transition-transform duration-300 z-20 group"
-                        style={{
-                          left: `${xPct}%`,
-                          top: `${yPct}%`,
-                          transform: 'translate(-50%, -50%)'
-                        }}
-                        onClick={() => setSelectedVenueId(v.id)}
-                        onMouseEnter={() => setHoveredVenueId(v.id)}
-                        onMouseLeave={() => setHoveredVenueId(null)}
-                      >
-                        {/* Ring highlight animation if selected */}
-                        {isSelected && (
-                          <span className={`absolute -inset-2.5 rounded-full border border-dashed animate-spin ${
-                            v.statusState === 'completed' ? 'border-emerald-500/50' : 'border-amber-400/50'
-                          }`} />
-                        )}
-
-                        {/* Ping pulsing background effect */}
-                        <span className={`absolute inline-flex h-4 w-4 rounded-full opacity-60 animate-ping -left-0.5 -top-0.5 ${pinBgColor}`} />
-
-                        {/* Dot pin */}
-                        <div className={`relative w-3.5 h-3.5 rounded-full border-2 shadow-md transition-all ${pinBgColor} ${pinBorderColor} ${
-                          isSelected ? 'scale-150 ring-4 ' + pinRingColor : 'hover:scale-125'
-                        }`} />
-
-                        {/* Label tooltip trigger */}
-                        <div className={`absolute bottom-5 left-1/2 -translate-x-1/2 bg-cosmic-black text-white text-[9px] px-2 py-1 rounded-lg shadow-lg pointer-events-none transition-all duration-200 whitespace-nowrap border border-slate-800 z-30 ${
-                          isHovered || isSelected ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-1'
-                        }`}>
-                          <p className="font-bold">{v.name}</p>
-                          <p className="text-[8px] text-slate-400">{v.city} · {v.establishmentType}</p>
-                          <div className="flex items-center gap-2 mt-1 pt-0.5 border-t border-slate-800">
-                            <span className="text-emerald-400 font-bold">{v.completedCount} realizado(s)</span>
-                            <span className="text-amber-400 font-bold">{v.upcomingCount} programado(s)</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
 
             {/* Scale/Disclaimer */}
             <div className="text-[8px] font-mono text-slate-500 text-center">

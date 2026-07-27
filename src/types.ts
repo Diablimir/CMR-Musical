@@ -38,11 +38,32 @@ export interface PipelineItem {
   completed: boolean;
 }
 
+export interface MemberHistory {
+  id: string;
+  name: string;
+  role: string;
+  startDate: string;
+  endDate?: string;
+  venueName?: string;
+  active: boolean;
+}
+
+export interface PhotoStyle {
+  zoom?: number;
+  rotation?: number;
+  contrast?: number;
+  brightness?: number;
+  grayscale?: number;
+  sepia?: number;
+  blur?: number;
+}
+
 export interface Artist {
   id: string;
   artisticName: string;
   legalName: string;
   photo: string;
+  photoStyle?: PhotoStyle;
   bio: string;
   genre: string;
   subgenres: string[];
@@ -52,6 +73,7 @@ export interface Artist {
   state: string;
   country: string;
   members: string[];
+  memberHistory?: MemberHistory[];
   manager: string;
   bookingAgent: string;
   label: string;

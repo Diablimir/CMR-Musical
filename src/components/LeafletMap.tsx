@@ -2,6 +2,35 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Layers, MapPin, Globe } from 'lucide-react';
 
+// Monkey-patch Leaflet DomUtil methods to prevent "_leaflet_pos" errors on detached/unmounted elements
+if (typeof window !== 'undefined' && L && L.DomUtil) {
+  const origGetPosition = L.DomUtil.getPosition;
+  if (origGetPosition) {
+    L.DomUtil.getPosition = function (el: HTMLElement) {
+      if (!el) {
+        return new L.Point(0, 0);
+      }
+      try {
+        return (el as any)._leaflet_pos || origGetPosition.call(this, el) || new L.Point(0, 0);
+      } catch {
+        return new L.Point(0, 0);
+      }
+    };
+  }
+
+  const origSetPosition = L.DomUtil.setPosition;
+  if (origSetPosition) {
+    L.DomUtil.setPosition = function (el: HTMLElement, point: L.Point) {
+      if (!el) return;
+      try {
+        origSetPosition.call(this, el, point);
+      } catch {
+        // ignore
+      }
+    };
+  }
+}
+
 interface MapVenue {
   id: string;
   name: string;
@@ -46,45 +75,76 @@ export default function LeafletMap({
 
   // Initialize Map
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    if (!mapContainerRef.current) return;
 
-    // Create leaflet map
-    const map = L.map(mapContainerRef.current, {
-      center: defaultCenter,
-      zoom: defaultZoom,
-      zoomControl: true,
-      scrollWheelZoom: true,
-      attributionControl: true
-    });
-
-    mapInstanceRef.current = map;
-
-    // Add TileLayer
-    const tileLayerUrl = tileLayers[mapStyle];
-    const tileLayer = L.tileLayer(tileLayerUrl, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    }).addTo(map);
-
-    currentTileLayerRef.current = tileLayer;
-
-    // Add LayerGroup for markers
-    const markersLayer = L.layerGroup().addTo(map);
-    markersLayerRef.current = markersLayer;
-
-    // Standard leaflet CSS bugfix for zoom control border/shadow
-    const zoomContainer = map.zoomControl?.getContainer();
-    if (zoomContainer) {
-      zoomContainer.classList.add('border', 'border-slate-800', 'rounded-xl', 'overflow-hidden', 'shadow-lg');
+    if (mapInstanceRef.current) {
+      try {
+        mapInstanceRef.current.remove();
+      } catch {
+        // ignore
+      }
+      mapInstanceRef.current = null;
     }
 
-    // Trigger map resize check to render tiles correctly
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
+    if ((mapContainerRef.current as any)._leaflet_id) {
+      delete (mapContainerRef.current as any)._leaflet_id;
+    }
+
+    let initTimeout: number | null = null;
+
+    try {
+      // Create leaflet map
+      const map = L.map(mapContainerRef.current, {
+        center: defaultCenter,
+        zoom: defaultZoom,
+        zoomControl: true,
+        scrollWheelZoom: true,
+        attributionControl: true
+      });
+
+      mapInstanceRef.current = map;
+
+      // Add TileLayer
+      const tileLayerUrl = tileLayers[mapStyle];
+      const tileLayer = L.tileLayer(tileLayerUrl, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }).addTo(map);
+
+      currentTileLayerRef.current = tileLayer;
+
+      // Add LayerGroup for markers
+      const markersLayer = L.layerGroup().addTo(map);
+      markersLayerRef.current = markersLayer;
+
+      // Standard leaflet CSS bugfix for zoom control border/shadow
+      const zoomContainer = map.zoomControl?.getContainer();
+      if (zoomContainer) {
+        zoomContainer.classList.add('border', 'border-slate-800', 'rounded-xl', 'overflow-hidden', 'shadow-lg');
+      }
+
+      // Trigger map resize check to render tiles correctly
+      initTimeout = window.setTimeout(() => {
+        if (mapInstanceRef.current) {
+          try {
+            mapInstanceRef.current.invalidateSize({ animate: false });
+          } catch {
+            // ignore
+          }
+        }
+      }, 100);
+    } catch (err) {
+      console.warn('Error initializing Leaflet map:', err);
+    }
 
     return () => {
+      if (initTimeout) clearTimeout(initTimeout);
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          console.warn('Error removing map instance:', e);
+        }
         mapInstanceRef.current = null;
         currentTileLayerRef.current = null;
         markersLayerRef.current = null;
@@ -95,17 +155,25 @@ export default function LeafletMap({
   // Update map tiles style when changed
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !currentTileLayerRef.current) return;
+    if (!map) return;
 
-    // Remove current layer
-    map.removeLayer(currentTileLayerRef.current);
+    if (currentTileLayerRef.current) {
+      try {
+        map.removeLayer(currentTileLayerRef.current);
+      } catch {
+        // ignore
+      }
+    }
 
-    // Create new layer
-    const newTileLayer = L.tileLayer(tileLayers[mapStyle], {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    }).addTo(map);
+    try {
+      const newTileLayer = L.tileLayer(tileLayers[mapStyle], {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }).addTo(map);
 
-    currentTileLayerRef.current = newTileLayer;
+      currentTileLayerRef.current = newTileLayer;
+    } catch {
+      // ignore
+    }
   }, [mapStyle]);
 
   // Update markers on the map
@@ -114,8 +182,14 @@ export default function LeafletMap({
     const markersLayer = markersLayerRef.current;
     if (!map || !markersLayer) return;
 
-    // Clear existing markers
-    markersLayer.clearLayers();
+    const activeTimeouts: number[] = [];
+
+    try {
+      map.closePopup();
+      markersLayer.clearLayers();
+    } catch {
+      // ignore
+    }
 
     // Map through venues and add markers
     venues.forEach((v) => {
@@ -198,15 +272,25 @@ export default function LeafletMap({
 
       // If is selected, open popup and pan to it
       if (isSelected) {
-        setTimeout(() => {
-          marker.openPopup();
-          if (!singleVenueHighlight) {
-            map.panTo([lat, lng]);
+        const tid = window.setTimeout(() => {
+          if (mapInstanceRef.current && markersLayerRef.current && markersLayerRef.current.hasLayer(marker)) {
+            try {
+              marker.openPopup();
+              if (!singleVenueHighlight) {
+                mapInstanceRef.current.panTo([lat, lng], { animate: false });
+              }
+            } catch {
+              // ignore
+            }
           }
-        }, 150);
+        }, 100);
+        activeTimeouts.push(tid);
       }
     });
 
+    return () => {
+      activeTimeouts.forEach(id => clearTimeout(id));
+    };
   }, [venues, selectedVenueId, singleVenueHighlight]);
 
   // Center on selected venue when selectedVenueId changes (specifically for lists)
@@ -219,10 +303,14 @@ export default function LeafletMap({
       const lat = Number(targetVenue.lat);
       const lng = Number(targetVenue.lng);
       if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-        map.setView([lat, lng], map.getZoom() < 8 ? 8 : map.getZoom());
+        try {
+          map.setView([lat, lng], map.getZoom() < 8 ? 8 : map.getZoom(), { animate: false });
+        } catch {
+          // ignore
+        }
       }
     }
-  }, [selectedVenueId, venues]);
+  }, [selectedVenueId, venues, singleVenueHighlight]);
 
   // Handle ResizeObserver to automatically adjust map canvas
   useEffect(() => {
@@ -230,7 +318,13 @@ export default function LeafletMap({
     if (!map || !mapContainerRef.current) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      map.invalidateSize();
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.invalidateSize({ animate: false });
+        } catch {
+          // ignore
+        }
+      }
     });
 
     resizeObserver.observe(mapContainerRef.current);
@@ -347,3 +441,4 @@ export default function LeafletMap({
     </div>
   );
 }
+

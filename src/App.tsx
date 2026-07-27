@@ -25,6 +25,19 @@ import ProvidersSuite from './components/ProvidersSuite';
 import ProductionSuite from './components/ProductionSuite';
 
 export default function App() {
+  // One-time clear of previous sample data to ensure starting from zero
+  if (typeof window !== 'undefined' && localStorage.getItem('flamo_zero_v1') !== 'true') {
+    localStorage.removeItem('flamo_venues');
+    localStorage.removeItem('flamo_artists');
+    localStorage.removeItem('flamo_contacts');
+    localStorage.removeItem('flamo_tours');
+    localStorage.removeItem('flamo_events');
+    localStorage.removeItem('flamo_contracts');
+    localStorage.removeItem('flamo_providers');
+    localStorage.removeItem('flamo_recording_projects');
+    localStorage.setItem('flamo_zero_v1', 'true');
+  }
+
   // 1. Core State with Local Storage persistence
   const [venues, setVenues] = useState<Venue[]>(() => {
     const saved = localStorage.getItem('flamo_venues');
@@ -167,6 +180,29 @@ export default function App() {
     setUsers(prev => prev.filter(u => u.id !== id));
   };
 
+  const handleClearAllData = () => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar TODOS los datos de muestra para comenzar desde 0? Esta acción vaciará eventos, artistas, venues, contratos y proveedores.')) {
+      setVenues([]);
+      setArtists([]);
+      setContacts([]);
+      setTours([]);
+      setEvents([]);
+      setContracts([]);
+      setProviders([]);
+      setRecordingProjects([]);
+      setSelectedArtistId('');
+      setSelectedVenueId(null);
+      localStorage.removeItem('flamo_venues');
+      localStorage.removeItem('flamo_artists');
+      localStorage.removeItem('flamo_contacts');
+      localStorage.removeItem('flamo_tours');
+      localStorage.removeItem('flamo_events');
+      localStorage.removeItem('flamo_contracts');
+      localStorage.removeItem('flamo_providers');
+      localStorage.removeItem('flamo_recording_projects');
+    }
+  };
+
   // 3. Filters State
   const initialFilterState: FilterState = {
     year: '',
@@ -185,7 +221,7 @@ export default function App() {
 
   // 4. Selected Entities
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
-  const [selectedArtistId, setSelectedArtistId] = useState<string>('art-1');
+  const [selectedArtistId, setSelectedArtistId] = useState<string>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // 5. Autocomplete & Venue Addition Simulator
@@ -494,22 +530,32 @@ export default function App() {
             
             {/* Dev Mode & Admin stacked vertically */}
             <div className="flex flex-col items-end gap-1">
-              {/* Developer mode toggle */}
-              <div className="flex items-center gap-2 bg-white-chalk border border-silver-haze rounded-lg px-2 py-0.5 shadow-3xs scale-90 origin-right">
-                <span className="text-[8px] uppercase font-bold text-slate-400 tracking-wider">Modo Dev</span>
+              {/* Developer mode toggle & Clear data */}
+              <div className="flex items-center gap-1.5 scale-90 origin-right">
                 <button
-                  onClick={() => setDeveloperMode(!developerMode)}
-                  className={`w-7 h-4 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                    developerMode ? 'bg-tomato-curry' : 'bg-slate-300'
-                  }`}
-                  title={developerMode ? "Ocultar pestaña de Esquema & DB" : "Mostrar pestaña de Esquema & DB"}
+                  onClick={handleClearAllData}
+                  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                  title="Eliminar todos los datos para comenzar desde 0"
                 >
-                  <span
-                    className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${
-                      developerMode ? 'transform translate-x-3' : ''
-                    }`}
-                  />
+                  <Trash2 className="w-2.5 h-2.5" />
+                  <span>Vaciar Datos</span>
                 </button>
+                <div className="flex items-center gap-2 bg-white-chalk border border-silver-haze rounded-lg px-2 py-0.5 shadow-3xs">
+                  <span className="text-[8px] uppercase font-bold text-slate-400 tracking-wider">Modo Dev</span>
+                  <button
+                    onClick={() => setDeveloperMode(!developerMode)}
+                    className={`w-7 h-4 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                      developerMode ? 'bg-tomato-curry' : 'bg-slate-300'
+                    }`}
+                    title={developerMode ? "Ocultar pestaña de Esquema & DB" : "Mostrar pestaña de Esquema & DB"}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${
+                        developerMode ? 'transform translate-x-3' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {/* User Account Details (Admin below) */}
@@ -738,23 +784,21 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Developer Mode Toggle */}
-                <div className="bg-slate-50 border border-silver-haze rounded-2xl p-4 flex items-center justify-between shadow-3xs">
+                {/* Clear All Data Button */}
+                <div className="bg-red-50/60 border border-red-200/80 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
                   <div className="space-y-0.5">
-                    <span className="text-[11px] font-bold text-slate-700 block">Modo Desarrollador</span>
-                    <span className="text-[9px] text-slate-400 block">Muestra logs y el esquema de DB</span>
+                    <span className="text-[11px] font-bold text-red-700 block">Vaciar Datos</span>
+                    <span className="text-[9px] text-red-500 block">Reinicia todas las tablas a 0</span>
                   </div>
                   <button
-                    onClick={() => setDeveloperMode(!developerMode)}
-                    className={`w-9 h-5 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                      developerMode ? 'bg-tomato-curry' : 'bg-slate-300'
-                    }`}
+                    onClick={() => {
+                      handleClearAllData();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
-                    <span
-                      className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${
-                        developerMode ? 'transform translate-x-4' : ''
-                      }`}
-                    />
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Vaciar</span>
                   </button>
                 </div>
 
