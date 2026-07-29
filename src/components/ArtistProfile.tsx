@@ -109,12 +109,66 @@ export default function ArtistProfile({
     onUpdateArtist(updatedArtist);
   };
 
-  // Social specific state
+  // Social specific state & Apify Scraper Integration
   const [activeOAuthModal, setActiveOAuthModal] = useState<'instagram' | 'tiktok' | null>(null);
   const [hashtagSearch, setHashtagSearch] = useState('#GiraFlamo2026');
   const [postFilter, setPostFilter] = useState<'all' | 'high' | 'low'>('all');
   const [dbTab, setDbTab] = useState<'ER' | 'SQL' | 'ORM'>('ER');
   const [isCopied, setIsCopied] = useState(false);
+
+  // Apify Scraper States
+  const [apifyPlatform, setApifyPlatform] = useState<'instagram' | 'tiktok' | 'spotify' | 'youtube'>('instagram');
+  const [apifyHandleInput, setApifyHandleInput] = useState('');
+  const [isApifyScraping, setIsApifyScraping] = useState(false);
+  const [apifyResult, setApifyResult] = useState<any>(null);
+  const [apifyError, setApifyError] = useState<string | null>(null);
+
+  const handleRunApifyScrape = async (overrideHandle?: string, overridePlatform?: 'instagram' | 'tiktok' | 'spotify' | 'youtube') => {
+    const platformToUse = overridePlatform || apifyPlatform;
+    const defaultHandle = artist.artisticName.toLowerCase().replace(/\s+/g, '_');
+    const handleToUse = (overrideHandle || apifyHandleInput || defaultHandle).replace(/^@/, '').trim();
+
+    if (!handleToUse) return;
+
+    setIsApifyScraping(true);
+    setApifyError(null);
+
+    try {
+      const response = await fetch('/api/apify/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: platformToUse,
+          handle: handleToUse
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en servidor Apify (${response.status})`);
+      }
+
+      const data = await response.json();
+      setApifyResult(data);
+
+      if (data.profile) {
+        const isIg = platformToUse === 'instagram';
+        const isTt = platformToUse === 'tiktok';
+        const updatedArtist: Artist = {
+          ...artist,
+          socialMedia: {
+            ...artist.socialMedia,
+            ...(isIg ? { instagramConnected: true, instagramConnectedUser: `@${data.profile.username}` } : {}),
+            ...(isTt ? { tiktokConnected: true, tiktokConnectedUser: `@${data.profile.username}` } : {})
+          }
+        };
+        onUpdateArtist(updatedArtist);
+      }
+    } catch (err: any) {
+      setApifyError(err.message || 'Ocurrió un error al procesar consulta con Apify.');
+    } finally {
+      setIsApifyScraping(false);
+    }
+  };
 
   const [socialPosts, setSocialPosts] = useState<Array<{
     id: string;
@@ -937,6 +991,147 @@ export default function ArtistProfile({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Apify Social Media Web Scraper Module */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 border border-indigo-500/30 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-sm text-white">Extracción de Métricas con Apify (Web Scraper)</h4>
+                    <span className="text-[9px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2 py-0.5 rounded-full">
+                      Sin OAuth / Meta App Review
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Obtén métricas públicas (seguidores, oyentes, interacción, posts top) en tiempo real con los actores de Apify.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href="https://console.apify.com/account/integrations"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-bold text-indigo-300 hover:text-indigo-200 underline flex items-center gap-1"
+                >
+                  <span>Obtener Token de Apify</span>
+                  <Globe className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            {/* Input & Platform Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-4 flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/80">
+                {(['instagram', 'tiktok', 'spotify', 'youtube'] as const).map((plat) => (
+                  <button
+                    key={plat}
+                    onClick={() => setApifyPlatform(plat)}
+                    className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-lg capitalize transition-all cursor-pointer ${
+                      apifyPlatform === plat
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {plat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="sm:col-span-5 relative">
+                <input
+                  type="text"
+                  value={apifyHandleInput}
+                  onChange={(e) => setApifyHandleInput(e.target.value)}
+                  placeholder={`Ej. @${artist.artisticName.toLowerCase().replace(/\s+/g, '_')}`}
+                  className="w-full bg-slate-800/90 text-white placeholder-slate-500 text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-indigo-500 font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <button
+                  onClick={() => handleRunApifyScrape()}
+                  disabled={isApifyScraping}
+                  className="w-full h-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2 px-3 rounded-xl border border-indigo-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isApifyScraping ? 'animate-spin' : ''}`} />
+                  <span>{isApifyScraping ? 'Scrapeando...' : 'Scrapear con Apify'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Apify Results Box */}
+            {apifyResult && apifyResult.profile && (
+              <div className="bg-slate-950/80 border border-indigo-500/30 rounded-xl p-4 space-y-3 animate-fade-in">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={apifyResult.profile.avatarUrl}
+                      alt="Avatar"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500 shrink-0"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm text-white">{apifyResult.profile.fullName}</span>
+                        {apifyResult.profile.verified && (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-sky-400 fill-sky-400/20" />
+                        )}
+                        <span className="text-[10px] text-slate-400 font-mono">@{apifyResult.profile.username}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 line-clamp-1">{apifyResult.profile.bio}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-800 px-2 py-0.5 rounded-md inline-block">
+                      {apifyResult.liveScraped ? '⚡ Apify Live Data' : '🤖 Apify Scraper Engine'}
+                    </span>
+                    <p className="text-[8px] font-mono text-slate-500 mt-1">
+                      Actor: {apifyResult.actorUsed}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-[9px] text-slate-400 block font-medium">Seguidores / Oyentes</span>
+                    <span className="text-base font-extrabold text-white font-mono">{apifyResult.profile.followersFormatted}</span>
+                  </div>
+                  <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-[9px] text-slate-400 block font-medium">Ratio Engagement</span>
+                    <span className="text-base font-extrabold text-indigo-400 font-mono">{apifyResult.profile.engagementRate}</span>
+                  </div>
+                  <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-[9px] text-slate-400 block font-medium">Posts / Contenido</span>
+                    <span className="text-base font-extrabold text-white font-mono">{apifyResult.profile.postsCount}</span>
+                  </div>
+                  <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-[9px] text-slate-400 block font-medium">Likes Promedio / Post</span>
+                    <span className="text-base font-extrabold text-emerald-400 font-mono">
+                      {apifyResult.profile.topPostLikes ? `${(apifyResult.profile.topPostLikes/1000).toFixed(1)}K` : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                {apifyResult.message && (
+                  <p className="text-[9.5px] text-indigo-200/80 bg-indigo-950/40 border border-indigo-800/40 p-2 rounded-lg font-mono">
+                    ℹ️ {apifyResult.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {apifyError && (
+              <div className="bg-red-950/50 border border-red-800/60 text-red-300 p-3 rounded-xl text-xs font-mono">
+                ⚠️ {apifyError}
+              </div>
+            )}
           </div>
 
           {/* Connected Dashboards Block */}

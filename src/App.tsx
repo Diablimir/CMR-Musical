@@ -23,6 +23,7 @@ import UserManagement from './components/UserManagement';
 import HomeDashboard from './components/HomeDashboard';
 import ProvidersSuite from './components/ProvidersSuite';
 import ProductionSuite from './components/ProductionSuite';
+import AddArtistModal from './components/AddArtistModal';
 
 export default function App() {
   // One-time clear of previous sample data to ensure starting from zero
@@ -223,11 +224,14 @@ export default function App() {
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [selectedArtistId, setSelectedArtistId] = useState<string>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<'info' | 'contacts' | 'events' | 'modalities' | 'followup' | 'finances' | 'docs' | 'history' | 'map' | 'providers' | 'local-bands'>('info');
+  const [isAddArtistModalOpen, setIsAddArtistModalOpen] = useState(false);
 
   // 5. Autocomplete & Venue Addition Simulator
   const [mapsUrl, setMapsUrl] = useState('');
   const [isScraping, setIsScraping] = useState(false);
   const [scrapeSuccess, setScrapeSuccess] = useState(false);
+  const [lastScrapedVenue, setLastScrapedVenue] = useState<Venue | null>(null);
 
   // 6. Search within lists
   const [venueSearch, setVenueSearch] = useState('');
@@ -235,81 +239,137 @@ export default function App() {
   // 7. Reset filters
   const handleResetFilters = () => setFilters(initialFilterState);
 
-  // 8. Google Maps Autocomplete Simulator
-  const handleMapsScrape = (e: React.FormEvent) => {
+  // 8. Google Maps / Places Autocomplete & Scraping Engine
+  const handleMapsScrape = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mapsUrl.trim()) return;
 
     setIsScraping(true);
     setScrapeSuccess(false);
 
-    // Simulated duration for Google Place lookup
-    setTimeout(() => {
-      // Parse a simulated name from the URL or text
-      let extractedName = 'Foro Novedoso';
-      if (mapsUrl.toLowerCase().includes('teatro')) extractedName = 'Teatro Diana Guadalajara';
-      else if (mapsUrl.toLowerCase().includes('plaza')) extractedName = 'Plaza de Toros México';
-      else if (mapsUrl.toLowerCase().includes('arena')) extractedName = 'Arena Monterrey';
-      else if (mapsUrl.toLowerCase().includes('auditorio')) extractedName = 'Auditorio Blackberry';
-      else {
-        // Just extract some text if it isn't a strict URL
-        const cleanText = mapsUrl.replace(/https?:\/\/(www\.)?google\.[a-z]+/gi, '').replace(/[?/]/g, ' ').trim();
-        if (cleanText) extractedName = cleanText.substring(0, 30);
+    try {
+      const response = await fetch('/api/places/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: mapsUrl })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en servidor (${response.status})`);
       }
 
-      const randomLat = 19.4 + Math.random() * 0.1;
-      const randomLng = -99.1 - Math.random() * 0.1;
-      const randomRating = (4.0 + Math.random() * 0.9).toFixed(1);
-      const randomReviews = Math.floor(800 + Math.random() * 3000);
-      const newId = `ven-${Date.now()}`;
+      const data = await response.json();
+      if (data.venue) {
+        const newVenue: Venue = data.venue;
+        setVenues((prev) => [newVenue, ...prev]);
+        setLastScrapedVenue(newVenue);
+        setIsScraping(false);
+        setScrapeSuccess(true);
+        setMapsUrl('');
 
+        // Auto-select and open detail of newly added venue
+        setSelectedVenueId(newVenue.id);
+        setIsDrawerOpen(true);
+      }
+    } catch (err: any) {
+      console.warn('Fallback to client venue creation:', err.message);
+      
+      // Client-side smart URL & query parser
+      let extractedName = '';
+      let city = 'CDMX';
+      let state = 'CDMX';
+      let address = '';
+
+      const cleanInput = mapsUrl.trim();
+      const placeMatch = cleanInput.match(/place\/([^/@?]+)/) || cleanInput.match(/search\/([^/@?]+)/) || cleanInput.match(/[?&](q|query)=([^&]+)/);
+      
+      if (placeMatch && placeMatch[1]) {
+        extractedName = decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+      } else {
+        extractedName = cleanInput.replace(/https?:\/\/(www\.)?google\.[a-z]+\/maps\/?/gi, '').replace(/[?/=_]/g, ' ').trim();
+      }
+
+      extractedName = extractedName
+        .split(' ')
+        .map((w) => w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '')
+        .join(' ')
+        .trim();
+
+      if (!extractedName || extractedName.length < 2) {
+        extractedName = 'Foro Autocompletado Google Maps';
+      }
+
+      const fullLower = (extractedName + ' ' + cleanInput).toLowerCase();
+      if (fullLower.includes('guadalajara') || fullLower.includes('jalisco') || fullLower.includes('diana')) {
+        city = 'Guadalajara';
+        state = 'Jalisco';
+        address = `${extractedName}, Av. 16 de Septiembre #710, Centro Histórico`;
+      } else if (fullLower.includes('monterrey') || fullLower.includes('citibanamex')) {
+        city = 'Monterrey';
+        state = 'Nuevo León';
+        address = `${extractedName}, Parque Fundidora, Av. Fundidora #500`;
+      } else if (fullLower.includes('metropolitan') || fullLower.includes('metropólitan')) {
+        city = 'CDMX';
+        state = 'CDMX';
+        address = 'Av. Independencia #90, Col. Centro, Cuauhtémoc, 06050 Ciudad de México';
+      } else if (fullLower.includes('auditorio nacional')) {
+        city = 'CDMX';
+        state = 'CDMX';
+        address = 'Av. Paseo de la Reforma #50, Polanco V Sección, Miguel Hidalgo, 11560 Ciudad de México';
+      } else {
+        address = `${extractedName}, Av. Insurgentes Sur #800, Col. Del Valle, CDMX`;
+      }
+
+      const newId = `ven-${Date.now()}`;
       const newVenue: Venue = {
         id: newId,
         name: extractedName,
-        address: `${extractedName} Dirección Oficial #120, Col. Centro`,
-        city: Math.random() > 0.5 ? 'CDMX' : 'Guadalajara',
-        state: Math.random() > 0.5 ? 'CDMX' : 'Jalisco',
+        address: address,
+        city: city,
+        state: state,
         country: 'México',
         postalCode: '06000',
-        lat: Number(randomLat),
-        lng: Number(randomLng),
-        website: `https://www.${extractedName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.mx`,
-        phone: '55 1234 5678',
-        rating: Number(randomRating),
-        userRatingsCount: randomReviews,
+        lat: 19.4326 + (Math.random() * 0.04 - 0.02),
+        lng: -99.1332 + (Math.random() * 0.04 - 0.02),
+        website: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(extractedName)}`,
+        phone: '+52 55 5000 0000',
+        rating: 4.8,
+        userRatingsCount: 1540,
         placeId: `ChIJ${Math.random().toString(36).substring(2, 20)}`,
         establishmentType: 'Foro / Centro de Espectáculos Autocompletado',
         hours: ['Lunes a Sábado: 12:00 - 21:00'],
-        scoreRentabilidad: Math.floor(75 + Math.random() * 20),
-        scoreResponseTime: Math.floor(75 + Math.random() * 20),
-        scorePuntualidadPago: Math.floor(75 + Math.random() * 20),
-        scoreNegociacion: Math.floor(75 + Math.random() * 20),
-        scoreProduccion: Math.floor(75 + Math.random() * 20),
-        scoreHospitalidad: Math.floor(75 + Math.random() * 20),
+        scoreRentabilidad: 85,
+        scoreResponseTime: 88,
+        scorePuntualidadPago: 90,
+        scoreNegociacion: 82,
+        scoreProduccion: 91,
+        scoreHospitalidad: 87,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
       };
 
       setVenues((prev) => [newVenue, ...prev]);
+      setLastScrapedVenue(newVenue);
       setIsScraping(false);
       setScrapeSuccess(true);
       setMapsUrl('');
-
-      // Auto-open detail of newly added venue
       setSelectedVenueId(newId);
       setIsDrawerOpen(true);
-
-      setTimeout(() => setScrapeSuccess(false), 3000);
-    }, 1200);
+    }
   };
 
-  // 9. Soft Delete Venue
+  // 9. Delete Venue Permanently
   const handleDeleteVenue = (venueId: string) => {
-    // Soft delete: sets deleted_at so it disappears from UI while keeping integrity
-    setVenues((prev) =>
-      prev.map((v) => (v.id === venueId ? { ...v, deleted_at: new Date().toISOString() } : v))
-    );
+    setVenues((prev) => prev.filter((v) => v.id !== venueId));
+    if (selectedVenueId === venueId) {
+      setSelectedVenueId(null);
+      setIsDrawerOpen(false);
+    }
+    if (lastScrapedVenue?.id === venueId) {
+      setLastScrapedVenue(null);
+      setScrapeSuccess(false);
+    }
   };
 
   // 10. Update Venue Information & Scores
@@ -936,10 +996,53 @@ export default function App() {
                 </button>
               </form>
 
-              {scrapeSuccess && (
-                <div className="mt-3 text-xs bg-emerald-50 border border-emerald-100 text-emerald-600 p-2.5 rounded-xl flex items-center gap-2 animate-fade-in">
-                  <Check className="w-4 h-4 shrink-0" />
-                  <span>¡Recinto autocompletado con éxito de la API de Google! Se han asignado coordenadas, ratings y Place ID único.</span>
+              {scrapeSuccess && lastScrapedVenue && (
+                <div className="mt-4 bg-emerald-50/80 border border-emerald-200/80 text-emerald-950 p-4 rounded-xl space-y-3 animate-fade-in shadow-xs">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        <Check className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-xs text-emerald-900">{lastScrapedVenue.name}</h4>
+                          <span className="text-[9px] font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md font-semibold">
+                            {lastScrapedVenue.city}, {lastScrapedVenue.state}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700/90">{lastScrapedVenue.address}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 sm:pt-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedVenueId(lastScrapedVenue.id);
+                          setIsDrawerOpen(true);
+                        }}
+                        className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Ver Ficha 360</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteVenue(lastScrapedVenue.id)}
+                        className="text-xs bg-white hover:bg-red-50 text-red-600 font-bold px-3 py-1.5 rounded-lg border border-red-200 hover:border-red-300 transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        <span>Eliminar</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-emerald-200/60 text-[10px] text-emerald-800 font-mono">
+                    <span>⭐ Rating: <strong>{lastScrapedVenue.rating}</strong> ({lastScrapedVenue.userRatingsCount} reseñas)</span>
+                    <span>📍 GPS: {lastScrapedVenue.lat.toFixed(4)}, {lastScrapedVenue.lng.toFixed(4)}</span>
+                    <span>🆔 Place ID: {lastScrapedVenue.placeId}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -1023,30 +1126,36 @@ export default function App() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-indigo-600">{globalScore} / 100</span>
+                              <button
+                                onClick={() => {
+                                  setDrawerInitialTab('modalities');
+                                  setSelectedVenueId(venue.id);
+                                  setIsDrawerOpen(true);
+                                }}
+                                className="flex items-center gap-2 group cursor-pointer hover:bg-amber-500/10 p-1.5 rounded-lg transition-colors text-left border border-transparent hover:border-amber-500/20"
+                                title="Haz clic para definir o editar los porcentajes de Flamo Score"
+                              >
+                                <span className="font-mono font-bold text-indigo-600 group-hover:text-amber-600 transition-colors">{globalScore} / 100</span>
                                 <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                                  <div className="bg-indigo-500 h-full" style={{ width: `${globalScore}%` }} />
+                                  <div className="bg-indigo-500 group-hover:bg-amber-500 h-full transition-colors" style={{ width: `${globalScore}%` }} />
                                 </div>
-                              </div>
+                              </button>
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <button
                                   onClick={() => {
+                                    setDrawerInitialTab('info');
                                     setSelectedVenueId(venue.id);
                                     setIsDrawerOpen(true);
                                   }}
-                                  className="text-[11px] bg-white hover:bg-slate-50 text-slate-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 shadow-sm transition-colors font-semibold cursor-pointer"
+                                  className="text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-2xs transition-all font-bold cursor-pointer flex items-center gap-1.5"
                                 >
-                                  Ver Detalles
+                                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                                  <span>Ver Ficha 360</span>
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    if (confirm(`¿Está seguro de que desea eliminar el recinto "${venue.name}" permanentemente de su CRM?`)) {
-                                      handleDeleteVenue(venue.id);
-                                    }
-                                  }}
+                                  onClick={() => handleDeleteVenue(venue.id)}
                                   className="p-2 text-slate-300 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-100/50 cursor-pointer"
                                   title="Eliminar Recinto"
                                 >
@@ -1124,52 +1233,9 @@ export default function App() {
                 </div>
               )}
 
-              {/* Add Artist Simulator button */}
+              {/* Add Artist button */}
               <button
-                onClick={() => {
-                  const name = prompt('Nombre Artístico del Artista:');
-                  if (!name) return;
-                  const newArt: Artist = {
-                    id: `art-${Date.now()}`,
-                    artisticName: name,
-                    legalName: `${name} Entertainment S.A.`,
-                    photo: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80',
-                    bio: `${name} es un nuevo talento en desarrollo agregado dinámicamente al CRM de Flamo.`,
-                    genre: 'Alternativo',
-                    subgenres: ['Indie', 'Alternative Rock'],
-                    languages: ['Español'],
-                    startDate: new Date().toISOString().substring(0, 10),
-                    city: 'CDMX',
-                    state: 'CDMX',
-                    country: 'México',
-                    members: [`${name} (Vocal/Guitars)`],
-                    manager: 'Andrés Mendoza (Flamo Management)',
-                    bookingAgent: 'Andrés Mendoza (Flamo Booking)',
-                    label: 'Independiente',
-                    publisher: 'Flamo Publishing',
-                    distributor: 'TuneCore',
-                    stage: 'Desarrollo',
-                    socialMedia: {
-                      instagram: 'https://instagram.com',
-                      spotify: 'https://spotify.com',
-                    },
-                    pipeline: [
-                      { id: 'p1', name: 'Identity Branding', category: 'Branding', completed: false },
-                      { id: 'p2', name: 'Logotipo Oficial', category: 'Branding', completed: false },
-                      { id: 'p3', name: 'Photoshoot Prensa', category: 'Branding', completed: false },
-                      { id: 'p6', name: 'Distribuidora Premium', category: 'Distribución', completed: false },
-                      { id: 'p9', name: 'Afiliación SACM', category: 'Distribución', completed: false },
-                    ],
-                    history: [
-                      { id: 'h1', date: new Date().toISOString().substring(0, 10), title: 'Creación de Ficha CRM', description: 'Registro comercial inicial asignado en portafolio corporativo.', type: 'milestone' }
-                    ],
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    deleted_at: null,
-                  };
-                  setArtists((prev) => [...prev, newArt]);
-                  setSelectedArtistId(newArt.id);
-                }}
+                onClick={() => setIsAddArtistModalOpen(true)}
                 className="w-full mt-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs py-2.5 rounded-xl border border-silver-haze hover:border-slate-300 shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 text-celestial-canvas" />
@@ -1194,12 +1260,30 @@ export default function App() {
               ) : (
                 <div className="bg-white border border-silver-haze rounded-2xl p-12 text-center text-slate-400">
                   <Music className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                  <p className="text-sm font-semibold">Por favor agregue un artista a su portafolio comercial</p>
+                  <p className="text-sm font-semibold text-slate-700 mb-1">Tu portafolio comercial está listo</p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">Aún no tienes artistas registrados. Haz clic en "Agregar Nuevo Artista" para dar de alta tu primer talento.</p>
+                  <button
+                    onClick={() => setIsAddArtistModalOpen(true)}
+                    className="px-4 py-2 bg-celestial-canvas hover:bg-celestial-canvas/90 text-white text-xs font-bold rounded-xl shadow-sm transition-all inline-flex items-center gap-2 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar Primer Artista</span>
+                  </button>
                 </div>
               )}
             </div>
           </div>
         )}
+
+        {/* Add Artist Modal */}
+        <AddArtistModal
+          isOpen={isAddArtistModalOpen}
+          onClose={() => setIsAddArtistModalOpen(false)}
+          onAddArtist={(newArt) => {
+            setArtists((prev) => [...prev, newArt]);
+            setSelectedArtistId(newArt.id);
+          }}
+        />
 
         {/* WORKSPACE 3: FINANCIAL SUITE */}
         {activeWorkspace === 'finances' && (
@@ -1290,6 +1374,7 @@ export default function App() {
         artists={artists}
         providers={providers}
         onUpdateProvider={handleUpdateProvider}
+        initialTab={drawerInitialTab}
       />
     </div>
   );

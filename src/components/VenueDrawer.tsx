@@ -30,6 +30,7 @@ interface VenueDrawerProps {
   artists: Artist[];
   providers?: Provider[];
   onUpdateProvider?: (updated: Provider) => void;
+  initialTab?: 'info' | 'contacts' | 'events' | 'modalities' | 'followup' | 'finances' | 'docs' | 'history' | 'map' | 'providers' | 'local-bands';
 }
 
 export default function VenueDrawer({
@@ -45,6 +46,7 @@ export default function VenueDrawer({
   artists,
   providers = [],
   onUpdateProvider,
+  initialTab = 'info',
 }: VenueDrawerProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'contacts' | 'events' | 'modalities' | 'followup' | 'finances' | 'docs' | 'history' | 'map' | 'providers' | 'local-bands'>('info');
   const [isEditing, setIsEditing] = useState(false);
@@ -110,8 +112,11 @@ export default function VenueDrawer({
       setEditEmail(venue.email || '');
       setEditWA(venue.whatsapp || '');
       setIsEditing(false);
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
     }
-  }, [venue]);
+  }, [venue, initialTab]);
 
   if (!venue) return null;
 
@@ -257,12 +262,10 @@ export default function VenueDrawer({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    if (confirm(`¿Está seguro de que desea eliminar el recinto "${venue.name}" permanentemente? Esto mantendrá la integridad financiera pero ocultará este foro del CRM comercial.`)) {
-                      onDeleteVenue(venue.id);
-                      onClose();
-                    }
+                    onDeleteVenue(venue.id);
+                    onClose();
                   }}
-                  className="p-2 text-slate-400 hover:text-tomato-curry transition-colors rounded-lg hover:bg-tomato-curry/10 border border-transparent"
+                  className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 border border-transparent cursor-pointer"
                   title="Eliminar Recinto"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -290,10 +293,16 @@ export default function VenueDrawer({
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500 font-bold font-sans uppercase tracking-wider text-[10px]">Flamo Score:</span>
-                <div className="flex items-center gap-1.5 bg-celestial-canvas/10 border border-celestial-canvas/15 px-2.5 py-1 rounded-xl text-celestial-canvas font-mono text-xs font-bold uppercase tracking-wider">
-                  <Award className="w-4 h-4 text-celestial-canvas" />
-                  {globalScore} / 100
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('modalities')}
+                  title="Haz clic para definir o editar el Flamo Score"
+                  className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1 rounded-xl text-amber-600 font-mono text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <span>{globalScore} / 100</span>
+                  <span className="text-[10px] font-sans font-bold underline ml-1">Definir</span>
+                </button>
               </div>
             </div>
 
@@ -579,6 +588,74 @@ export default function VenueDrawer({
                       </div>
                     </div>
                   )}
+
+                  {/* FLAMO SCORE DEFINITION SECTION IN TAB 1 */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+                      <div>
+                        <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-amber-500" />
+                          <span>Definición Manual de Flamo Score</span>
+                        </h4>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          Tú defines el porcentaje de cada criterio comercial en base a tu experiencia con {venue.name}.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-zinc-300 font-mono">Global: <strong className="text-amber-400 font-bold">{globalScore}%</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('modalities')}
+                          className="text-[11px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Ver Desglose Completo</span>
+                          <Star className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { key: 'scoreRentabilidad', label: 'Rentabilidad (25%)', color: 'bg-amber-500' },
+                        { key: 'scoreResponseTime', label: 'Respuesta (15%)', color: 'bg-emerald-500' },
+                        { key: 'scorePuntualidadPago', label: 'Puntualidad (20%)', color: 'bg-amber-500' },
+                        { key: 'scoreNegociacion', label: 'Negociación (15%)', color: 'bg-indigo-500' },
+                        { key: 'scoreProduccion', label: 'Producción (15%)', color: 'bg-rose-500' },
+                        { key: 'scoreHospitalidad', label: 'Hospitalidad (10%)', color: 'bg-purple-500' },
+                      ].map((item) => {
+                        const scoreVal = (venue[item.key as keyof Venue] as number) || 0;
+                        return (
+                          <div key={item.key} className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-lg space-y-2">
+                            <div className="flex justify-between items-center gap-1">
+                              <span className="text-[11px] font-semibold text-zinc-200">{item.label}</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={scoreVal}
+                                  onChange={(e) => {
+                                    const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                    handleScoreChange(item.key as keyof Venue, val);
+                                  }}
+                                  className="w-12 bg-zinc-950 border border-zinc-700 text-amber-400 font-mono font-bold text-xs text-center rounded px-1 py-0.5 focus:outline-none focus:border-amber-500"
+                                />
+                                <span className="text-[10px] text-zinc-400 font-mono">%</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={scoreVal}
+                              onChange={(e) => handleScoreChange(item.key as keyof Venue, Number(e.target.value))}
+                              className="w-full accent-amber-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -996,14 +1073,17 @@ export default function VenueDrawer({
                   </div>
 
                   <div className="bg-zinc-900/20 border border-zinc-900 rounded-xl p-6">
-                    <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-800/80">
                       <div>
-                        <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider block">Calificación de Desempeño</span>
-                        <h4 className="text-sm text-zinc-200 font-medium">Algoritmo Comercial Flamo CRM</h4>
+                        <span className="text-xs text-amber-400 font-semibold uppercase tracking-wider block flex items-center gap-1.5">
+                          <span>✨ Calificación de Desempeño Personalizada</span>
+                        </span>
+                        <h4 className="text-sm text-zinc-200 font-bold">Algoritmo Comercial Flamo CRM</h4>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">Puedes ajustar o ingresar manualmente el porcentaje de cada criterio según tu experiencia comercial con este recinto.</p>
                       </div>
-                      <div className="bg-amber-500/15 border border-amber-500/30 text-amber-400 px-4 py-2 rounded-xl text-center">
-                        <span className="text-[9px] uppercase tracking-wider block">Global Index</span>
-                        <span className="text-xl font-bold font-mono">{globalScore} / 100</span>
+                      <div className="bg-amber-500/15 border border-amber-500/30 text-amber-400 px-4 py-2 rounded-xl text-center shrink-0">
+                        <span className="text-[9px] uppercase tracking-wider block font-semibold text-amber-300">Global Score</span>
+                        <span className="text-2xl font-black font-mono">{globalScore} / 100</span>
                       </div>
                     </div>
 
@@ -1018,25 +1098,38 @@ export default function VenueDrawer({
                       ].map((item) => {
                         const scoreVal = venue[item.key as keyof Venue] as number || 0;
                         return (
-                          <div key={item.key} className="space-y-1.5">
-                            <div className="flex justify-between items-center">
+                          <div key={item.key} className="space-y-2 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/50">
+                            <div className="flex justify-between items-center gap-2">
                               <div>
-                                <span className="text-xs font-semibold text-zinc-200">{item.label}</span>
-                                <p className="text-[10px] text-zinc-500">{item.desc}</p>
+                                <span className="text-xs font-semibold text-zinc-200 block">{item.label}</span>
+                                <p className="text-[10px] text-zinc-400">{item.desc}</p>
                               </div>
-                              <span className="text-xs font-mono font-bold text-zinc-200">{scoreVal}%</span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={scoreVal}
+                                  onChange={(e) => {
+                                    const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                    handleScoreChange(item.key as keyof Venue, val);
+                                  }}
+                                  className="w-14 bg-zinc-800 border border-zinc-700 text-amber-400 font-mono font-bold text-xs text-center rounded-lg px-1 py-1 focus:outline-none focus:border-amber-500"
+                                />
+                                <span className="text-xs font-mono font-bold text-zinc-400">%</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 pt-1">
                               <input
                                 type="range"
                                 min="0"
                                 max="100"
                                 value={scoreVal}
                                 onChange={(e) => handleScoreChange(item.key as keyof Venue, Number(e.target.value))}
-                                className="flex-1 accent-amber-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                                className="flex-1 accent-amber-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
                               />
-                              <div className="w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden shrink-0">
-                                <div className={`h-full ${item.color}`} style={{ width: `${scoreVal}%` }} />
+                              <div className="w-16 h-2 bg-zinc-800 rounded-full overflow-hidden shrink-0 border border-zinc-700/50">
+                                <div className={`h-full ${item.color} transition-all duration-300`} style={{ width: `${scoreVal}%` }} />
                               </div>
                             </div>
                           </div>
