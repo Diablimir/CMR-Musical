@@ -416,6 +416,125 @@ async function startServer() {
     }
   });
 
+  // GOOGLE CALENDAR SYNC ENDPOINTS
+  app.post('/api/calendar/sync-event', async (req, res) => {
+    try {
+      const userToken = (req.headers['x-goog-authenticated-user-token'] as string) || (req.headers['authorization'] as string);
+      const { event, artistName, venueName, venueAddress } = req.body || {};
+
+      if (!event || !event.name || !event.date) {
+        return res.status(400).json({ error: 'Faltan datos requeridos del evento (nombre y fecha).' });
+      }
+
+      const summary = `🎭 Show: ${event.name} (${artistName || 'Artista'} @ ${venueName || 'Recinto'})`;
+      const description = `Agendado desde Flamo CRM:\n- Artista: ${artistName || 'N/A'}\n- Recinto: ${venueName || 'N/A'}\n- Estado: ${event.status || 'Confirmado'}\n- Boletos: $${event.ticketPrice || 0}\n- Aforo/Capacidad: ${event.capacity || 0} pax`;
+      const location = venueAddress || venueName || '';
+
+      const googleCalEvent = {
+        summary,
+        location,
+        description,
+        start: { date: event.date },
+        end: { date: event.date },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 1440 }, // 24 horas antes
+            { method: 'popup', minutes: 180 }   // 3 horas antes
+          ]
+        }
+      };
+
+      if (userToken) {
+        const authHeader = userToken.startsWith('Bearer ') ? userToken : `Bearer ${userToken}`;
+        const calRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(googleCalEvent)
+        });
+
+        if (calRes.ok) {
+          const data = await calRes.json();
+          return res.json({
+            success: true,
+            syncedToApi: true,
+            googleEventId: data.id,
+            htmlLink: data.htmlLink,
+            message: 'Show agendado exitosamente en tu Google Calendar personal.'
+          });
+        }
+      }
+
+      // Fallback: Direct Web Add Link to Google Calendar if browser token header is not direct
+      const dateNoHyphens = event.date.replace(/-/g, '');
+      const webUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(summary)}&dates=${dateNoHyphens}/${dateNoHyphens}&details=${encodeURIComponent(description)}&location=${encodeURIComponent(location)}`;
+
+      res.json({
+        success: true,
+        syncedToApi: false,
+        webUrl,
+        message: 'Evento preparado para tu Google Calendar personal.'
+      });
+    } catch (err: any) {
+      console.error('Error syncing event with Google Calendar:', err);
+      res.status(500).json({ error: err.message || 'Error al conectar con Google Calendar.' });
+    }
+  });
+
+  app.post('/api/calendar/sync-all', async (req, res) => {
+    try {
+      const userToken = (req.headers['x-goog-authenticated-user-token'] as string) || (req.headers['authorization'] as string);
+      const { events = [] } = req.body || {};
+
+      let syncedCount = 0;
+
+      if (userToken && Array.isArray(events) && events.length > 0) {
+        const authHeader = userToken.startsWith('Bearer ') ? userToken : `Bearer ${userToken}`;
+        for (const evt of events) {
+          try {
+            const summary = `🎭 Show: ${evt.name} (${evt.artistName || 'Artista'} @ ${evt.venueName || 'Recinto'})`;
+            const description = `Agendado desde Flamo CRM:\n- Artista: ${evt.artistName || 'N/A'}\n- Recinto: ${evt.venueName || 'N/A'}\n- Estado: ${evt.status || 'Confirmado'}`;
+            
+            const calRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                summary,
+                location: evt.venueAddress || evt.venueName || '',
+                description,
+                start: { date: evt.date },
+                end: { date: evt.date }
+              })
+            });
+
+            if (calRes.ok) {
+              syncedCount++;
+            }
+          } catch (e) {
+            console.warn('Single event sync error:', e);
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        syncedCount,
+        total: events.length,
+        message: syncedCount > 0 
+          ? `¡${syncedCount} de ${events.length} eventos agendados en tu Google Calendar!`
+          : 'Eventos preparados para sincronización con Google Calendar.'
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Vite middleware in dev / static serve in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

@@ -58,6 +58,84 @@ export default function HomeDashboard({
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
 
+  // Google Calendar Sync States
+  const [syncToGoogleCalOnCreate, setSyncToGoogleCalOnCreate] = useState(true);
+  const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleSyncSingleEvent = async (evt: Event) => {
+    setIsSyncingCalendar(true);
+    setSyncFeedback(null);
+    const art = artists.find(a => a.id === evt.artistId);
+    const ven = venues.find(v => v.id === evt.venueId);
+
+    try {
+      const res = await fetch('/api/calendar/sync-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: evt,
+          artistName: art?.artisticName || 'Artista',
+          venueName: ven?.name || 'Recinto',
+          venueAddress: ven?.address || ven?.city || ''
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        if (data.webUrl) {
+          window.open(data.webUrl, '_blank');
+          setSyncFeedback({ type: 'success', message: '¡Abriendo Google Calendar para guardar en tu agenda personal!' });
+        } else {
+          setSyncFeedback({ type: 'success', message: '¡Show agendado exitosamente en tu Google Calendar personal!' });
+        }
+      } else {
+        setSyncFeedback({ type: 'error', message: data.error || 'Error al agendar en Google Calendar.' });
+      }
+    } catch (err: any) {
+      setSyncFeedback({ type: 'error', message: err.message || 'Error de conexión con Google Calendar.' });
+    } finally {
+      setIsSyncingCalendar(false);
+    }
+  };
+
+  const handleSyncAllCalendar = async () => {
+    setIsSyncingCalendar(true);
+    setSyncFeedback(null);
+    try {
+      const enrichedEvents = events.map(evt => {
+        const art = artists.find(a => a.id === evt.artistId);
+        const ven = venues.find(v => v.id === evt.venueId);
+        return {
+          ...evt,
+          artistName: art?.artisticName || 'Artista',
+          venueName: ven?.name || 'Recinto',
+          venueAddress: ven?.address || ven?.city || ''
+        };
+      });
+
+      const res = await fetch('/api/calendar/sync-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: enrichedEvents })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSyncFeedback({
+          type: 'success',
+          message: data.message || `¡${events.length} eventos sincronizados con tu Google Calendar personal!`
+        });
+      } else {
+        setSyncFeedback({ type: 'error', message: data.error || 'No se pudo completar la sincronización.' });
+      }
+    } catch (err: any) {
+      setSyncFeedback({ type: 'error', message: 'Error de comunicación con Google Calendar.' });
+    } finally {
+      setIsSyncingCalendar(false);
+    }
+  };
+
   // Get status state for each venue based on events
   const venuesWithStatus = venues.map(v => {
     // Find all events associated with this venue (active, non-deleted)
@@ -137,7 +215,7 @@ export default function HomeDashboard({
     const calculatedIncome = att * price;
     const calculatedProfit = calculatedIncome - exp;
 
-    onAddEvent({
+    const newEvtObj: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'deleted_at'> = {
       name: showName.trim(),
       artistId: selectedArtistId,
       venueId: selectedVenueIdForm,
@@ -150,7 +228,19 @@ export default function HomeDashboard({
       expenses: exp,
       profit: calculatedProfit,
       status: status
-    });
+    };
+
+    onAddEvent(newEvtObj);
+
+    if (syncToGoogleCalOnCreate) {
+      handleSyncSingleEvent({
+        ...newEvtObj,
+        id: `temp-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null
+      });
+    }
 
     setFormSuccess(true);
     setTimeout(() => {
@@ -174,6 +264,13 @@ export default function HomeDashboard({
     }
   };
 
+  // Today's date calculation
+  const todayObj = new Date();
+  const todayY = todayObj.getFullYear();
+  const todayM = String(todayObj.getMonth() + 1).padStart(2, '0');
+  const todayD = String(todayObj.getDate()).padStart(2, '0');
+  const todayStr = `${todayY}-${todayM}-${todayD}`;
+
   // Calendar render math (Lunes to Domingo)
   const calendarYear = calendarDate.getFullYear();
   const calendarMonth = calendarDate.getMonth();
@@ -187,8 +284,30 @@ export default function HomeDashboard({
   };
 
   const handleGoToToday = () => {
-    setCalendarDate(new Date(2026, 6, 1)); // Back to our simulation anchor July 2026
+    setCalendarDate(new Date(todayY, todayObj.getMonth(), 1));
   };
+
+  // Next upcoming concert calculation
+  const upcomingEvents = events
+    .filter(evt => !evt.deleted_at && evt.status !== 'Cancelled' && evt.date >= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const nextUpcomingEvent = upcomingEvents[0];
+  let daysUntilNextEvent: number | null = null;
+  let nextArtistName = '';
+  let nextVenueName = '';
+
+  if (nextUpcomingEvent) {
+    const todayMs = new Date(todayY, todayObj.getMonth(), Number(todayD)).getTime();
+    const [eY, eM, eD] = nextUpcomingEvent.date.split('-').map(Number);
+    const nextMs = new Date(eY, eM - 1, eD).getTime();
+    daysUntilNextEvent = Math.max(0, Math.ceil((nextMs - todayMs) / (1000 * 60 * 60 * 24)));
+
+    const art = artists.find(a => a.id === nextUpcomingEvent.artistId);
+    const ven = venues.find(v => v.id === nextUpcomingEvent.venueId);
+    nextArtistName = art?.artisticName || 'Artista';
+    nextVenueName = ven?.name || 'Recinto';
+  }
 
   const totalDaysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   // Day of week index (0 = Sun, 1 = Mon ... 6 = Sat)
@@ -518,6 +637,17 @@ export default function HomeDashboard({
             </div>
 
             <button
+              type="button"
+              onClick={handleSyncAllCalendar}
+              disabled={isSyncingCalendar}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-blue-500"
+              title="Sincronizar toda tu agenda con Google Calendar"
+            >
+              <CalendarDays className="w-3.5 h-3.5 text-blue-100" />
+              <span>{isSyncingCalendar ? 'Sincronizando...' : 'Agendar en Google Calendar'}</span>
+            </button>
+
+            <button
               onClick={() => handleOpenAddModal()}
               className="bg-tomato-curry hover:bg-tomato-curry/90 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             >
@@ -530,6 +660,68 @@ export default function HomeDashboard({
         {/* CALENDAR VIEW INTERACTIVE ELEMENT */}
         {showView === 'calendar' && (
           <div className="p-5 space-y-4">
+
+            {/* NEXT CONCERT COUNTDOWN BANNER */}
+            <div className="bg-gradient-to-r from-slate-900 via-zinc-900 to-slate-900 text-white rounded-2xl p-4 border border-slate-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    <span>Próximo Concierto Agendado</span>
+                  </span>
+                  {nextUpcomingEvent ? (
+                    <h4 className="text-sm font-bold text-slate-100 flex flex-wrap items-center gap-2 mt-0.5">
+                      <span>{nextUpcomingEvent.name}</span>
+                      <span className="text-xs text-slate-400 font-normal">({nextArtistName} @ {nextVenueName})</span>
+                      <span className="text-[11px] font-mono font-semibold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                        {nextUpcomingEvent.date}
+                      </span>
+                    </h4>
+                  ) : (
+                    <h4 className="text-xs font-medium text-slate-300 mt-0.5">No hay próximos conciertos programados en la agenda.</h4>
+                  )}
+                </div>
+              </div>
+
+              {nextUpcomingEvent && daysUntilNextEvent !== null && (
+                <div className="bg-amber-500/15 border border-amber-500/30 text-amber-400 px-4 py-2 rounded-xl text-center shrink-0 flex items-center gap-2 self-stretch sm:self-auto justify-center">
+                  <div className="text-right sm:text-center">
+                    <span className="text-[9px] uppercase font-bold text-amber-300 block leading-tight tracking-wider">Cuenta Regresiva</span>
+                    <span className="text-base font-black font-mono">
+                      {daysUntilNextEvent === 0
+                        ? '🔥 ¡HOY ES EL CONCIERTO!'
+                        : daysUntilNextEvent === 1
+                        ? '⚡ ¡Falta 1 día!'
+                        : `🗓️ Faltan ${daysUntilNextEvent} días`}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* SYNC FEEDBACK BANNER */}
+            {syncFeedback && (
+              <div className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between gap-2 animate-fade-in ${
+                syncFeedback.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-rose-50 border-rose-200 text-rose-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{syncFeedback.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSyncFeedback(null)}
+                  className="p-1 hover:bg-black/5 rounded text-slate-500 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             
             {/* Calendar Month Selector Header */}
             <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-150">
@@ -554,12 +746,12 @@ export default function HomeDashboard({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 font-medium">Tip: Haz clic en un día libre para planificar show</span>
+                <span className="text-[10px] text-slate-400 font-medium hidden md:inline">Tip: Haz clic en un día libre para planificar show</span>
                 <button
                   onClick={handleGoToToday}
                   className="bg-white hover:bg-slate-50 text-slate-600 font-bold text-[10px] border border-slate-250 px-2.5 py-1 rounded-lg transition-colors shadow-2xs cursor-pointer"
                 >
-                  Hoy (Julio 2026)
+                  Ir a Hoy ({todayD} {monthNames[todayObj.getMonth()]})
                 </button>
               </div>
             </div>
@@ -582,6 +774,7 @@ export default function HomeDashboard({
                 {cells.map((cell, idx) => {
                   const dayEvents = calendarEventsByDate[cell.dateStr] || [];
                   const isSunday = (idx + 1) % 7 === 0;
+                  const isToday = cell.dateStr === todayStr;
 
                   return (
                     <div
@@ -593,22 +786,33 @@ export default function HomeDashboard({
                         }
                       }}
                       className={`min-h-[90px] p-2 flex flex-col justify-between transition-all group ${
-                        cell.isCurrentMonth 
+                        isToday
+                          ? 'bg-slate-200/90 hover:bg-slate-300/80 border-2 border-slate-400/90 shadow-inner'
+                          : cell.isCurrentMonth 
                           ? 'bg-white hover:bg-indigo-50/20' 
                           : 'bg-slate-50/50 text-slate-300'
                       }`}
                     >
                       {/* Day Number and Quick Plus on hover */}
                       <div className="flex items-center justify-between">
-                        <span className={`font-mono font-bold text-[10px] ${
-                          cell.isCurrentMonth 
-                            ? isSunday 
-                              ? 'text-rose-500' 
-                              : 'text-slate-700'
-                            : 'text-slate-300'
-                        }`}>
-                          {cell.dayNum}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className={`font-mono font-bold text-[10px] ${
+                            isToday
+                              ? 'bg-slate-800 text-white px-1.5 py-0.5 rounded-md text-[10px]'
+                              : cell.isCurrentMonth 
+                              ? isSunday 
+                                ? 'text-rose-500' 
+                                : 'text-slate-700'
+                              : 'text-slate-300'
+                          }`}>
+                            {cell.dayNum}
+                          </span>
+                          {isToday && (
+                            <span className="text-[8px] bg-slate-800 text-amber-300 font-extrabold uppercase px-1 py-0.5 rounded tracking-wider">
+                              HOY
+                            </span>
+                          )}
+                        </div>
 
                         {cell.isCurrentMonth && (
                           <button
@@ -1052,7 +1256,17 @@ export default function HomeDashboard({
               )}
 
               {/* Action buttons inside detail modal */}
-              <div className="flex gap-2 pt-3 border-t border-slate-100 text-[10px] font-bold">
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-slate-100 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => handleSyncSingleEvent(selectedCalendarEvent)}
+                  disabled={isSyncingCalendar}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 border border-blue-500 text-white p-2.5 rounded-xl shadow-2xs cursor-pointer text-center flex items-center justify-center gap-1.5 font-bold transition-all"
+                  title="Agendar este show en tu Google Calendar personal"
+                >
+                  <CalendarDays className="w-3.5 h-3.5 text-blue-100" />
+                  <span>{isSyncingCalendar ? 'Sincronizando...' : 'Agendar en mi Google Calendar'}</span>
+                </button>
                 <button
                   onClick={() => toggleStatus(selectedCalendarEvent.id, selectedCalendarEvent.status)}
                   className="flex-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 p-2.5 rounded-xl shadow-2xs cursor-pointer text-center"
@@ -1225,6 +1439,26 @@ export default function HomeDashboard({
                     <option value="Completed">Completado - Concierto liquidado</option>
                     <option value="Cancelled">Cancelado / Pospuesto</option>
                   </select>
+                </div>
+
+                <div className="md:col-span-2 pt-2 border-t border-slate-100">
+                  <label className="flex items-center gap-2.5 cursor-pointer bg-blue-50/70 hover:bg-blue-50 border border-blue-200 p-3 rounded-xl transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={syncToGoogleCalOnCreate}
+                      onChange={(e) => setSyncToGoogleCalOnCreate(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-blue-900 block flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Agendar inmediatamente en mi Google Calendar personal</span>
+                      </span>
+                      <span className="text-[10px] text-blue-700/80 block mt-0.5">
+                        Sincroniza la fecha y crea alertas 24 hrs y 3 hrs antes del concierto en tu calendario.
+                      </span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
