@@ -11,3 +11,27 @@
   --color-prairie-land: #E2CC9C;
   --color-tomato-curry: #E84A2E;
 }
+
+/* ---- Preferencias de interfaz (UxSettings) ---- */
+html[data-ux-font="sm"] { font-size: 14px; }
+html[data-ux-font="md"] { font-size: 16px; }
+html[data-ux-font="lg"] { font-size: 18px; }
+
+/* Densidad compacta: reduce el espaciado vertical global */
+html[data-ux-density="compact"] main { --spacing: 0.22rem; }
+html[data-ux-density="comfortable"] main { --spacing: 0.25rem; }
+
+html[data-ux-contrast="high"] body { color: #000; }
+html[data-ux-contrast="high"] .text-slate-400,
+html[data-ux-contrast="high"] .text-slate-500 { color: #1e293b !important; }
+html[data-ux-contrast="high"] .border-silver-haze { border-color: #64748b !important; }
+
+html[data-ux-motion="reduce"] *,
+html[data-ux-motion="reduce"] *::before,
+html[data-ux-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+html[data-ux-outlines="on"] * { outline: 1px solid rgba(232, 74, 46, 0.35); outline-offset: -1px; }

@@ -17,6 +17,7 @@ import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
 import FinancialSuite from './components/FinancialSuite';
 import SchemaVisualizer from './components/SchemaVisualizer';
+import UxSettings from './components/UxSettings';
 import LegalSuite from './components/LegalSuite';
 import LoginScreen from './components/LoginScreen';
 import UserManagement from './components/UserManagement';
@@ -628,6 +629,8 @@ export default function App() {
                 <span className="text-[7px] bg-slate-200 text-slate-500 px-1 py-0.1 rounded font-mono truncate max-w-[65px]">{loggedInUserProfile.role}</span>
               </div>
             </div>
+
+            <UxSettings />
 
             {/* Logout Button on the right */}
             <button
