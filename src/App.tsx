@@ -100,7 +100,7 @@ export default function App() {
   // Restaurar sesión al abrir la app
   useEffect(() => {
     api.me()
-      .then(({ user }) => { setCurrentUser(user.username); setIsLoggedIn(true); })
+      .then(({ user }) => { if (user) { setCurrentUser(user.username); setIsLoggedIn(true); } })
       .catch(() => {})
       .finally(() => setAuthChecked(true));
   }, []);

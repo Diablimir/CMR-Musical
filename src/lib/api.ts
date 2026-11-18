@@ -47,7 +47,7 @@ export async function uploadImage(file: Blob, filename = 'foto.jpg'): Promise<st
 }
 
 export const api = {
-  me: () => request<{ user: UserAccount }>('/api/auth.php?action=me'),
+  me: () => request<{ user: UserAccount | null }>('/api/auth.php?action=me'),
   login: (username: string, password: string) =>
     request<{ user: UserAccount }>('/api/auth.php?action=login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () => request<{ ok: true }>('/api/auth.php?action=logout', { method: 'POST' }),

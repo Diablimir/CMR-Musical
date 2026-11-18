@@ -6,9 +6,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 if ($method === 'GET' && $action === 'me') {
-    $u = current_user();
-    if (!$u) respond(['error' => 'Sesión no iniciada.'], 401);
-    respond(['user' => $u]);
+    respond(['user' => current_user()]);   // null si no hay sesión (sin error 401 en la consola)
 }
 
 if ($method === 'POST' && $action === 'login') {
@@ -18,19 +16,25 @@ if ($method === 'POST' && $action === 'login') {
     $password = (string)($in['password'] ?? '');
     if ($username === '' || $password === '') respond(['error' => 'Completa todos los campos.'], 400);
 
-    // Límite de intentos: 10 fallos cada 15 minutos por usuario + IP
-    $ident = substr($username . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 190);
+    // Límite de intentos (no depende de la IP: detrás de la red de entrega del hosting varía en cada petición):
+    // 10 fallos / 15 min por usuario y 60 fallos / 15 min en total.
     $pdo = db();
     $pdo->prepare('DELETE FROM login_attempts WHERE ts < ?')->execute([time() - 900]);
-    $st = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ident = ?');
-    $st->execute([$ident]);
-    if ((int)$st->fetchColumn() >= 10) respond(['error' => 'Demasiados intentos. Espera unos minutos.'], 429);
+    $ident = 'u:' . substr($username, 0, 100);
+    $count = function (string $id) use ($pdo): int {
+        $c = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ident = ?');
+        $c->execute([$id]);
+        return (int)$c->fetchColumn();
+    };
+    if ($count($ident) >= 10 || $count('*') >= 60) respond(['error' => 'Demasiados intentos. Espera unos minutos.'], 429);
 
     $st = $pdo->prepare('SELECT * FROM users WHERE username = ?');
     $st->execute([$username]);
     $row = $st->fetch();
     if (!$row || !password_verify($password, $row['password_hash'])) {
-        $pdo->prepare('INSERT INTO login_attempts (ident, ts) VALUES (?, ?)')->execute([$ident, time()]);
+        $ins = $pdo->prepare('INSERT INTO login_attempts (ident, ts) VALUES (?, ?)');
+        $ins->execute([$ident, time()]);
+        $ins->execute(['*', time()]);
         usleep(400000);
         respond(['error' => 'Usuario o contraseña incorrectos.'], 401);
     }
