@@ -118,6 +118,13 @@ export default function VenueDrawer({
     }
   }, [venue, initialTab]);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!venue) return null;
 
   // Filter contacts associated with this venue
@@ -248,7 +255,7 @@ export default function VenueDrawer({
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-bold text-slate-800 tracking-tight">{venue.name}</h2>
                     <span className="flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-lg border border-slate-200 font-semibold font-mono">
-                      <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                      <Star className="w-2.5 h-2.5 text-amber-700 fill-amber-500" />
                       {venue.rating} ({venue.userRatingsCount})
                     </span>
                   </div>
@@ -282,14 +289,7 @@ export default function VenueDrawer({
             {/* Score Bar Section */}
             <div className="px-6 py-3 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400 font-bold tracking-wider">ESTADO DE INTEGRIDAD:</span>
-                <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-mono border border-emerald-100 flex items-center gap-1 font-semibold">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                  Activo (InnoDB Index OK)
-                </span>
-                <span className="text-[10px] bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-mono border border-slate-200 font-semibold">
-                  ID: Binary(16)
-                </span>
+                <span className="text-xs text-slate-500 font-semibold">Última actualización: {new Date(venue.updated_at).toLocaleDateString('es-MX')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500 font-bold font-sans uppercase tracking-wider text-[10px]">Flamo Score:</span>
@@ -299,7 +299,7 @@ export default function VenueDrawer({
                   title="Haz clic para definir o editar el Flamo Score"
                   className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1 rounded-xl text-amber-600 font-mono text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
                 >
-                  <Award className="w-4 h-4 text-amber-500" />
+                  <Award className="w-4 h-4 text-amber-700" />
                   <span>{globalScore} / 100</span>
                   <span className="text-[10px] font-sans font-bold underline ml-1">Definir</span>
                 </button>
@@ -360,129 +360,129 @@ export default function VenueDrawer({
                   {isEditing ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Nombre de Recinto</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Nombre de Recinto</label>
                         <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Tipo de Establecimiento</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Tipo de Establecimiento</label>
                         <input
                           type="text"
                           value={editEstType}
                           onChange={(e) => setEditEstType(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1 md:col-span-2">
-                        <label className="text-[11px] text-zinc-500 font-medium">Dirección Completa</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Dirección Completa</label>
                         <input
                           type="text"
                           value={editAddress}
                           onChange={(e) => setEditAddress(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Ciudad</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Ciudad</label>
                         <input
                           type="text"
                           value={editCity}
                           onChange={(e) => setEditCity(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Estado</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Estado</label>
                         <input
                           type="text"
                           value={editState}
                           onChange={(e) => setEditState(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Website</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Website</label>
                         <input
                           type="text"
                           value={editWebsite}
                           onChange={(e) => setEditWebsite(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Teléfono / Conmutador</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Teléfono / Conmutador</label>
                         <input
                           type="text"
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Maps Rating</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Maps Rating</label>
                         <input
                           type="number"
                           step="0.1"
                           value={editRating}
                           onChange={(e) => setEditRating(Number(e.target.value))}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px] text-zinc-500 font-medium">Cantidad de Reseñas</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Cantidad de Reseñas</label>
                         <input
                           type="number"
                           value={editRatingsCount}
                           onChange={(e) => setEditRatingsCount(Number(e.target.value))}
-                          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200"
+                          className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800"
                         />
                       </div>
                       <div className="flex flex-col gap-1 md:col-span-2">
-                        <label className="text-[11px] text-zinc-500 font-medium">Google Place ID (API Reference)</label>
+                        <label className="text-[11px] text-slate-500 font-medium">Google Place ID (API Reference)</label>
                         <input
                           type="text"
                           value={editPlaceId}
                           onChange={(e) => setEditPlaceId(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-800 font-mono rounded-lg px-3 py-2 text-xs text-amber-400"
+                          className="bg-white border border-slate-200 font-mono rounded-lg px-3 py-2 text-xs text-amber-700"
                         />
                       </div>
 
                       <div className="md:col-span-2 mt-2">
-                        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Redes Sociales & Canales</h4>
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Redes Sociales & Canales</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <input
                             placeholder="Instagram URL"
                             value={editInsta}
                             onChange={(e) => setEditInsta(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
                           />
                           <input
                             placeholder="Facebook URL"
                             value={editFB}
                             onChange={(e) => setEditFB(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
                           />
                           <input
                             placeholder="TikTok URL"
                             value={editTikTok}
                             onChange={(e) => setEditTikTok(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
                           />
                           <input
                             placeholder="Email General"
                             value={editEmail}
                             onChange={(e) => setEditEmail(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
                           />
                           <input
                             placeholder="WhatsApp Directo"
                             value={editWA}
                             onChange={(e) => setEditWA(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
                           />
                         </div>
                       </div>
@@ -490,37 +490,37 @@ export default function VenueDrawer({
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="md:col-span-2 space-y-4">
-                        <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-4 space-y-3">
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
                           <div>
-                            <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Dirección</span>
-                            <span className="text-xs text-zinc-200 font-medium">{venue.address}</span>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Dirección</span>
+                            <span className="text-xs text-slate-800 font-medium">{venue.address}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Ciudad / Región</span>
-                              <span className="text-xs text-zinc-200 font-medium">{venue.city}, {venue.state}</span>
+                              <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Ciudad / Región</span>
+                              <span className="text-xs text-slate-800 font-medium">{venue.city}, {venue.state}</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Código Postal</span>
-                              <span className="text-xs text-zinc-200 font-mono font-medium">{venue.postalCode || 'N/D'}</span>
+                              <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Código Postal</span>
+                              <span className="text-xs text-slate-800 font-mono font-medium">{venue.postalCode || 'N/D'}</span>
                             </div>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-4 flex items-start gap-3">
-                            <Phone className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+                          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-start gap-3">
+                            <Phone className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
                             <div>
-                              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Contacto Telefónico</span>
-                              <span className="text-xs text-zinc-200 font-medium">{venue.phone}</span>
+                              <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Contacto Telefónico</span>
+                              <span className="text-xs text-slate-800 font-medium">{venue.phone}</span>
                             </div>
                           </div>
 
-                          <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-4 flex items-start gap-3">
-                            <Globe className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+                          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-start gap-3">
+                            <Globe className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
                             <div>
-                              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Sitio Web Oficial</span>
-                              <a href={venue.website} target="_blank" rel="noreferrer" className="text-xs text-amber-400 hover:underline flex items-center gap-1">
+                              <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Sitio Web Oficial</span>
+                              <a href={venue.website} target="_blank" rel="noreferrer" className="text-xs text-amber-700 hover:underline flex items-center gap-1">
                                 Visitar Portal
                               </a>
                             </div>
@@ -528,85 +528,84 @@ export default function VenueDrawer({
                         </div>
 
                         {/* Redes Sociales Section */}
-                        <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-4">
-                          <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-3">Redes del Recinto</h4>
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                          <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Redes del Recinto</h4>
                           <div className="flex flex-wrap gap-2">
                             {venue.instagram && (
-                              <a href={venue.instagram} target="_blank" rel="noreferrer" className="bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors">
+                              <a href={venue.instagram} target="_blank" rel="noreferrer" className="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition-colors">
                                 <span>Instagram</span>
                               </a>
                             )}
                             {venue.facebook && (
-                              <a href={venue.facebook} target="_blank" rel="noreferrer" className="bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors">
+                              <a href={venue.facebook} target="_blank" rel="noreferrer" className="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition-colors">
                                 <span>Facebook</span>
                               </a>
                             )}
                             {venue.whatsapp && (
-                              <a href={`https://wa.me/${venue.whatsapp}`} target="_blank" rel="noreferrer" className="bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors">
+                              <a href={`https://wa.me/${venue.whatsapp}`} target="_blank" rel="noreferrer" className="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition-colors">
                                 <span>WhatsApp</span>
                               </a>
                             )}
                             {venue.email && (
-                              <a href={`mailto:${venue.email}`} className="bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors">
+                              <a href={`mailto:${venue.email}`} className="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition-colors">
                                 <span>Email Directo</span>
                               </a>
                             )}
                             {!venue.instagram && !venue.facebook && !venue.whatsapp && !venue.email && (
-                              <span className="text-xs text-zinc-500">No se han registrado redes sociales para este foro.</span>
+                              <span className="text-xs text-slate-500">No se han registrado redes sociales para este foro.</span>
                             )}
                           </div>
                         </div>
                       </div>
 
                       <div className="space-y-4">
-                        <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-4">
-                          <div className="flex items-center gap-1.5 text-zinc-400 mb-2">
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                          <div className="flex items-center gap-1.5 text-slate-500 mb-2">
                             <Clock className="w-3.5 h-3.5" />
                             <span className="text-[10px] uppercase tracking-wider font-semibold">Horarios Populares</span>
                           </div>
                           <ul className="space-y-1.5">
-                            {(venue.hours && venue.hours.length > 0 ? venue.hours : [
-                              'Lunes a Viernes: 11:00 - 19:00',
-                              'Sábados de Show: 14:00 - 23:00'
-                            ]).map((h, i) => (
-                              <li key={i} className="text-xs text-zinc-300 border-b border-zinc-800/40 pb-1.5 last:border-b-0 last:pb-0 font-sans">
+                            {(venue.hours && venue.hours.length > 0 ? venue.hours : ['Sin horario registrado. Edítalo en «Editar Información».']).map((h, i) => (
+                              <li key={i} className="text-xs text-slate-700 border-b border-slate-200 pb-1.5 last:border-b-0 last:pb-0 font-sans">
                                 {h}
                               </li>
                             ))}
                           </ul>
                         </div>
 
-                        <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-4">
-                          <div className="flex items-center gap-1.5 text-zinc-400 mb-2">
-                            <Star className="w-3.5 h-3.5 text-amber-500" />
+                        {venue.placeId && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                          <div className="flex items-center gap-1.5 text-slate-500 mb-2">
+                            <Star className="w-3.5 h-3.5 text-amber-700" />
                             <span className="text-[10px] uppercase tracking-wider font-semibold">Place ID de Google</span>
                           </div>
-                          <code className="text-[10px] text-amber-500 bg-zinc-950 p-2 rounded block border border-zinc-800/60 font-mono break-all leading-tight">
+                          <code className="text-[10px] text-amber-700 bg-slate-100 p-2 rounded block border border-slate-200 font-mono break-all leading-tight">
                             {venue.placeId}
                           </code>
                         </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   {/* FLAMO SCORE DEFINITION SECTION IN TAB 1 */}
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
                       <div>
-                        <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Award className="w-4 h-4 text-amber-500" />
+                        <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-amber-700" />
                           <span>Definición Manual de Flamo Score</span>
                         </h4>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 mt-0.5">
                           Tú defines el porcentaje de cada criterio comercial en base a tu experiencia con {venue.name}.
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-zinc-300 font-mono">Global: <strong className="text-amber-400 font-bold">{globalScore}%</strong></span>
+                        <span className="text-xs text-slate-700 font-mono">Global: <strong className="text-amber-700 font-bold">{globalScore}%</strong></span>
                         <button
                           type="button"
                           onClick={() => setActiveTab('modalities')}
-                          className="text-[11px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                          className="text-[11px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <span>Ver Desglose Completo</span>
                           <Star className="w-3 h-3" />
@@ -625,9 +624,9 @@ export default function VenueDrawer({
                       ].map((item) => {
                         const scoreVal = (venue[item.key as keyof Venue] as number) || 0;
                         return (
-                          <div key={item.key} className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-lg space-y-2">
+                          <div key={item.key} className="bg-slate-50 border border-slate-200 p-3 rounded-lg space-y-2">
                             <div className="flex justify-between items-center gap-1">
-                              <span className="text-[11px] font-semibold text-zinc-200">{item.label}</span>
+                              <span className="text-[11px] font-semibold text-slate-800">{item.label}</span>
                               <div className="flex items-center gap-1">
                                 <input
                                   type="number"
@@ -638,9 +637,9 @@ export default function VenueDrawer({
                                     const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
                                     handleScoreChange(item.key as keyof Venue, val);
                                   }}
-                                  className="w-12 bg-zinc-950 border border-zinc-700 text-amber-400 font-mono font-bold text-xs text-center rounded px-1 py-0.5 focus:outline-none focus:border-amber-500"
+                                  className="w-12 bg-slate-100 border border-slate-200 text-amber-700 font-mono font-bold text-xs text-center rounded px-1 py-0.5 focus:outline-none focus:border-amber-500"
                                 />
-                                <span className="text-[10px] text-zinc-400 font-mono">%</span>
+                                <span className="text-[10px] text-slate-500 font-mono">%</span>
                               </div>
                             </div>
                             <input
@@ -649,7 +648,7 @@ export default function VenueDrawer({
                               max="100"
                               value={scoreVal}
                               onChange={(e) => handleScoreChange(item.key as keyof Venue, Number(e.target.value))}
-                              className="w-full accent-amber-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                              className="w-full accent-amber-500 h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer"
                             />
                           </div>
                         );
@@ -695,7 +694,7 @@ export default function VenueDrawer({
                                       <h4 className="text-xs font-bold text-slate-800 mt-2">{p.name}</h4>
                                     </div>
                                     <div className="flex items-center gap-0.5 bg-amber-50 text-amber-600 border border-amber-100 px-1 rounded text-[9px] font-bold font-mono">
-                                      <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                                      <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-700" />
                                       {p.rating}
                                     </div>
                                   </div>
@@ -718,7 +717,7 @@ export default function VenueDrawer({
                                         });
                                       }
                                     }}
-                                    className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline cursor-pointer"
+                                    className="text-[10px] text-rose-700 hover:text-rose-700 font-bold hover:underline cursor-pointer"
                                   >
                                     Desvincular Recinto
                                   </button>
@@ -731,7 +730,7 @@ export default function VenueDrawer({
                         {/* Assign Existing Section */}
                         <div className="bg-white border border-slate-200/60 rounded-xl p-5 space-y-3">
                           <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                            <Plus className="w-4 h-4 text-indigo-500" />
+                            <Plus className="w-4 h-4 text-indigo-700" />
                             <span>Vincular un Proveedor del CRM</span>
                           </h4>
                           
@@ -854,10 +853,10 @@ export default function VenueDrawer({
               {/* TAB 2: CONTACTS */}
               {activeTab === 'contacts' && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-900">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <div>
-                      <h3 className="text-sm font-semibold text-zinc-200">Contactos del Recinto</h3>
-                      <p className="text-[11px] text-zinc-500">Un solo contacto principal asignado como relación directa en la tabla venues.</p>
+                      <h3 className="text-sm font-semibold text-slate-800">Contactos del Recinto</h3>
+                      <p className="text-[11px] text-slate-500">Un solo contacto principal asignado como relación directa en la tabla venues.</p>
                     </div>
                   </div>
 
@@ -865,9 +864,9 @@ export default function VenueDrawer({
                     {/* Contacts list */}
                     <div className="lg:col-span-2 space-y-3">
                       {venueContacts.length === 0 ? (
-                        <div className="border border-zinc-800/60 rounded-xl p-8 text-center bg-zinc-900/20">
-                          <Users className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                          <p className="text-xs text-zinc-400">No hay contactos registrados para este recinto.</p>
+                        <div className="border border-slate-200 rounded-xl p-8 text-center bg-slate-50">
+                          <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                          <p className="text-xs text-slate-500">No hay contactos registrados para este recinto.</p>
                         </div>
                       ) : (
                         venueContacts.map((contact) => {
@@ -878,20 +877,20 @@ export default function VenueDrawer({
                               className={`p-4 rounded-lg border transition-all flex items-center justify-between ${
                                 isPrincipal
                                   ? 'bg-amber-500/5 border-amber-500/30'
-                                  : 'bg-zinc-900/30 border-zinc-900 hover:border-zinc-800'
+                                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-semibold text-zinc-100">{contact.name}</span>
+                                  <span className="text-xs font-semibold text-slate-800">{contact.name}</span>
                                   {isPrincipal && (
-                                    <span className="text-[9px] uppercase tracking-wider bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full font-semibold border border-amber-500/20">
+                                    <span className="text-[9px] uppercase tracking-wider bg-amber-500/15 text-amber-700 px-2 py-0.5 rounded-full font-semibold border border-amber-500/20">
                                       Contacto Principal
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-[11px] text-zinc-400 font-medium">{contact.role}</p>
-                                <div className="flex items-center gap-4 text-[10px] text-zinc-500 pt-1">
+                                <p className="text-[11px] text-slate-500 font-medium">{contact.role}</p>
+                                <div className="flex items-center gap-4 text-[10px] text-slate-500 pt-1">
                                   <span>{contact.email}</span>
                                   <span>•</span>
                                   <span>{contact.phone}</span>
@@ -902,7 +901,7 @@ export default function VenueDrawer({
                                 {!isPrincipal && (
                                   <button
                                     onClick={() => handleSetPrincipalContact(contact.id)}
-                                    className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded border border-zinc-700 font-sans transition-colors"
+                                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200 font-sans transition-colors"
                                   >
                                     Hacer Principal
                                   </button>
@@ -917,7 +916,7 @@ export default function VenueDrawer({
                                       onDeleteContact(contact.id);
                                     }
                                   }}
-                                  className="p-1.5 text-zinc-500 hover:text-rose-400 rounded transition-colors"
+                                  className="p-1.5 text-slate-500 hover:text-rose-600 rounded transition-colors"
                                   title="Eliminar Contacto"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -930,50 +929,50 @@ export default function VenueDrawer({
                     </div>
 
                     {/* Add Contact Form */}
-                    <div className="bg-zinc-900/40 border border-zinc-900 rounded-xl p-4 self-start">
-                      <h4 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider mb-4 pb-2 border-b border-zinc-800/60">Nuevo Contacto</h4>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 self-start">
+                      <h4 className="text-xs font-semibold text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-200">Nuevo Contacto</h4>
                       <form onSubmit={handleAddContactSubmit} className="space-y-3">
                         <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-zinc-500">Nombre Completo</label>
+                          <label className="text-[10px] text-slate-500">Nombre Completo</label>
                           <input
                             type="text"
                             required
                             placeholder="Ej. Rodrigo Flores"
                             value={newContactName}
                             onChange={(e) => setNewContactName(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                            className="bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
                           />
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-zinc-500">Correo Electrónico</label>
+                          <label className="text-[10px] text-slate-500">Correo Electrónico</label>
                           <input
                             type="email"
                             required
                             placeholder="rodrigo@c3stage.com"
                             value={newContactEmail}
                             onChange={(e) => setNewContactEmail(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                            className="bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
                           />
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-zinc-500">Teléfono / Celular</label>
+                          <label className="text-[10px] text-slate-500">Teléfono / Celular</label>
                           <input
                             type="text"
                             placeholder="33 1234 5678"
                             value={newContactPhone}
                             onChange={(e) => setNewContactPhone(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                            className="bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
                           />
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-zinc-500">Rol o Puesto</label>
+                          <label className="text-[10px] text-slate-500">Rol o Puesto</label>
                           <select
                             value={newContactRole}
                             onChange={(e) => setNewContactRole(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none"
+                            className="bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none"
                           >
                             <option value="Booking & Contratación">Booking & Contratación</option>
                             <option value="Director Técnico / Rider">Director Técnico / Rider</option>
@@ -998,23 +997,23 @@ export default function VenueDrawer({
               {/* TAB 3: EVENTS */}
               {activeTab === 'events' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-900">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <div>
-                      <h3 className="text-sm font-semibold text-zinc-200">Historial de Eventos & Fechas</h3>
-                      <p className="text-[11px] text-zinc-500">Shows gestionados para artistas vinculados a través de llaves foráneas.</p>
+                      <h3 className="text-sm font-semibold text-slate-800">Historial de Eventos & Fechas</h3>
+                      <p className="text-[11px] text-slate-500">Shows gestionados para artistas vinculados a través de llaves foráneas.</p>
                     </div>
                   </div>
 
                   {venueEvents.length === 0 ? (
-                    <div className="border border-zinc-800/60 rounded-xl p-12 text-center bg-zinc-900/20">
-                      <Calendar className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                      <p className="text-xs text-zinc-400 font-medium">No se han registrado shows o eventos en este recinto.</p>
+                    <div className="border border-slate-200 rounded-xl p-12 text-center bg-slate-50">
+                      <Calendar className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                      <p className="text-xs text-slate-500 font-medium">No se han registrado shows o eventos en este recinto.</p>
                     </div>
                   ) : (
-                    <div className="bg-zinc-900/20 rounded-xl border border-zinc-900 overflow-hidden">
+                    <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="border-b border-zinc-900 bg-zinc-900/40 text-zinc-400 font-medium font-sans">
+                          <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-medium font-sans">
                             <th className="p-3">Fecha</th>
                             <th className="p-3">Evento</th>
                             <th className="p-3">Artista</th>
@@ -1023,33 +1022,33 @@ export default function VenueDrawer({
                             <th className="p-3 text-right">Estatus</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-900">
+                        <tbody className="divide-y divide-slate-200">
                           {venueEvents.map((evt) => {
                             const artist = artists.find((a) => a.id === evt.artistId);
                             const percent = ((evt.attendance / evt.capacity) * 100).toFixed(0);
                             return (
-                              <tr key={evt.id} className="hover:bg-zinc-900/40 text-zinc-300">
+                              <tr key={evt.id} className="hover:bg-slate-100 text-slate-700">
                                 <td className="p-3 font-mono text-[11px]">{evt.date}</td>
-                                <td className="p-3 font-semibold text-zinc-200">{evt.name}</td>
+                                <td className="p-3 font-semibold text-slate-800">{evt.name}</td>
                                 <td className="p-3">{artist ? artist.artisticName : 'N/D'}</td>
                                 <td className="p-3">
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-mono">{evt.attendance} / {evt.capacity}</span>
                                     <span className={`text-[10px] px-1 rounded ${
-                                      Number(percent) >= 90 ? 'text-amber-400 bg-amber-500/10' : 'text-zinc-500'
+                                      Number(percent) >= 90 ? 'text-amber-700 bg-amber-500/10' : 'text-slate-500'
                                     }`}>
                                       ({percent}%)
                                     </span>
                                   </div>
                                 </td>
-                                <td className="p-3 font-mono font-medium text-emerald-400">
+                                <td className="p-3 font-mono font-medium text-emerald-700">
                                   ${evt.profit.toLocaleString('es-MX')} MXN
                                 </td>
                                 <td className="p-3 text-right">
                                   <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-mono tracking-wider ${
-                                    evt.status === 'Completed' ? 'bg-zinc-800 text-zinc-400' :
-                                    evt.status === 'Confirmed' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                    'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                    evt.status === 'Completed' ? 'bg-slate-100 text-slate-500' :
+                                    evt.status === 'Confirmed' ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20' :
+                                    'bg-rose-500/10 text-rose-700 border border-rose-500/20'
                                   }`}>
                                     {evt.status}
                                   </span>
@@ -1067,22 +1066,22 @@ export default function VenueDrawer({
               {/* TAB 4: MODALITIES / SCORES */}
               {activeTab === 'modalities' && (
                 <div className="space-y-6">
-                  <div className="pb-2 border-b border-zinc-900">
-                    <h3 className="text-sm font-semibold text-zinc-200">Modalidades & Score Comercial</h3>
-                    <p className="text-[11px] text-zinc-500">Métricas dinámicas de desempeño recalculadas automáticamente sin procesos redundantes en la DB.</p>
+                  <div className="pb-2 border-b border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-800">Modalidades & Score Comercial</h3>
+                    <p className="text-[11px] text-slate-500">Métricas dinámicas de desempeño recalculadas automáticamente sin procesos redundantes en la DB.</p>
                   </div>
 
-                  <div className="bg-zinc-900/20 border border-zinc-900 rounded-xl p-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-800/80">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
                       <div>
-                        <span className="text-xs text-amber-400 font-semibold uppercase tracking-wider block flex items-center gap-1.5">
+                        <span className="text-xs text-amber-700 font-semibold uppercase tracking-wider block flex items-center gap-1.5">
                           <span>✨ Calificación de Desempeño Personalizada</span>
                         </span>
-                        <h4 className="text-sm text-zinc-200 font-bold">Algoritmo Comercial Flamo CRM</h4>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">Puedes ajustar o ingresar manualmente el porcentaje de cada criterio según tu experiencia comercial con este recinto.</p>
+                        <h4 className="text-sm text-slate-800 font-bold">Algoritmo Comercial Flamo CRM</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Puedes ajustar o ingresar manualmente el porcentaje de cada criterio según tu experiencia comercial con este recinto.</p>
                       </div>
-                      <div className="bg-amber-500/15 border border-amber-500/30 text-amber-400 px-4 py-2 rounded-xl text-center shrink-0">
-                        <span className="text-[9px] uppercase tracking-wider block font-semibold text-amber-300">Global Score</span>
+                      <div className="bg-amber-500/15 border border-amber-500/30 text-amber-700 px-4 py-2 rounded-xl text-center shrink-0">
+                        <span className="text-[9px] uppercase tracking-wider block font-semibold text-amber-800">Global Score</span>
                         <span className="text-2xl font-black font-mono">{globalScore} / 100</span>
                       </div>
                     </div>
@@ -1098,11 +1097,11 @@ export default function VenueDrawer({
                       ].map((item) => {
                         const scoreVal = venue[item.key as keyof Venue] as number || 0;
                         return (
-                          <div key={item.key} className="space-y-2 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/50">
+                          <div key={item.key} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                             <div className="flex justify-between items-center gap-2">
                               <div>
-                                <span className="text-xs font-semibold text-zinc-200 block">{item.label}</span>
-                                <p className="text-[10px] text-zinc-400">{item.desc}</p>
+                                <span className="text-xs font-semibold text-slate-800 block">{item.label}</span>
+                                <p className="text-[10px] text-slate-500">{item.desc}</p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <input
@@ -1114,9 +1113,9 @@ export default function VenueDrawer({
                                     const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
                                     handleScoreChange(item.key as keyof Venue, val);
                                   }}
-                                  className="w-14 bg-zinc-800 border border-zinc-700 text-amber-400 font-mono font-bold text-xs text-center rounded-lg px-1 py-1 focus:outline-none focus:border-amber-500"
+                                  className="w-14 bg-slate-100 border border-slate-200 text-amber-700 font-mono font-bold text-xs text-center rounded-lg px-1 py-1 focus:outline-none focus:border-amber-500"
                                 />
-                                <span className="text-xs font-mono font-bold text-zinc-400">%</span>
+                                <span className="text-xs font-mono font-bold text-slate-500">%</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-4 pt-1">
@@ -1126,9 +1125,9 @@ export default function VenueDrawer({
                                 max="100"
                                 value={scoreVal}
                                 onChange={(e) => handleScoreChange(item.key as keyof Venue, Number(e.target.value))}
-                                className="flex-1 accent-amber-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                                className="flex-1 accent-amber-500 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
                               />
-                              <div className="w-16 h-2 bg-zinc-800 rounded-full overflow-hidden shrink-0 border border-zinc-700/50">
+                              <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-slate-200">
                                 <div className={`h-full ${item.color} transition-all duration-300`} style={{ width: `${scoreVal}%` }} />
                               </div>
                             </div>
@@ -1143,13 +1142,13 @@ export default function VenueDrawer({
               {/* TAB 5: FOLLOWUP */}
               {activeTab === 'followup' && (
                 <div className="space-y-6">
-                  <div className="pb-2 border-b border-zinc-900">
-                    <h3 className="text-sm font-semibold text-zinc-200">Seguimiento Comercial (CRM Core)</h3>
-                    <p className="text-[11px] text-zinc-500">Bitácora central de interacciones y comentarios comerciales.</p>
+                  <div className="pb-2 border-b border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-800">Seguimiento Comercial (CRM Core)</h3>
+                    <p className="text-[11px] text-slate-500">Bitácora central de interacciones y comentarios comerciales.</p>
                   </div>
 
-                  <form onSubmit={handleAddComment} className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-4 space-y-3">
-                    <span className="text-xs font-semibold text-zinc-300">Registrar Nueva Interacción</span>
+                  <form onSubmit={handleAddComment} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <span className="text-xs font-semibold text-slate-700">Registrar Nueva Interacción</span>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div className="md:col-span-3">
                         <textarea
@@ -1158,14 +1157,14 @@ export default function VenueDrawer({
                           placeholder="Escribe un comentario sobre negociaciones, estatus del rider, etc."
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                          className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
                         />
                       </div>
                       <div className="space-y-2">
                         <select
                           value={newCommentType}
                           onChange={(e) => setNewCommentType(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-300"
+                          className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700"
                         >
                           <option value="Llamada">📞 Llamada</option>
                           <option value="Email">✉️ Correo</option>
@@ -1182,22 +1181,22 @@ export default function VenueDrawer({
                     </div>
                   </form>
 
-                  <div className="relative border-l-2 border-zinc-800 pl-6 ml-3 space-y-6">
+                  <div className="relative border-l-2 border-slate-200 pl-6 ml-3 space-y-6">
                     {followupLogs.map((log) => (
                       <div key={log.id} className="relative">
                         {/* Dot */}
-                        <div className="absolute -left-[31px] top-1.5 w-2 h-2 rounded-full bg-amber-500 border-4 border-zinc-950" />
-                        <div className="bg-zinc-900/10 border border-zinc-900 p-3 rounded-lg">
+                        <div className="absolute -left-[31px] top-1.5 w-2 h-2 rounded-full bg-amber-500 border-4 border-slate-200" />
+                        <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded font-mono">
+                              <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono">
                                 {log.type}
                               </span>
-                              <span className="text-xs text-zinc-400 font-semibold">{log.author}</span>
+                              <span className="text-xs text-slate-500 font-semibold">{log.author}</span>
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-mono">{log.date}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{log.date}</span>
                           </div>
-                          <p className="text-xs text-zinc-300 leading-relaxed font-sans">{log.comment}</p>
+                          <p className="text-xs text-slate-700 leading-relaxed font-sans">{log.comment}</p>
                         </div>
                       </div>
                     ))}
@@ -1208,58 +1207,58 @@ export default function VenueDrawer({
               {/* TAB 6: FINANCES */}
               {activeTab === 'finances' && (
                 <div className="space-y-6">
-                  <div className="pb-2 border-b border-zinc-900">
-                    <h3 className="text-sm font-semibold text-zinc-200">Métricas Financieras del Recinto</h3>
-                    <p className="text-[11px] text-zinc-500">Consolidado comercial directo extraído de los shows agendados y confirmados.</p>
+                  <div className="pb-2 border-b border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-800">Métricas Financieras del Recinto</h3>
+                    <p className="text-[11px] text-slate-500">Consolidado comercial directo extraído de los shows agendados y confirmados.</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Ingreso Bruto</span>
-                      <span className="text-lg font-bold font-mono text-zinc-200">${totalIncome.toLocaleString('es-MX')}</span>
-                      <span className="text-[9px] text-zinc-500 block mt-1">Suma acumulada de taquilla</span>
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Ingreso Bruto</span>
+                      <span className="text-lg font-bold font-mono text-slate-800">${totalIncome.toLocaleString('es-MX')}</span>
+                      <span className="text-[9px] text-slate-500 block mt-1">Suma acumulada de taquilla</span>
                     </div>
 
-                    <div className="bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Gastos / Operación</span>
-                      <span className="text-lg font-bold font-mono text-zinc-200">${totalExpenses.toLocaleString('es-MX')}</span>
-                      <span className="text-[9px] text-zinc-500 block mt-1">Producción, riders, viáticos</span>
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Gastos / Operación</span>
+                      <span className="text-lg font-bold font-mono text-slate-800">${totalExpenses.toLocaleString('es-MX')}</span>
+                      <span className="text-[9px] text-slate-500 block mt-1">Producción, riders, viáticos</span>
                     </div>
 
-                    <div className="bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Utilidad Neta</span>
-                      <span className={`text-lg font-bold font-mono ${totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Utilidad Neta</span>
+                      <span className={`text-lg font-bold font-mono ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                         ${totalProfit.toLocaleString('es-MX')}
                       </span>
-                      <span className="text-[9px] text-zinc-500 block mt-1">Margen neto de retorno</span>
+                      <span className="text-[9px] text-slate-500 block mt-1">Margen neto de retorno</span>
                     </div>
 
-                    <div className="bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Retorno de Inversión</span>
-                      <span className="text-lg font-bold font-mono text-amber-400">{roi}%</span>
-                      <span className="text-[9px] text-zinc-500 block mt-1">ROI histórico promedio</span>
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Retorno de Inversión</span>
+                      <span className="text-lg font-bold font-mono text-amber-700">{roi}%</span>
+                      <span className="text-[9px] text-slate-500 block mt-1">ROI histórico promedio</span>
                     </div>
                   </div>
 
-                  <div className="bg-zinc-900/20 border border-zinc-900 rounded-xl p-4">
-                    <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-3">Rendimiento Comparativo por Show</h4>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Rendimiento Comparativo por Show</h4>
                     {venueEvents.length === 0 ? (
-                      <p className="text-xs text-zinc-500">Sin datos financieros para graficar.</p>
+                      <p className="text-xs text-slate-500">Sin datos financieros para graficar.</p>
                     ) : (
                       <div className="space-y-3">
                         {venueEvents.map((evt) => {
                           const profitPct = evt.totalIncome > 0 ? ((evt.profit / evt.totalIncome) * 100).toFixed(0) : '0';
                           return (
-                            <div key={evt.id} className="text-xs border-b border-zinc-900 pb-3 last:border-b-0 last:pb-0">
+                            <div key={evt.id} className="text-xs border-b border-slate-200 pb-3 last:border-b-0 last:pb-0">
                               <div className="flex justify-between items-center mb-1">
-                                <span className="font-medium text-zinc-300">{evt.name}</span>
-                                <span className="font-mono text-emerald-400 font-semibold">${evt.profit.toLocaleString('es-MX')}</span>
+                                <span className="font-medium text-slate-700">{evt.name}</span>
+                                <span className="font-mono text-emerald-700 font-semibold">${evt.profit.toLocaleString('es-MX')}</span>
                               </div>
-                              <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden flex">
+                              <div className="w-full bg-white h-2 rounded-full overflow-hidden flex">
                                 <div className="bg-emerald-500 h-full" style={{ width: `${Math.max(0, Number(profitPct))}%` }} />
                                 <div className="bg-rose-500 h-full" style={{ width: `${Math.max(0, 100 - Number(profitPct))}%` }} />
                               </div>
-                              <div className="flex justify-between items-center text-[10px] text-zinc-500 mt-1">
+                              <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1">
                                 <span>Ingreso: ${evt.totalIncome.toLocaleString()}</span>
                                 <span>Gastos: ${evt.expenses.toLocaleString()}</span>
                                 <span>ROI: {profitPct}%</span>
@@ -1276,10 +1275,10 @@ export default function VenueDrawer({
               {/* TAB 7: DOCS */}
               {activeTab === 'docs' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-900">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <div>
-                      <h3 className="text-sm font-semibold text-zinc-200">Expediente Digital (Documentos)</h3>
-                      <p className="text-[11px] text-zinc-500">Gestión de riders, contratos, seguros y facturación.</p>
+                      <h3 className="text-sm font-semibold text-slate-800">Expediente Digital (Documentos)</h3>
+                      <p className="text-[11px] text-slate-500">Gestión de riders, contratos, seguros y facturación.</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1300,12 +1299,12 @@ export default function VenueDrawer({
 
                   <div className="space-y-2">
                     {docsList.map((doc) => (
-                      <div key={doc.id} className="p-3 bg-zinc-900/30 border border-zinc-900 rounded-lg flex items-center justify-between text-xs hover:border-zinc-800 transition-all">
+                      <div key={doc.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs hover:border-slate-300 transition-all">
                         <div className="flex items-center gap-3">
-                          <FileText className="w-4 h-4 text-amber-500/70" />
+                          <FileText className="w-4 h-4 text-amber-700/70" />
                           <div>
-                            <span className="font-medium text-zinc-200">{doc.name}</span>
-                            <div className="flex items-center gap-3 text-[10px] text-zinc-500 mt-0.5">
+                            <span className="font-medium text-slate-800">{doc.name}</span>
+                            <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-0.5">
                               <span>Subido: {doc.date}</span>
                               <span>•</span>
                               <span>Tamaño: {doc.size}</span>
@@ -1315,7 +1314,7 @@ export default function VenueDrawer({
 
                         <div className="flex items-center gap-3">
                           <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-mono tracking-wider font-semibold ${
-                            doc.status === 'signed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            doc.status === 'signed' ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
                           }`}>
                             {doc.status === 'signed' ? 'Firmado / Listo' : 'Pendiente'}
                           </span>
@@ -1327,7 +1326,7 @@ export default function VenueDrawer({
                                 setDocsList(docsList.map(d => d.id === doc.id ? { ...d, status: 'signed' } : d));
                               }
                             }}
-                            className="p-1 text-zinc-500 hover:text-zinc-200 rounded transition-colors"
+                            className="p-1 text-slate-500 hover:text-slate-900 rounded transition-colors"
                             title="Cambiar Estado"
                           >
                             <Check className="w-3.5 h-3.5" />
@@ -1342,25 +1341,25 @@ export default function VenueDrawer({
               {/* TAB 8: HISTORY */}
               {activeTab === 'history' && (
                 <div className="space-y-4">
-                  <div className="pb-2 border-b border-zinc-900">
-                    <h3 className="text-sm font-semibold text-zinc-200">Historial de Auditoría (Bitácora)</h3>
-                    <p className="text-[11px] text-zinc-500">Sello temporal de creación, modificaciones de esquema y autorías.</p>
+                  <div className="pb-2 border-b border-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-800">Historial de Auditoría (Bitácora)</h3>
+                    <p className="text-[11px] text-slate-500">Sello temporal de creación, modificaciones de esquema y autorías.</p>
                   </div>
 
-                  <div className="bg-zinc-900/10 border border-zinc-900 rounded-xl p-4 font-mono text-[10px] space-y-3 leading-relaxed">
-                    <div className="text-zinc-500">
-                      [2025-01-01 12:00:00 UTC] <span className="text-zinc-300 font-semibold">SISTEMA:</span> Creación de registro inicial de recinto <span className="text-amber-500">{venue.name}</span>. UUID asignado.
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 font-mono text-[10px] space-y-3 leading-relaxed">
+                    <div className="text-slate-500">
+                      [2025-01-01 12:00:00 UTC] <span className="text-slate-700 font-semibold">SISTEMA:</span> Creación de registro inicial de recinto <span className="text-amber-700">{venue.name}</span>. UUID asignado.
                     </div>
-                    <div className="text-zinc-500">
-                      [2026-03-12 10:00:00 UTC] <span className="text-zinc-300 font-semibold">EVENTO:</span> Agendado show estelar "Vladimir Belmont Live" con vinculación foránea exitosa.
+                    <div className="text-slate-500">
+                      [2026-03-12 10:00:00 UTC] <span className="text-slate-700 font-semibold">EVENTO:</span> Agendado show estelar "Vladimir Belmont Live" con vinculación foránea exitosa.
                     </div>
-                    <div className="text-zinc-500">
-                      [2026-05-18 23:45:00 UTC] <span className="text-zinc-300 font-semibold">FINANZAS:</span> Auditoría de taquilla completada. Utilidad auditada y consolidada en panel de control.
+                    <div className="text-slate-500">
+                      [2026-05-18 23:45:00 UTC] <span className="text-slate-700 font-semibold">FINANZAS:</span> Auditoría de taquilla completada. Utilidad auditada y consolidada en panel de control.
                     </div>
-                    <div className="text-zinc-500">
-                      [2026-07-13 11:10:00 UTC] <span className="text-zinc-300 font-semibold">ADMIN_USER:</span> Actualización de métricas de hospitalidad e infraestructura local.
+                    <div className="text-slate-500">
+                      [2026-07-13 11:10:00 UTC] <span className="text-slate-700 font-semibold">ADMIN_USER:</span> Actualización de métricas de hospitalidad e infraestructura local.
                     </div>
-                    <div className="text-emerald-500">
+                    <div className="text-emerald-700">
                       [INFO] Tabla venues auditada con Soft Delete activo (deleted_at = NULL). Listado de llaves e índices correctos en base de datos.
                     </div>
                   </div>
@@ -1370,13 +1369,13 @@ export default function VenueDrawer({
               {/* TAB 9: MAP */}
               {activeTab === 'map' && (
                 <div className="space-y-4">
-                  <div className="pb-2 border-b border-zinc-900 flex justify-between items-center">
+                  <div className="pb-2 border-b border-slate-200 flex justify-between items-center">
                     <div>
-                      <h3 className="text-sm font-semibold text-zinc-200 font-sans">Ubicación Satelital & Coordenadas</h3>
-                      <p className="text-[11px] text-zinc-500 font-medium">Georreferenciación cargada dinámicamente desde el Place ID y coordenadas de Google Maps.</p>
+                      <h3 className="text-sm font-semibold text-slate-800 font-sans">Ubicación Satelital & Coordenadas</h3>
+                      <p className="text-[11px] text-slate-500 font-medium">Georreferenciación cargada dinámicamente desde el Place ID y coordenadas de Google Maps.</p>
                     </div>
                     {hasValidKey && (
-                      <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold">
+                      <span className="text-[9px] bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold">
                         API GOOGLE MAPS: ACTIVA
                       </span>
                     )}
@@ -1384,7 +1383,7 @@ export default function VenueDrawer({
 
                   true ? (
                     <div className="space-y-3">
-                      <div className="h-64 w-full rounded-xl border border-zinc-800 overflow-hidden shadow-lg bg-zinc-950 relative">
+                      <div className="h-64 w-full rounded-xl border border-slate-200 overflow-hidden shadow-lg bg-slate-100 relative">
                         <LeafletMap
                           venues={[{
                             id: venue.id,
@@ -1403,21 +1402,21 @@ export default function VenueDrawer({
                         />
                       </div>
                     </div>
-                    <div className="bg-zinc-900 border border-zinc-850 p-3.5 rounded-xl flex items-center justify-between text-[11px] text-zinc-400">
+                    <div className="bg-white border border-slate-200 p-3.5 rounded-xl flex items-center justify-between text-[11px] text-slate-500">
                       <div className="space-y-0.5">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Dirección Georreferenciada</span>
-                        <span className="font-bold text-zinc-200">{venue.address}</span>
-                        <span className="block text-zinc-400">{venue.city}, {venue.state}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">Dirección Georreferenciada</span>
+                        <span className="font-bold text-slate-800">{venue.address}</span>
+                        <span className="block text-slate-500">{venue.city}, {venue.state}</span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-[9px] font-mono bg-zinc-950 px-2 py-1 rounded border border-zinc-800 font-bold text-amber-400 block">
+                        <span className="text-[9px] font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200 font-bold text-amber-700 block">
                           LAT: {Number(venue.lat).toFixed(5)} / LNG: {Number(venue.lng).toFixed(5)}
                         </span>
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[10px] text-indigo-400 hover:text-indigo-300 hover:underline mt-1.5 inline-block font-bold"
+                          className="text-[10px] text-indigo-700 hover:text-indigo-800 hover:underline mt-1.5 inline-block font-bold"
                         >
                           Abrir en Google Maps ↗
                         </a>
