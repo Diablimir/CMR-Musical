@@ -68,7 +68,7 @@ export default function GlobalFilters({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
         {/* 1. ARTISTA PRINCIPAL (FIRST) */}
         <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
           <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Artista Principal</label>

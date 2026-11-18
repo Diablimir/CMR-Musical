@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../lib/api';
-import { Shield, Lock, User, Eye, EyeOff, AlertCircle, Sparkles, LogIn } from 'lucide-react';
+import { Shield, Lock, User, Eye, EyeOff, AlertCircle, LogIn } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: (username: string) => void;
@@ -85,7 +85,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 <input
                   type="text"
                   required
-                  placeholder="admin o vlad"
+                  placeholder="Tu usuario"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-white-chalk border border-silver-haze hover:border-slate-300 rounded-xl pl-10 pr-3 py-2.5 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-tomato-curry/20 transition-all"
@@ -132,41 +132,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               )}
             </button>
           </form>
-
-          {/* Credential tips box - visually integrated for the demo/evaluation convenience */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-2">
-              <div className="flex items-center gap-1.5 text-slate-500">
-                <Sparkles className="w-3.5 h-3.5 text-tomato-curry" />
-                <span className="text-[10px] uppercase font-bold tracking-wider">Cuentas Registradas por Defecto</span>
-              </div>
-              <p className="text-[9px] text-slate-400 font-semibold leading-relaxed">
-                Usa cualquiera de estos accesos, o los nuevos usuarios que agregues en el panel "Usuarios":
-              </p>
-              
-              <div className="space-y-1.5">
-                <div className="bg-white border border-silver-haze p-2 rounded-lg flex justify-between items-center text-[9px] font-mono">
-                  <div>
-                    <span className="text-slate-400 font-sans">User:</span> <span className="text-slate-800 font-bold">admin</span>
-                  </div>
-                  <div className="w-px h-3 bg-silver-haze" />
-                  <div>
-                    <span className="text-slate-400 font-sans">Pass:</span> <span className="text-slate-800 font-bold">flamo2026</span>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-silver-haze p-2 rounded-lg flex justify-between items-center text-[9px] font-mono">
-                  <div>
-                    <span className="text-slate-400 font-sans">User:</span> <span className="text-slate-800 font-bold">vlad</span>
-                  </div>
-                  <div className="w-px h-3 bg-silver-haze" />
-                  <div>
-                    <span className="text-slate-400 font-sans">Pass:</span> <span className="text-slate-800 font-bold">vlad2026</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
         </div>
       </main>

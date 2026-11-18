@@ -584,7 +584,7 @@ export default function App() {
               >
                 <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="uppercase tracking-wider truncate max-w-[85px]">{loggedInUserProfile.username}</span>
-                <span className="text-[7px] bg-slate-200 text-slate-500 px-1 py-0.1 rounded font-mono truncate max-w-[65px]">{loggedInUserProfile.role}</span>
+                <span className="text-[7px] bg-slate-200 text-slate-500 px-1 py-0.1 rounded font-mono truncate max-w-[110px]">{loggedInUserProfile.role}</span>
               </div>
             </div>
 

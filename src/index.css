@@ -35,3 +35,8 @@ html[data-ux-motion="reduce"] *::after {
 }
 
 html[data-ux-outlines="on"] * { outline: 1px solid rgba(232, 74, 46, 0.35); outline-offset: -1px; }
+
+/* ---- Legibilidad: tamaños mínimos de texto (en rem, escalan con "Tamaño de texto") ---- */
+.text-\[7px\], .text-\[8px\], .text-\[9px\] { font-size: 0.75rem; }    /* 12px */
+.text-\[10px\] { font-size: 0.8125rem; }                               /* 13px */
+.text-\[11px\] { font-size: 0.875rem; }                                /* 14px */
