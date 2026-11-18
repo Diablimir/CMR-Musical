@@ -1,3 +1,4 @@
+import { integrations } from '../lib/api';
 import React, { useState } from 'react';
 import {
   Calendar, Music, Building2, TrendingUp, Sparkles, Plus, Search, Trash2,
@@ -70,18 +71,12 @@ export default function HomeDashboard({
     const ven = venues.find(v => v.id === evt.venueId);
 
     try {
-      const res = await fetch('/api/calendar/sync-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: evt,
-          artistName: art?.artisticName || 'Artista',
-          venueName: ven?.name || 'Recinto',
-          venueAddress: ven?.address || ven?.city || ''
-        })
+      const data = await integrations.calendarEvent({
+        event: evt,
+        artistName: art?.artisticName || 'Artista',
+        venueName: ven?.name || 'Recinto',
+        venueAddress: ven?.address || ven?.city || ''
       });
-
-      const data = await res.json();
       if (data.success) {
         if (data.webUrl) {
           window.open(data.webUrl, '_blank');
@@ -114,13 +109,18 @@ export default function HomeDashboard({
         };
       });
 
-      const res = await fetch('/api/calendar/sync-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events: enrichedEvents })
-      });
-
-      const data = await res.json();
+      const data = await integrations.calendarAll(enrichedEvents);
+      if (data.ics && data.syncedCount > 0) {
+        const blob = new Blob([data.ics], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'flamo-eventos.ics';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
       if (data.success) {
         setSyncFeedback({
           type: 'success',

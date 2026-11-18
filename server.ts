@@ -11,7 +11,7 @@ async function startServer() {
 
   // Las rutas PHP (auth/data/users) se reenvían tal cual en desarrollo: no consumir su cuerpo
   const jsonParser = express.json();
-  app.use((req, res, next) => (/^\/api\/(auth|data|users)\.php/.test(req.path) ? next() : jsonParser(req, res, next)));
+  app.use((req, res, next) => (/^\/api\/(auth|data|users|apify|places|calendar)\.php/.test(req.path) ? next() : jsonParser(req, res, next)));
 
   // API Health Check
   app.get('/api/health', (req, res) => {

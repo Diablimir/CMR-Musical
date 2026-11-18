@@ -22,6 +22,17 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   return payload as T;
 }
 
+export const integrations = {
+  apifyScrape: (platform: string, handle: string) =>
+    request<any>('/api/apify.php?action=scrape', { method: 'POST', body: JSON.stringify({ platform, handle }) }),
+  placesScrape: (query: string) =>
+    request<any>('/api/places.php', { method: 'POST', body: JSON.stringify({ query }) }),
+  calendarEvent: (payload: any) =>
+    request<any>('/api/calendar.php?action=sync-event', { method: 'POST', body: JSON.stringify(payload) }),
+  calendarAll: (events: any[]) =>
+    request<any>('/api/calendar.php?action=sync-all', { method: 'POST', body: JSON.stringify({ events }) }),
+};
+
 export const api = {
   me: () => request<{ user: UserAccount }>('/api/auth.php?action=me'),
   login: (username: string, password: string) =>

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import { Artist, Venue, Contact, Event, Tour, FilterState, Contract, UserAccount, Provider, RecordingProject } from './types';
 
-import { api, CollectionName } from './lib/api';
+import { api, integrations, CollectionName } from './lib/api';
 import GlobalFilters from './components/GlobalFilters';
 import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
@@ -213,17 +213,7 @@ export default function App() {
     setScrapeSuccess(false);
 
     try {
-      const response = await fetch('/api/places/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: mapsUrl })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en servidor (${response.status})`);
-      }
-
-      const data = await response.json();
+      const data = await integrations.placesScrape(mapsUrl);
       if (data.venue) {
         const newVenue: Venue = data.venue;
         setVenues((prev) => [newVenue, ...prev]);

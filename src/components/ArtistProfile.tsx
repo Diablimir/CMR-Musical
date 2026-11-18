@@ -1,3 +1,4 @@
+import { integrations } from '../lib/api';
 import React, { useState } from 'react';
 import {
   Artist, Event, Venue, Tour, PipelineItem, HistoryEvent, Contract, RecordingProject, MemberHistory
@@ -134,20 +135,7 @@ export default function ArtistProfile({
     setApifyError(null);
 
     try {
-      const response = await fetch('/api/apify/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: platformToUse,
-          handle: handleToUse
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en servidor Apify (${response.status})`);
-      }
-
-      const data = await response.json();
+      const data = await integrations.apifyScrape(platformToUse, handleToUse);
       setApifyResult(data);
 
       if (data.profile) {
@@ -1071,11 +1059,18 @@ export default function ArtistProfile({
               <div className="bg-slate-950/80 border border-indigo-500/30 rounded-xl p-4 space-y-3 animate-fade-in">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={apifyResult.profile.avatarUrl}
-                      alt="Avatar"
-                      className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500 shrink-0"
-                    />
+                    {apifyResult.profile.avatarUrl ? (
+                      <img
+                        src={apifyResult.profile.avatarUrl}
+                        alt="Avatar"
+                        referrerPolicy="no-referrer"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full border-2 border-indigo-500 shrink-0 bg-slate-800 flex items-center justify-center text-sm font-bold text-white">
+                        {String(apifyResult.profile.fullName || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-sm text-white">{apifyResult.profile.fullName}</span>

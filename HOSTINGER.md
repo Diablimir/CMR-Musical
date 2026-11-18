@@ -29,7 +29,10 @@ Abre tu dominio e inicia sesión con `admin` y la clave que pusiste. Crea los de
 ## Notas
 - Los datos viven en MySQL; las contraseñas se guardan cifradas (`password_hash`).
 - Las colecciones se guardan completas (gana la última escritura). Si dos personas editan a la vez, puede perderse un cambio.
-- Apify, scraping de lugares y Google Calendar siguen requiriendo Node y **no funcionan** en este plan hasta portarlos a PHP.
+- Apify, lugares y calendario funcionan en PHP (`api/apify.php`, `api/places.php`, `api/calendar.php`).
+  - Apify en vivo: pon tu token en `apify_token` de `config.php`. Sin token se muestran datos de demostración.
+  - Calendario: un evento abre «Añadir a Google Calendar»; «sincronizar todos» descarga un `.ics` para importar.
+  - La sincronización directa con la API de Google requeriría configurar OAuth en Google Cloud (no incluido).
 - Usa HTTPS (SSL gratis en hPanel) para proteger la sesión.
 
 ## Desarrollo local

@@ -91,3 +91,35 @@ function require_admin(): array {
     if ($u['role'] !== 'Super Admin') respond(['error' => 'Requiere rol Super Admin.'], 403);
     return $u;
 }
+
+// Petición HTTP saliente con cURL. Devuelve [código, cuerpo, cabeceras] (código 0 si falla).
+function http_request(string $url, string $method = 'GET', ?string $body = null, array $headers = [], int $timeout = 20): array {
+    if (!function_exists('curl_init')) return [0, '', []];
+    $ch = curl_init($url);
+    $respHeaders = [];
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        CURLOPT_HEADERFUNCTION => function ($ch, $line) use (&$respHeaders) {
+            $parts = explode(':', $line, 2);
+            if (count($parts) === 2) $respHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+            return strlen($line);
+        },
+    ]);
+    if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    $out = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    return [$out === false ? 0 : $code, $out === false ? '' : (string)$out, $respHeaders];
+}
+
+function apify_token(): string {
+    $t = trim((string)(config()['apify_token'] ?? ''));
+    return strlen($t) > 5 ? $t : '';
+}
