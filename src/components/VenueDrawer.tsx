@@ -1414,7 +1414,7 @@ export default function VenueDrawer({
                           LAT: {Number(venue.lat).toFixed(5)} / LNG: {Number(venue.lng).toFixed(5)}
                         </span>
                         <a
-                          href={`https://www.google.com/maps/place/?q=place_id:${venue.placeId}`}
+                          href={`https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-[10px] text-indigo-400 hover:text-indigo-300 hover:underline mt-1.5 inline-block font-bold"

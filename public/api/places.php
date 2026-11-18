@@ -43,49 +43,67 @@ if (preg_match('#^https?://#i', $raw)) {
 }
 
 function rnd(int $min, int $max): int { return random_int($min, $max); }
-function title_case(string $s): string {
-    $words = array_map(fn($w) => $w === '' ? '' : mb_strtoupper(mb_substr($w, 0, 1)) . mb_strtolower(mb_substr($w, 1)), explode(' ', $s));
-    return trim(implode(' ', $words));
-}
 
-function parse_maps(string $targetUrl, string $rawQuery): array {
-    $name = ''; $lat = 19.4326; $lng = -99.1332;
+// Extrae nombre y coordenadas de un enlace de Google Maps (o usa el texto tal cual).
+function parse_input(string $targetUrl, string $rawQuery): array {
+    $name = ''; $lat = null; $lng = null;
     if (preg_match('/@(-?\d+\.\d+),(-?\d+\.\d+)/', $targetUrl, $m)) { $lat = (float)$m[1]; $lng = (float)$m[2]; }
+    elseif (preg_match('/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/', $targetUrl, $m)) { $lat = (float)$m[1]; $lng = (float)$m[2]; }
     if (preg_match('#place/([^/@?]+)#', $targetUrl, $m)) $name = str_replace('+', ' ', urldecode($m[1]));
     if ($name === '' && preg_match('#search/([^/@?]+)#', $targetUrl, $m)) $name = str_replace('+', ' ', urldecode($m[1]));
     if ($name === '' && preg_match('/[?&](?:q|query)=([^&]+)/', $targetUrl, $m)) $name = str_replace('+', ' ', urldecode($m[1]));
-    if ($name === '') {
-        if (preg_match('#^https?://#i', $rawQuery)) {
-            $path = parse_url($targetUrl, PHP_URL_PATH) ?: '';
-            $parts = array_values(array_filter(explode('/', $path), fn($p) => $p !== '' && $p[0] !== '@' && !in_array($p, ['maps', 'place', 'search'], true)));
-            $name = $parts ? str_replace(['+', '-'], ' ', urldecode($parts[0])) : 'Foro Google Maps';
-        } else {
-            $name = $rawQuery;
-        }
-    }
-    $name = trim(str_replace('_', ' ', preg_replace('#^https?://[^/]+#i', '', $name)));
-    $name = title_case($name);
-    if (mb_strlen($name) < 2) $name = 'Recinto Google Maps';
+    if ($name === '' && !preg_match('#^https?://#i', $rawQuery)) $name = $rawQuery;
+    return [trim($name), $lat, $lng];
+}
 
-    $city = 'CDMX'; $state = 'CDMX';
-    $address = "$name, Av. Insurgentes Sur #800, Col. Del Valle";
-    $type = 'Teatro / Foro de Conciertos';
-    $t = mb_strtolower("$name $targetUrl $rawQuery");
-    $has = fn(string ...$n) => (bool)array_filter($n, fn($x) => str_contains($t, $x));
+function nominatim(string $path, array $params): ?array {
+    $params += ['format' => 'jsonv2', 'addressdetails' => 1, 'extratags' => 1, 'accept-language' => 'es'];
+    [$code, $out] = http_request(
+        'https://nominatim.openstreetmap.org/' . $path . '?' . http_build_query($params),
+        'GET', null, ['User-Agent: FlamoCRM/1.0 (venue autocomplete)', 'Accept: application/json'], 15
+    );
+    if ($code !== 200) return null;
+    $j = json_decode($out, true);
+    if (!is_array($j)) return null;
+    if (isset($j[0]) && is_array($j[0])) return $j[0];   // search
+    return isset($j['lat']) ? $j : null;                  // reverse
+}
 
-    if ($has('guadalajara', 'jalisco', 'diana', 'telmex')) { $city = 'Guadalajara'; $state = 'Jalisco'; $address = "$name, Av. 16 de Septiembre #710, Centro Histórico"; }
-    elseif ($has('monterrey', 'nuevo león', 'citibanamex', 'fundidora')) { $city = 'Monterrey'; $state = 'Nuevo León'; $address = "$name, Parque Fundidora, Av. Fundidora #500"; }
-    elseif ($has('puebla', 'metropolitano')) { $city = 'Puebla'; $state = 'Puebla'; $address = "$name, Zona Angelópolis, Sirio S/N"; }
-    elseif ($has('querétaro', 'queretaro')) { $city = 'Querétaro'; $state = 'Querétaro'; $address = "$name, Centro Histórico, Qro."; }
-    elseif ($has('merida', 'mérida', 'yucatán')) { $city = 'Mérida'; $state = 'Yucatán'; $address = "$name, Paseo de Montejo #450"; }
-    elseif ($has('auditorio nacional')) { $address = 'Av. Paseo de la Reforma #50, Polanco V Sección, Miguel Hidalgo, 11560 Ciudad de México'; $type = 'Auditorio Macro (10,000 pax)'; $lat = 19.4252; $lng = -99.1920; }
-    elseif ($has('metropolitan', 'metropólitan')) { $address = 'Av. Independencia #90, Col. Centro, Cuauhtémoc, 06050 Ciudad de México'; $type = 'Teatro Histórico (3,100 pax)'; $lat = 19.4326; $lng = -99.1415; }
-    elseif ($has('blackberry', 'bb')) { $address = 'Tlaxcala #160, Col. Hipódromo Condesa, Cuauhtémoc, 06100 Ciudad de México'; $type = 'Foro Concert Hall (4,000 pax)'; $lat = 19.4098; $lng = -99.1685; }
-    elseif ($has('pepsi center', 'wtc')) { $address = 'Dakota #95, Col. Nápoles, Benito Juárez, 03810 Ciudad de México'; $type = 'Foro de Conciertos WTC (7,500 pax)'; $lat = 19.3948; $lng = -99.1738; }
-    elseif ($has('foro sol', 'estadio gnp')) { $address = 'Viad. Río de la Piedad S/N, Granjas México, Iztacalco, 08400 Ciudad de México'; $type = 'Estadio / Foro Masivo (65,000 pax)'; $lat = 19.4045; $lng = -99.0965; }
-    else { $address = "$name, Av. Juárez #42, Col. Centro, $city"; }
+function venue_type(?string $category, ?string $type): string {
+    $map = [
+        'theatre' => 'Teatro', 'arts_centre' => 'Centro de artes', 'nightclub' => 'Club nocturno',
+        'stadium' => 'Estadio', 'events_venue' => 'Recinto de eventos', 'concert_hall' => 'Sala de conciertos',
+        'cinema' => 'Cine', 'bar' => 'Bar', 'pub' => 'Bar', 'restaurant' => 'Restaurante',
+        'community_centre' => 'Centro comunitario', 'conference_centre' => 'Centro de convenciones',
+        'sports_centre' => 'Centro deportivo', 'auditorium' => 'Auditorio', 'hotel' => 'Hotel',
+    ];
+    return $map[$type ?? ''] ?? 'Recinto';
+}
 
-    return compact('name', 'address', 'city', 'state', 'lat', 'lng', 'type');
+function venue_from_osm(array $r, string $fallbackName): array {
+    $a = $r['address'] ?? [];
+    $x = $r['extratags'] ?? [];
+    $name = $r['name'] ?? ($a[$r['type'] ?? ''] ?? '') ?: $fallbackName;
+    $road = trim(($a['road'] ?? '') . ' ' . ($a['house_number'] ?? ''));
+    $parts = array_filter([$road, $a['neighbourhood'] ?? $a['suburb'] ?? '', $a['postcode'] ?? '']);
+    $address = $parts ? implode(', ', $parts) : (string)($r['display_name'] ?? '');
+    $city = $a['city'] ?? $a['town'] ?? $a['village'] ?? $a['municipality'] ?? $a['county'] ?? '';
+    $hours = !empty($x['opening_hours']) ? [(string)$x['opening_hours']] : [];
+    $name = $name ?: $fallbackName;
+    $lat = (float)$r['lat']; $lng = (float)$r['lon'];
+    return array_merge(venue_base($name), [
+        'address' => $address, 'city' => $city, 'state' => $a['state'] ?? '',
+        'country' => $a['country'] ?? 'México', 'postalCode' => $a['postcode'] ?? '',
+        'lat' => $lat, 'lng' => $lng,
+        'website' => $x['website'] ?? $x['contact:website'] ?? 'https://www.google.com/maps/search/?api=1&query=' . $lat . ',' . $lng,
+        'phone' => $x['phone'] ?? $x['contact:phone'] ?? '',
+        'rating' => 0, 'userRatingsCount' => 0,
+        'placeId' => '',
+        'establishmentType' => venue_type($r['category'] ?? null, $r['type'] ?? null),
+        'hours' => $hours,
+        'scoreRentabilidad' => 0, 'scoreResponseTime' => 0, 'scorePuntualidadPago' => 0,
+        'scoreNegociacion' => 0, 'scoreProduccion' => 0, 'scoreHospitalidad' => 0,
+    ]);
 }
 
 function venue_base(string $name): array {
@@ -94,7 +112,7 @@ function venue_base(string $name): array {
         'id' => 'ven-' . (int)(microtime(true) * 1000),
         'name' => $name,
         'country' => 'México',
-        'postalCode' => '06000',
+        'postalCode' => '',
         'website' => 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($name),
         'placeId' => 'ChIJ' . bin2hex(random_bytes(8)),
         'created_at' => $now, 'updated_at' => $now, 'deleted_at' => null,
@@ -117,7 +135,7 @@ if ($token !== '') {
             $name = (string)($f['title'] ?? $f['name']);
             $hours = [];
             foreach (($f['openingHours'] ?? []) as $h) $hours[] = is_array($h) && isset($h['day']) ? $h['day'] . ': ' . ($h['hours'] ?? '') : (string)(is_array($h) ? json_encode($h) : $h);
-            respond(['success' => true, 'liveScraped' => true, 'venue' => array_merge(venue_base($name), [
+            respond(['success' => true, 'liveScraped' => true, 'source' => 'apify', 'venue' => array_merge(venue_base($name), [
                 'address' => $f['address'] ?? "$name, " . ($f['city'] ?? 'CDMX'),
                 'city' => $f['city'] ?? 'CDMX', 'state' => $f['state'] ?? 'CDMX',
                 'country' => $f['countryCode'] ?? 'México', 'postalCode' => $f['postalCode'] ?? '06000',
@@ -136,15 +154,20 @@ if ($token !== '') {
     }
 }
 
-// 2) Alternativa: interpretar la URL / texto
-$p = parse_maps($target, $raw);
-respond(['success' => true, 'liveScraped' => false, 'venue' => array_merge(venue_base($p['name']), [
-    'address' => $p['address'], 'city' => $p['city'], 'state' => $p['state'],
-    'lat' => $p['lat'], 'lng' => $p['lng'],
-    'phone' => '',
-    'rating' => round(4.3 + random_int(0, 6) / 10, 1), 'userRatingsCount' => rnd(1100, 5600),
-    'establishmentType' => $p['type'],
-    'hours' => ['Lunes a Sábado: 11:00 - 21:00', 'Domingo: 12:00 - 18:00'],
-    'scoreRentabilidad' => 88, 'scoreResponseTime' => 90, 'scorePuntualidadPago' => 92,
-    'scoreNegociacion' => 85, 'scoreProduccion' => 94, 'scoreHospitalidad' => 89,
-])]);
+// 2) Datos reales de OpenStreetMap (gratis, sin clave)
+[$qName, $qLat, $qLng] = parse_input($target, $raw);
+$hit = null;
+if ($qLat !== null && $qLng !== null) {
+    $hit = nominatim('reverse', ['lat' => $qLat, 'lon' => $qLng, 'zoom' => 18]);
+    if ($hit && $qName !== '') $hit['name'] = $qName;       // el nombre de Google es más fiable
+}
+if (!$hit && $qName !== '') {
+    $hit = nominatim('search', ['q' => $qName, 'limit' => 1, 'countrycodes' => 'mx']);
+    if (!$hit) $hit = nominatim('search', ['q' => $qName, 'limit' => 1]);
+}
+if (!$hit) {
+    respond(['error' => 'No se encontró ese lugar. Prueba con el nombre y la ciudad (ej. "Teatro Metropolitan, Ciudad de México") o pega el enlace completo de Google Maps.'], 404);
+}
+$v = venue_from_osm($hit, $qName ?: 'Recinto');
+if ($qLat !== null && $qLng !== null) { $v['lat'] = $qLat; $v['lng'] = $qLng; }
+respond(['success' => true, 'liveScraped' => false, 'source' => 'openstreetmap', 'venue' => $v]);

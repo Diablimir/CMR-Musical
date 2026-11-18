@@ -196,6 +196,7 @@ export default function App() {
   const [mapsUrl, setMapsUrl] = useState('');
   const [isScraping, setIsScraping] = useState(false);
   const [scrapeSuccess, setScrapeSuccess] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [lastScrapedVenue, setLastScrapedVenue] = useState<Venue | null>(null);
 
   // 6. Search within lists
@@ -211,6 +212,7 @@ export default function App() {
 
     setIsScraping(true);
     setScrapeSuccess(false);
+    setScrapeError(null);
 
     try {
       const data = await integrations.placesScrape(mapsUrl);
@@ -227,90 +229,8 @@ export default function App() {
         setIsDrawerOpen(true);
       }
     } catch (err: any) {
-      console.warn('Fallback to client venue creation:', err.message);
-      
-      // Client-side smart URL & query parser
-      let extractedName = '';
-      let city = 'CDMX';
-      let state = 'CDMX';
-      let address = '';
-
-      const cleanInput = mapsUrl.trim();
-      const placeMatch = cleanInput.match(/place\/([^/@?]+)/) || cleanInput.match(/search\/([^/@?]+)/) || cleanInput.match(/[?&](q|query)=([^&]+)/);
-      
-      if (placeMatch && placeMatch[1]) {
-        extractedName = decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
-      } else {
-        extractedName = cleanInput.replace(/https?:\/\/(www\.)?google\.[a-z]+\/maps\/?/gi, '').replace(/[?/=_]/g, ' ').trim();
-      }
-
-      extractedName = extractedName
-        .split(' ')
-        .map((w) => w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '')
-        .join(' ')
-        .trim();
-
-      if (!extractedName || extractedName.length < 2) {
-        extractedName = 'Foro Autocompletado Google Maps';
-      }
-
-      const fullLower = (extractedName + ' ' + cleanInput).toLowerCase();
-      if (fullLower.includes('guadalajara') || fullLower.includes('jalisco') || fullLower.includes('diana')) {
-        city = 'Guadalajara';
-        state = 'Jalisco';
-        address = `${extractedName}, Av. 16 de Septiembre #710, Centro Histórico`;
-      } else if (fullLower.includes('monterrey') || fullLower.includes('citibanamex')) {
-        city = 'Monterrey';
-        state = 'Nuevo León';
-        address = `${extractedName}, Parque Fundidora, Av. Fundidora #500`;
-      } else if (fullLower.includes('metropolitan') || fullLower.includes('metropólitan')) {
-        city = 'CDMX';
-        state = 'CDMX';
-        address = 'Av. Independencia #90, Col. Centro, Cuauhtémoc, 06050 Ciudad de México';
-      } else if (fullLower.includes('auditorio nacional')) {
-        city = 'CDMX';
-        state = 'CDMX';
-        address = 'Av. Paseo de la Reforma #50, Polanco V Sección, Miguel Hidalgo, 11560 Ciudad de México';
-      } else {
-        address = `${extractedName}, Av. Insurgentes Sur #800, Col. Del Valle, CDMX`;
-      }
-
-      const newId = `ven-${Date.now()}`;
-      const newVenue: Venue = {
-        id: newId,
-        name: extractedName,
-        address: address,
-        city: city,
-        state: state,
-        country: 'México',
-        postalCode: '06000',
-        lat: 19.4326 + (Math.random() * 0.04 - 0.02),
-        lng: -99.1332 + (Math.random() * 0.04 - 0.02),
-        website: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(extractedName)}`,
-        phone: '+52 55 5000 0000',
-        rating: 4.8,
-        userRatingsCount: 1540,
-        placeId: `ChIJ${Math.random().toString(36).substring(2, 20)}`,
-        establishmentType: 'Foro / Centro de Espectáculos Autocompletado',
-        hours: ['Lunes a Sábado: 12:00 - 21:00'],
-        scoreRentabilidad: 85,
-        scoreResponseTime: 88,
-        scorePuntualidadPago: 90,
-        scoreNegociacion: 82,
-        scoreProduccion: 91,
-        scoreHospitalidad: 87,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: null,
-      };
-
-      setVenues((prev) => [newVenue, ...prev]);
-      setLastScrapedVenue(newVenue);
       setIsScraping(false);
-      setScrapeSuccess(true);
-      setMapsUrl('');
-      setSelectedVenueId(newId);
-      setIsDrawerOpen(true);
+      setScrapeError(err.message || 'No se pudo consultar el lugar. Inténtalo de nuevo.');
     }
   };
 
@@ -923,17 +843,17 @@ export default function App() {
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-xs font-bold uppercase text-slate-700 tracking-wider">Carga Inteligente con Google Places API</h3>
+                <h3 className="text-xs font-bold uppercase text-slate-700 tracking-wider">Carga Inteligente de Recintos</h3>
               </div>
               <p className="text-xs text-slate-500 mb-4">
-                Pega cualquier enlace de Google Maps o escribe el nombre de un foro para autocompletar automáticamente el recinto, dirección, coordenadas satelitales GPS, rating y Place ID sin captura manual.
+                Pega un enlace de Google Maps o escribe el nombre y la ciudad del foro para autocompletar dirección y coordenadas reales. El rating y los puntajes se completan en la Ficha 360.
               </p>
               
               <form onSubmit={handleMapsScrape} className="flex gap-2">
                 <input
                   type="text"
                   required
-                  placeholder="Ej. https://maps.google.com/?q=Teatro+Metropolitan+CDMX  o escribe  'Auditorio Blackberry'"
+                  placeholder="Ej. Teatro Metropolitan, Ciudad de México  o un enlace de Google Maps"
                   value={mapsUrl}
                   onChange={(e) => setMapsUrl(e.target.value)}
                   className="flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
@@ -946,7 +866,7 @@ export default function App() {
                   {isScraping ? (
                     <>
                       <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Consultando Places API...</span>
+                      <span>Buscando recinto...</span>
                     </>
                   ) : (
                     <>
@@ -956,6 +876,12 @@ export default function App() {
                   )}
                 </button>
               </form>
+
+              {scrapeError && (
+                <div role="alert" className="mt-3 bg-red-50 border border-red-200 text-red-800 text-xs font-semibold rounded-xl px-3 py-2">
+                  {scrapeError}
+                </div>
+              )}
 
               {scrapeSuccess && lastScrapedVenue && (
                 <div className="mt-4 bg-emerald-50/80 border border-emerald-200/80 text-emerald-950 p-4 rounded-xl space-y-3 animate-fade-in shadow-xs">
@@ -1000,9 +926,20 @@ export default function App() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-emerald-200/60 text-[10px] text-emerald-800 font-mono">
-                    <span>⭐ Rating: <strong>{lastScrapedVenue.rating}</strong> ({lastScrapedVenue.userRatingsCount} reseñas)</span>
+                    {lastScrapedVenue.rating > 0 ? (
+                      <span>⭐ Rating: <strong>{lastScrapedVenue.rating}</strong> ({lastScrapedVenue.userRatingsCount} reseñas)</span>
+                    ) : (
+                      <span>ℹ️ Sin rating de Google: completa los datos en la Ficha 360</span>
+                    )}
                     <span>📍 GPS: {lastScrapedVenue.lat.toFixed(4)}, {lastScrapedVenue.lng.toFixed(4)}</span>
-                    <span>🆔 Place ID: {lastScrapedVenue.placeId}</span>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${lastScrapedVenue.lat},${lastScrapedVenue.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline font-bold"
+                    >
+                      Abrir en Google Maps ↗
+                    </a>
                   </div>
                 </div>
               )}
