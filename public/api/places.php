@@ -121,13 +121,24 @@ function venue_base(string $name): array {
 
 // 1) Apify Google Maps Extractor (si hay token)
 $token = apify_token();
+$apifyInfo = ['configured' => $token !== '', 'status' => null, 'message' => null];
 if ($token !== '') {
+    $isUrl = (bool)preg_match('#^https?://#i', $target);
+    $input = $isUrl
+        ? ['startUrls' => [['url' => $target]], 'maxCrawledPlacesPerSearch' => 1, 'language' => 'es']
+        : ['searchStringsArray' => [$target], 'maxCrawledPlacesPerSearch' => 1, 'language' => 'es'];
     [$code, $out] = http_request(
-        'https://api.apify.com/v2/acts/compass~google-maps-extractor/run-sync-get-dataset-items',
-        'POST',
-        json_encode(['startUrls' => [['url' => $target]], 'searchStringsArray' => [$target], 'maxCrawledPlacesPerSearch' => 1]),
-        ['Content-Type: application/json', 'Authorization: Bearer ' . $token], 100
+        'https://api.apify.com/v2/acts/compass~google-maps-extractor/run-sync-get-dataset-items?timeout=90',
+        'POST', json_encode($input),
+        ['Content-Type: application/json', 'Authorization: Bearer ' . $token], 110
     );
+    $apifyInfo['status'] = $code;
+    if ($code === 0) {
+        $apifyInfo['message'] = 'Sin respuesta de Apify (tiempo agotado o conexión bloqueada).';
+    } elseif ($code < 200 || $code >= 300) {
+        $e = json_decode($out, true);
+        $apifyInfo['message'] = (string)($e['error']['message'] ?? ('Apify respondió con error ' . $code . '.'));
+    }
     if ($code >= 200 && $code < 300) {
         $items = json_decode($out, true);
         $f = is_array($items) ? ($items[0] ?? null) : null;
@@ -154,6 +165,10 @@ if ($token !== '') {
     }
 }
 
+if ($apifyInfo['configured'] && $apifyInfo['message'] === null) {
+    $apifyInfo['message'] = 'Apify no devolvió resultados para esta búsqueda.';
+}
+
 // 2) Datos reales de OpenStreetMap (gratis, sin clave)
 [$qName, $qLat, $qLng] = parse_input($target, $raw);
 $hit = null;
@@ -170,4 +185,4 @@ if (!$hit) {
 }
 $v = venue_from_osm($hit, $qName ?: 'Recinto');
 if ($qLat !== null && $qLng !== null) { $v['lat'] = $qLat; $v['lng'] = $qLng; }
-respond(['success' => true, 'liveScraped' => false, 'source' => 'openstreetmap', 'venue' => $v]);
+respond(['success' => true, 'liveScraped' => false, 'source' => 'openstreetmap', 'apify' => $apifyInfo, 'venue' => $v]);

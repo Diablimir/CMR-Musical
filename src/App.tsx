@@ -218,6 +218,9 @@ export default function App() {
       const data = await integrations.placesScrape(mapsUrl);
       if (data.venue) {
         const newVenue: Venue = data.venue;
+        if (data.apify?.configured && data.apify?.message) {
+          setScrapeError(`Apify no pudo traer los datos de Google Maps: ${data.apify.message} Se usaron datos de OpenStreetMap.`);
+        }
         setVenues((prev) => [newVenue, ...prev]);
         setLastScrapedVenue(newVenue);
         setIsScraping(false);
