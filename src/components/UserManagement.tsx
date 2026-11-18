@@ -46,7 +46,7 @@ export default function UserManagement({
   const handleOpenEditModal = (user: UserAccount) => {
     setEditingUser(user);
     setEditName(user.name);
-    setEditPassword(user.password || '');
+    setEditPassword('');
     setEditRole(user.role);
     setError(null);
     setSuccessMsg(null);
@@ -66,8 +66,8 @@ export default function UserManagement({
       setError('El nombre de usuario debe tener al menos 3 caracteres.');
       return;
     }
-    if (password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres.');
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
     if (!name.trim()) {
@@ -102,14 +102,14 @@ export default function UserManagement({
       setError('El nombre completo es obligatorio.');
       return;
     }
-    if (editPassword.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres.');
+    if (editPassword !== '' && editPassword.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres (déjala vacía para no cambiarla).');
       return;
     }
 
     onUpdateUser(editingUser.id, {
       name: editName.trim(),
-      password: editPassword,
+      password: editPassword || undefined,
       role: editRole
     });
 
@@ -190,7 +190,7 @@ export default function UserManagement({
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 font-mono text-slate-400">
                         <Key className="w-3.5 h-3.5 shrink-0 text-slate-300" />
-                        <span>{user.password || '••••••••'}</span>
+                        <span>••••••••</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-400 font-mono font-semibold">{user.created_at}</td>
@@ -397,10 +397,10 @@ export default function UserManagement({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Contraseña Corporativa *</label>
+                <label className="text-[10px] uppercase font-bold text-slate-400">Contraseña Corporativa</label>
                 <input
                   type="text"
-                  required
+                  placeholder="Dejar vacío para no cambiarla"
                   value={editPassword}
                   onChange={(e) => setEditPassword(e.target.value)}
                   className="w-full bg-white-chalk border border-silver-haze rounded-xl p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-tomato-curry/20"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2, Users, Music, DollarSign, Award, Trash2, Search, Plus,
   Database, Star, MapPin, ExternalLink, AlertCircle, Sparkles, Filter, Check, FileText, UserCheck, LayoutDashboard,
@@ -7,11 +7,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 import { Artist, Venue, Contact, Event, Tour, FilterState, Contract, UserAccount, Provider, RecordingProject } from './types';
-import {
-  initialArtists, initialVenues, initialContacts, initialTours, initialEvents, initialContracts,
-  initialProviders, initialRecordingProjects
-} from './data/mockData';
 
+import { api, CollectionName } from './lib/api';
 import GlobalFilters from './components/GlobalFilters';
 import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
@@ -27,131 +24,34 @@ import ProductionSuite from './components/ProductionSuite';
 import AddArtistModal from './components/AddArtistModal';
 
 export default function App() {
-  // One-time clear of previous sample data to ensure starting from zero
-  if (typeof window !== 'undefined' && localStorage.getItem('flamo_zero_v1') !== 'true') {
-    localStorage.removeItem('flamo_venues');
-    localStorage.removeItem('flamo_artists');
-    localStorage.removeItem('flamo_contacts');
-    localStorage.removeItem('flamo_tours');
-    localStorage.removeItem('flamo_events');
-    localStorage.removeItem('flamo_contracts');
-    localStorage.removeItem('flamo_providers');
-    localStorage.removeItem('flamo_recording_projects');
-    localStorage.setItem('flamo_zero_v1', 'true');
-  }
+  // 1. Core state — se carga desde el servidor (MySQL) tras iniciar sesión
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [recordingProjects, setRecordingProjects] = useState<RecordingProject[]>([]);
 
-  // 1. Core State with Local Storage persistence
-  const [venues, setVenues] = useState<Venue[]>(() => {
-    const saved = localStorage.getItem('flamo_venues');
-    return saved ? JSON.parse(saved) : initialVenues;
-  });
-
-  const [artists, setArtists] = useState<Artist[]>(() => {
-    const saved = localStorage.getItem('flamo_artists');
-    return saved ? JSON.parse(saved) : initialArtists;
-  });
-
-  const [contacts, setContacts] = useState<Contact[]>(() => {
-    const saved = localStorage.getItem('flamo_contacts');
-    return saved ? JSON.parse(saved) : initialContacts;
-  });
-
-  const [tours, setTours] = useState<Tour[]>(() => {
-    const saved = localStorage.getItem('flamo_tours');
-    return saved ? JSON.parse(saved) : initialTours;
-  });
-
-  const [events, setEvents] = useState<Event[]>(() => {
-    const saved = localStorage.getItem('flamo_events');
-    return saved ? JSON.parse(saved) : initialEvents;
-  });
-
-  const [contracts, setContracts] = useState<Contract[]>(() => {
-    const saved = localStorage.getItem('flamo_contracts');
-    return saved ? JSON.parse(saved) : initialContracts;
-  });
-
-  // Persist State to LocalStorage on updates
-  useEffect(() => {
-    localStorage.setItem('flamo_venues', JSON.stringify(venues));
-  }, [venues]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_artists', JSON.stringify(artists));
-  }, [artists]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_contacts', JSON.stringify(contacts));
-  }, [contacts]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_tours', JSON.stringify(tours));
-  }, [tours]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_events', JSON.stringify(events));
-  }, [events]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_contracts', JSON.stringify(contracts));
-  }, [contracts]);
-
-  const [providers, setProviders] = useState<Provider[]>(() => {
-    const saved = localStorage.getItem('flamo_providers');
-    return saved ? JSON.parse(saved) : initialProviders;
-  });
-
-  const [recordingProjects, setRecordingProjects] = useState<RecordingProject[]>(() => {
-    const saved = localStorage.getItem('flamo_recording_projects');
-    return saved ? JSON.parse(saved) : initialRecordingProjects;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('flamo_providers', JSON.stringify(providers));
-  }, [providers]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_recording_projects', JSON.stringify(recordingProjects));
-  }, [recordingProjects]);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const lastSaved = useRef<Record<string, string>>({});
 
   // 2. Navigation Tab State
   const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'database' | 'providers' | 'production'>('inicio');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Authentication, Developer Mode, and User Management States
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('flamo_is_logged_in') === 'true';
-  });
-
-  const [currentUser, setCurrentUser] = useState<string>(() => {
-    return localStorage.getItem('flamo_current_user') || 'admin';
-  });
-
-  const [users, setUsers] = useState<UserAccount[]>(() => {
-    const saved = localStorage.getItem('flamo_users');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 'usr-1', username: 'admin', name: 'Administrador Principal', role: 'Super Admin', password: 'flamo2026', created_at: '2026-07-13' },
-      { id: 'usr-2', username: 'vlad', name: 'Vlad Mendoza', role: 'Director de Booking', password: 'vlad2026', created_at: '2026-07-13' }
-    ];
-  });
+  // Authentication (sesión en el servidor) y gestión de usuarios
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<string>('');
+  const [users, setUsers] = useState<UserAccount[]>([]);
 
   const [developerMode, setDeveloperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('flamo_developer_mode');
     return saved !== null ? saved === 'true' : true; // Default true so they see it initially but can toggle it off
   });
-
-  useEffect(() => {
-    localStorage.setItem('flamo_is_logged_in', isLoggedIn ? 'true' : 'false');
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_current_user', currentUser);
-  }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('flamo_users', JSON.stringify(users));
-  }, [users]);
 
   useEffect(() => {
     localStorage.setItem('flamo_developer_mode', developerMode ? 'true' : 'false');
@@ -160,27 +60,99 @@ export default function App() {
     }
   }, [developerMode, activeWorkspace]);
 
+  const refreshUsers = async () => {
+    try {
+      setUsers((await api.listUsers()).users);
+    } catch { /* se mostrará al reintentar */ }
+  };
+
   const handleAddUser = (newUser: Omit<UserAccount, 'id' | 'created_at'>): boolean => {
-    const exists = users.some(u => u.username.toLowerCase() === newUser.username.toLowerCase());
-    if (exists) return false;
-
-    const userObj: UserAccount = {
-      ...newUser,
-      id: `usr-${Date.now()}`,
-      created_at: new Date().toISOString().substring(0, 10)
-    };
-
-    setUsers(prev => [...prev, userObj]);
+    if (users.some(u => u.username.toLowerCase() === newUser.username.toLowerCase())) return false;
+    api.createUser({
+      username: newUser.username,
+      name: newUser.name,
+      role: newUser.role,
+      password: newUser.password || '',
+    }).then(refreshUsers).catch(e => window.alert(e.message));
     return true;
   };
 
   const handleUpdateUser = (id: string, updated: Partial<UserAccount>) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updated } : u));
+    api.updateUser(id, { name: updated.name, role: updated.role, password: updated.password })
+      .then(refreshUsers).catch(e => window.alert(e.message));
   };
 
   const handleDeleteUser = (id: string) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
+    api.deleteUser(id).then(refreshUsers).catch(e => window.alert(e.message));
   };
+
+  const handleLogout = () => {
+    api.logout().catch(() => {}).finally(() => {
+      setIsLoggedIn(false);
+      setCurrentUser('');
+      setDataLoaded(false);
+      lastSaved.current = {};
+      setVenues([]); setArtists([]); setContacts([]); setTours([]);
+      setEvents([]); setContracts([]); setProviders([]); setRecordingProjects([]);
+    });
+  };
+
+  // Restaurar sesión al abrir la app
+  useEffect(() => {
+    api.me()
+      .then(({ user }) => { setCurrentUser(user.username); setIsLoggedIn(true); })
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  // Cargar datos y usuarios cuando hay sesión
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    Promise.all([api.loadData(), api.listUsers()])
+      .then(([d, u]) => {
+        if (cancelled) return;
+        lastSaved.current = {
+          venues: JSON.stringify(d.venues), artists: JSON.stringify(d.artists),
+          contacts: JSON.stringify(d.contacts), tours: JSON.stringify(d.tours),
+          events: JSON.stringify(d.events), contracts: JSON.stringify(d.contracts),
+          providers: JSON.stringify(d.providers), recording_projects: JSON.stringify(d.recording_projects),
+        };
+        setVenues(d.venues); setArtists(d.artists); setContacts(d.contacts); setTours(d.tours);
+        setEvents(d.events); setContracts(d.contracts); setProviders(d.providers);
+        setRecordingProjects(d.recording_projects);
+        setUsers(u.users);
+        setDataLoaded(true);
+      })
+      .catch((e) => {
+        if (e.status === 401) setIsLoggedIn(false);
+        else setSyncError('No se pudieron cargar los datos del servidor.');
+      });
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
+
+  // Guardar en el servidor (con pequeña espera) cuando cambia una colección
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const t = setTimeout(() => {
+      const current: Record<CollectionName, any[]> = {
+        venues, artists, contacts, tours, events, contracts, providers, recording_projects: recordingProjects,
+      };
+      (Object.keys(current) as CollectionName[]).forEach((name) => {
+        const json = JSON.stringify(current[name]);
+        if (lastSaved.current[name] === json) return;
+        lastSaved.current[name] = json;
+        api.saveCollection(name, current[name])
+          .then(() => setSyncError(null))
+          .catch((e) => {
+            delete lastSaved.current[name]; // reintentar en el siguiente cambio
+            if (e.status === 401) setIsLoggedIn(false);
+            else setSyncError('No se pudo guardar en el servidor. Revisa tu conexión.');
+          });
+      });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [dataLoaded, venues, artists, contacts, tours, events, contracts, providers, recordingProjects]);
 
   const handleClearAllData = () => {
     if (window.confirm('¿Estás seguro de que deseas eliminar TODOS los datos de muestra para comenzar desde 0? Esta acción vaciará eventos, artistas, venues, contratos y proveedores.')) {
@@ -194,14 +166,6 @@ export default function App() {
       setRecordingProjects([]);
       setSelectedArtistId('');
       setSelectedVenueId(null);
-      localStorage.removeItem('flamo_venues');
-      localStorage.removeItem('flamo_artists');
-      localStorage.removeItem('flamo_contacts');
-      localStorage.removeItem('flamo_tours');
-      localStorage.removeItem('flamo_events');
-      localStorage.removeItem('flamo_contracts');
-      localStorage.removeItem('flamo_providers');
-      localStorage.removeItem('flamo_recording_projects');
     }
   };
 
@@ -551,6 +515,10 @@ export default function App() {
   const currentVenue = venues.find((v) => v.id === selectedVenueId) || null;
   const currentArtist = activeArtists.find((a) => a.id === selectedArtistId) || activeArtists[0] || null;
 
+  if (!authChecked) {
+    return <div className="min-h-screen bg-white-chalk flex items-center justify-center text-xs font-bold uppercase tracking-wider text-slate-400">Cargando…</div>;
+  }
+
   if (!isLoggedIn) {
     return <LoginScreen onLogin={(user) => {
       setCurrentUser(user);
@@ -636,7 +604,7 @@ export default function App() {
             <button
               onClick={() => {
                 if (confirm('¿Estás seguro de que deseas cerrar sesión en el sistema?')) {
-                  setIsLoggedIn(false);
+                  handleLogout();
                 }
               }}
               className="bg-white hover:bg-slate-50 border border-silver-haze rounded-xl px-3 py-2 text-[10px] font-bold text-slate-400 hover:text-tomato-curry transition-all cursor-pointer uppercase tracking-wider"
@@ -872,7 +840,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-                      setIsLoggedIn(false);
+                      handleLogout();
                       setIsMobileMenuOpen(false);
                     }
                   }}
@@ -1357,6 +1325,12 @@ export default function App() {
           />
         )}
       </main>
+
+      {syncError && (
+        <div role="alert" className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg">
+          {syncError}
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="mt-auto py-6 border-t border-slate-200 bg-white px-6 shrink-0 text-center text-[10px] text-slate-400 font-sans font-semibold tracking-wider uppercase">

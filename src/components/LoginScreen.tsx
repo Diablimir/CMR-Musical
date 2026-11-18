@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../lib/api';
 import { Shield, Lock, User, Eye, EyeOff, AlertCircle, Sparkles, LogIn } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -12,41 +13,24 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     const cleanUser = username.trim().toLowerCase();
-    const cleanPass = password;
-
-    if (!cleanUser || !cleanPass) {
+    if (!cleanUser || !password) {
       setError('Por favor, ingresa todos los campos.');
       return;
     }
 
     setIsLoading(true);
-
-    // Simulated network delay for a real premium feel
-    setTimeout(() => {
-      // Fetch current active users from localStorage
-      const savedUsersRaw = localStorage.getItem('flamo_users');
-      const savedUsers = savedUsersRaw ? JSON.parse(savedUsersRaw) : [
-        { id: 'usr-1', username: 'admin', name: 'Administrador Principal', role: 'Super Admin', password: 'flamo2026', created_at: '2026-07-13' },
-        { id: 'usr-2', username: 'vlad', name: 'Vlad Mendoza', role: 'Director de Booking', password: 'vlad2026', created_at: '2026-07-13' }
-      ];
-
-      // Validate credentials
-      const matchingUser = savedUsers.find(
-        (u: any) => u.username.toLowerCase() === cleanUser && u.password === cleanPass
-      );
-
-      if (matchingUser) {
-        onLogin(matchingUser.username);
-      } else {
-        setError('Usuario o contraseña incorrectos. Revisa las credenciales de acceso.');
-        setIsLoading(false);
-      }
-    }, 800);
+    try {
+      const { user } = await api.login(cleanUser, password);
+      onLogin(user.username);
+    } catch (err: any) {
+      setError(err.message || 'No se pudo iniciar sesión.');
+      setIsLoading(false);
+    }
   };
 
   return (
