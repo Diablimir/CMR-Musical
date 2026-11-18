@@ -1,48 +1,47 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/schema.php';
+require __DIR__ . '/entities.php';
 
-// Colecciones permitidas (cada una se guarda como un arreglo JSON completo).
-const COLLECTIONS = ['venues', 'artists', 'contacts', 'tours', 'events', 'contracts', 'providers', 'recording_projects'];
 const MAX_BYTES = 12 * 1024 * 1024;
 
 $user = require_login();
 $pdo = db();
+try {
+    ensure_schema($pdo);
+} catch (Throwable $e) {
+    respond(['error' => 'No se pudo preparar la base de datos. Revisa los permisos del usuario MySQL.'], 500);
+}
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $out = array_fill_keys(COLLECTIONS, []);
-    foreach ($pdo->query('SELECT name, data FROM collections') as $r) {
-        if (!in_array($r['name'], COLLECTIONS, true)) continue;
-        $decoded = json_decode($r['data'], true);
-        $out[$r['name']] = is_array($decoded) ? $decoded : [];
-    }
-    respond($out);
+    respond(load_all($pdo));
 }
 
-if ($method === 'PUT') {
-    $name = (string)($_GET['c'] ?? '');
-    if (!in_array($name, COLLECTIONS, true)) respond(['error' => 'Colección desconocida.'], 400);
+if ($method === 'POST' && ($_GET['action'] ?? '') === 'sync') {
     $raw = file_get_contents('php://input');
     if (strlen((string)$raw) > MAX_BYTES) respond(['error' => 'Datos demasiado grandes.'], 413);
     $in = json_decode((string)$raw, true);
-    if (!is_array($in) || !isset($in['data']) || !is_array($in['data'])) respond(['error' => 'Formato inválido.'], 400);
+    if (!is_array($in) || !isset($in['changes']) || !is_array($in['changes'])) respond(['error' => 'Formato inválido.'], 400);
 
-    $json = json_encode(array_values($in['data']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $now = gmdate('Y-m-d\TH:i:s\Z');
-    $pdo->beginTransaction();
-    $st = $pdo->prepare('UPDATE collections SET data = ?, updated_at = ?, updated_by = ? WHERE name = ?');
-    $st->execute([$json, $now, $user['username'], $name]);
-    if ($st->rowCount() === 0) {
-        $chk = $pdo->prepare('SELECT COUNT(*) FROM collections WHERE name = ?');
-        $chk->execute([$name]);
-        if ((int)$chk->fetchColumn() === 0) {
-            $pdo->prepare('INSERT INTO collections (name, data, updated_at, updated_by) VALUES (?,?,?,?)')
-                ->execute([$name, $json, $now, $user['username']]);
+    try {
+        $stats = apply_changes($pdo, $in['changes']);
+        respond(['ok' => true] + $stats);
+    } catch (SyncError $e) {
+        respond(['error' => $e->getMessage()], $e->httpCode);
+    } catch (PDOException $e) {
+        $driverCode = (int)($e->errorInfo[1] ?? 0);
+        if (($e->errorInfo[0] ?? '') === '23000') {
+            $msg = match ($driverCode) {
+                1451 => 'No se puede eliminar: hay registros relacionados (por ejemplo, un venue con eventos, o un artista con giras o eventos). Elimina primero lo relacionado.',
+                1452 => 'No se pudo guardar: hace referencia a un registro que no existe (artista, venue o gira).',
+                default => 'No se pudo guardar por una relación entre datos (por ejemplo, un venue con eventos no se puede eliminar).',
+            };
+            respond(['error' => $msg], 409);
         }
+        respond(['error' => 'Error al guardar en la base de datos.'], 500);
     }
-    $pdo->commit();
-    respond(['ok' => true, 'updated_at' => $now]);
 }
 
 respond(['error' => 'Método no permitido.'], 405);

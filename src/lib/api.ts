@@ -53,8 +53,9 @@ export const api = {
   logout: () => request<{ ok: true }>('/api/auth.php?action=logout', { method: 'POST' }),
 
   loadData: () => request<ServerData>('/api/data.php'),
-  saveCollection: (name: CollectionName, data: any[]) =>
-    request<{ ok: true }>(`/api/data.php?c=${name}`, { method: 'PUT', body: JSON.stringify({ data }) }),
+  // Envía solo los registros que cambiaron: { coleccion: { upserts: [...], deletes: [ids] } }
+  sync: (changes: Record<string, { upserts: any[]; deletes: string[] }>) =>
+    request<{ ok: true }>('/api/data.php?action=sync', { method: 'POST', body: JSON.stringify({ changes }) }),
 
   listUsers: () => request<{ users: UserAccount[] }>('/api/users.php'),
   createUser: (u: { username: string; name: string; role: string; password: string }) =>

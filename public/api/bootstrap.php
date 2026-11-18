@@ -34,6 +34,7 @@ function db(): PDO {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
+            if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') $pdo->exec('PRAGMA foreign_keys = ON');
         } catch (Throwable $e) {
             respond(['error' => 'No se pudo conectar a la base de datos.'], 500);
         }

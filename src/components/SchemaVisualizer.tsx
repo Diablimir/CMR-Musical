@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Database, Shield, Code, Table, Key, Info, TrendingUp, Sparkles, AlertTriangle, CheckCircle, Music, Award, HelpCircle, ArrowRight, UserCheck } from 'lucide-react';
 import { Event, Venue, Artist, Provider, Tour, Contract } from '../types';
+import { SCHEMA_TABLES, SCHEMA_SQL } from '../data/schemaSql';
 
 interface SchemaVisualizerProps {
   events?: Event[];
@@ -29,202 +30,9 @@ export default function SchemaVisualizer({
   const [activeTab, setActiveTab] = useState<'overview' | 'sql' | 'normalization' | 'decisions'>('overview');
   const [selectedArtistId, setSelectedArtistId] = useState<string>(artists[0]?.id || '');
 
-  const tables: SchemaTable[] = [
-    {
-      name: 'artistas',
-      description: 'Entidad principal del CRM. Almacena perfiles artísticos completos y stages de desarrollo.',
-      columns: [
-        { name: 'id', type: 'BINARY(16)', key: 'PK', notes: 'UUID v4 optimizado para indexación ultra-rápida (InnoDB).' },
-        { name: 'nombre_artistico', type: 'VARCHAR(150)', key: 'IDX', notes: 'Indexado para búsquedas instantáneas.' },
-        { name: 'nombre_legal', type: 'VARCHAR(255)', notes: 'Nombre real o de razón social.' },
-        { name: 'genero', type: 'VARCHAR(100)', notes: 'Género musical principal.' },
-        { name: 'id_etapa', type: 'TINYINT', key: 'FK', notes: 'Relaciona con cat_etapas_desarrollo (Reemplaza ENUM).' },
-        { name: 'manager', type: 'VARCHAR(150)', notes: 'Nombre o agencia de management.' },
-        { name: 'booking_agent', type: 'VARCHAR(150)', notes: 'Agente de booking comercial.' },
-        { name: 'isrc_default', type: 'VARCHAR(15)', notes: 'Código Internacional Estándar de Grabación.' },
-        { name: 'iswc_default', type: 'VARCHAR(15)', notes: 'Código Estándar de Obras Musicales.' },
-        { name: 'sociedad_gestion_id', type: 'TINYINT', key: 'FK', notes: 'SACM, ASCAP, BMI, etc.' },
-        { name: 'created_at', type: 'TIMESTAMP', notes: 'Sello de auditoría de creación.' },
-        { name: 'updated_at', type: 'TIMESTAMP', notes: 'Sello de auditoría de modificación.' },
-        { name: 'deleted_at', type: 'TIMESTAMP', notes: 'Soft Delete indexado. NULL para registros activos.' }
-      ],
-      indexes: [
-        'CREATE UNIQUE INDEX uidx_artistas_id ON artistas(id);',
-        'CREATE INDEX idx_artistas_nombre ON artistas(nombre_artistico);',
-        'CREATE INDEX idx_artistas_deleted ON artistas(deleted_at);'
-      ]
-    },
-    {
-      name: 'venues',
-      description: 'Recintos, bares, teatros y foros. Relacionado directamente con contacto_principal_id.',
-      columns: [
-        { name: 'id', type: 'BINARY(16)', key: 'PK', notes: 'UUID v4 optimizado.' },
-        { name: 'nombre', type: 'VARCHAR(150)', key: 'IDX', notes: 'Indexado para autocompletado y búsquedas.' },
-        { name: 'direccion', type: 'TEXT', notes: 'Dirección física completa.' },
-        { name: 'ciudad', type: 'VARCHAR(100)', key: 'IDX', notes: 'Indexado para filtros rápidos.' },
-        { name: 'estado', type: 'VARCHAR(100)', notes: 'Estado o provincia.' },
-        { name: 'latitud', type: 'DECIMAL(10,8)', notes: 'Coordenadas para integración de mapas.' },
-        { name: 'longitud', type: 'DECIMAL(11,8)', notes: 'Coordenadas para integración de mapas.' },
-        { name: 'rating', type: 'DECIMAL(2,1)', notes: 'Google Maps Place Rating.' },
-        { name: 'contacto_principal_id', type: 'BINARY(16)', key: 'FK', notes: 'Evita triggers complejos. Llave directa al contacto principal.' },
-        { name: 'created_at', type: 'TIMESTAMP', notes: 'Sello de auditoría.' },
-        { name: 'updated_at', type: 'TIMESTAMP', notes: 'Sello de auditoría.' },
-        { name: 'deleted_at', type: 'TIMESTAMP', notes: 'Soft Delete.' }
-      ],
-      indexes: [
-        'CREATE UNIQUE INDEX uidx_venues_id ON venues(id);',
-        'CREATE INDEX idx_venues_nombre ON venues(nombre);',
-        'CREATE INDEX idx_venues_ciudad ON venues(ciudad);',
-        'CREATE INDEX idx_venues_contacto_principal ON venues(contacto_principal_id);'
-      ]
-    },
-    {
-      name: 'contactos',
-      description: 'Agentes, promotores, directores técnicos y personal asignado a recintos.',
-      columns: [
-        { name: 'id', type: 'BINARY(16)', key: 'PK', notes: 'UUID v4.' },
-        { name: 'venue_id', type: 'BINARY(16)', key: 'FK', notes: 'Relaciona con venues(id). CASCADE en Soft Delete controlado.' },
-        { name: 'nombre', type: 'VARCHAR(150)', key: 'IDX', notes: 'Nombre completo.' },
-        { name: 'correo', type: 'VARCHAR(150)', key: 'IDX', notes: 'Indexado para búsquedas y autenticidad única.' },
-        { name: 'telefono', type: 'VARCHAR(25)', notes: 'Teléfono o WhatsApp.' },
-        { name: 'rol', type: 'VARCHAR(100)', notes: 'Booking, Técnico, Hospitalidad, etc.' }
-      ],
-      indexes: [
-        'CREATE UNIQUE INDEX uidx_contactos_id ON contactos(id);',
-        'CREATE INDEX idx_contactos_venue ON contactos(venue_id);',
-        'CREATE INDEX idx_contactos_correo ON contactos(correo);'
-      ]
-    },
-    {
-      name: 'eventos',
-      description: 'Shows, recitales y conciertos. Relaciona artistas, venues y tours con detalle financiero.',
-      columns: [
-        { name: 'id', type: 'BINARY(16)', key: 'PK', notes: 'UUID v4.' },
-        { name: 'nombre', type: 'VARCHAR(200)', notes: 'Nombre comercial del evento.' },
-        { name: 'artista_id', type: 'BINARY(16)', key: 'FK', notes: 'Llave foránea estricta a artistas(id). No texto libre.' },
-        { name: 'venue_id', type: 'BINARY(16)', key: 'FK', notes: 'Llave foránea estricta a venues(id).' },
-        { name: 'tour_id', type: 'BINARY(16)', key: 'FK', notes: 'Llave opcional (nullable) para agrupar en giras.' },
-        { name: 'fecha', type: 'DATE', key: 'IDX', notes: 'Indexado para reportes temporales cronológicos.' },
-        { name: 'capacidad', type: 'INT', notes: 'Aforo máximo permitido por producción.' },
-        { name: 'asistencia', type: 'INT', notes: 'Boletos pagados / cortesías ingresadas.' },
-        { name: 'precio_boleto', type: 'DECIMAL(10,2)', notes: 'Precio de admisión promedio.' },
-        { name: 'ingreso_total', type: 'DECIMAL(12,2)', notes: 'Suma bruta de taquilla.' },
-        { name: 'gastos_totales', type: 'DECIMAL(12,2)', notes: 'Costos de producción, rider y viáticos.' },
-        { name: 'utilidad', type: 'DECIMAL(12,2)', notes: 'Cálculo indexado de ganancia neta.' }
-      ],
-      indexes: [
-        'CREATE INDEX idx_eventos_artista ON eventos(artista_id);',
-        'CREATE INDEX idx_eventos_venue ON eventos(venue_id);',
-        'CREATE INDEX idx_eventos_fecha ON eventos(fecha);',
-        'CREATE INDEX idx_eventos_tour ON eventos(tour_id);'
-      ]
-    }
-  ];
-
-  const rawSQL = `
--- ==========================================
--- FLAMO CRM ENTERPRISE POSTGRES/MYSQL SCHEMA
--- DESIGNED BY: PRINCIPAL SOFTWARE ARCHITECT
--- FEATURES: BINARY UUIDs, SOFT DELETES, ENUM ELIMINATION
--- ==========================================
-
--- Catalogs (Replaces Fragile ENUMS)
-CREATE TABLE cat_etapas_desarrollo (
-    id TINYINT PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL UNIQUE
-);
-
-INSERT INTO cat_etapas_desarrollo (id, nombre) VALUES
-(1, 'Desarrollo'), (2, 'Aficionado'), (3, 'Emergente'), 
-(4, 'Media carrera'), (5, 'Consolidado'), (6, 'Consagrado'), (7, 'Internacional');
-
--- Main Tables
-CREATE TABLE artistas (
-    id BINARY(16) NOT NULL PRIMARY KEY,
-    nombre_artistico VARCHAR(150) NOT NULL,
-    nombre_legal VARCHAR(255),
-    genero VARCHAR(100),
-    etapa_id TINYINT NOT NULL,
-    manager VARCHAR(150),
-    booking_agent VARCHAR(150),
-    isrc_default VARCHAR(15),
-    iswc_default VARCHAR(15),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (etapa_id) REFERENCES cat_etapas_desarrollo(id)
-);
-
-CREATE TABLE venues (
-    id BINARY(16) NOT NULL PRIMARY KEY,
-    nombre VARCHAR(150) NOT NULL,
-    direccion TEXT,
-    ciudad VARCHAR(100) NOT NULL,
-    estado VARCHAR(100),
-    pais VARCHAR(100) DEFAULT 'México',
-    latitud DECIMAL(10,8),
-    longitud DECIMAL(11,8),
-    rating DECIMAL(2,1),
-    contacto_principal_id BINARY(16) NULL, -- Lazy linkage to prevent cyclic dependency
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL DEFAULT NULL
-);
-
-CREATE TABLE contactos (
-    id BINARY(16) NOT NULL PRIMARY KEY,
-    venue_id BINARY(16) NOT NULL,
-    nombre VARCHAR(150) NOT NULL,
-    correo VARCHAR(150) NOT NULL UNIQUE,
-    telefono VARCHAR(25),
-    rol VARCHAR(100),
-    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
-);
-
--- Finish cyclic link for Venue Principal Contact
-ALTER TABLE venues ADD CONSTRAINT fk_venues_principal_contact 
-FOREIGN KEY (contacto_principal_id) REFERENCES contactos(id) ON DELETE SET NULL;
-
-CREATE TABLE tours (
-    id BINARY(16) NOT NULL PRIMARY KEY,
-    artista_id BINARY(16) NOT NULL,
-    nombre VARCHAR(150) NOT NULL,
-    fecha_inicio DATE NOT NULL,
-    fecha_fin DATE NOT NULL,
-    status VARCHAR(50) DEFAULT 'Planning',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (artista_id) REFERENCES artistas(id)
-);
-
-CREATE TABLE eventos (
-    id BINARY(16) NOT NULL PRIMARY KEY,
-    nombre VARCHAR(200) NOT NULL,
-    artista_id BINARY(16) NOT NULL,
-    venue_id BINARY(16) NOT NULL,
-    tour_id BINARY(16) NULL,
-    fecha DATE NOT NULL,
-    capacidad INT DEFAULT 0,
-    asistencia INT DEFAULT 0,
-    precio_boleto DECIMAL(10,2) DEFAULT 0.00,
-    ingreso_total DECIMAL(12,2) GENERATED ALWAYS AS (asistencia * precio_boleto) STORED,
-    gastos_totales DECIMAL(12,2) DEFAULT 0.00,
-    utilidad DECIMAL(12,2) GENERATED ALWAYS AS ((asistencia * precio_boleto) - gastos_totales) STORED,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (artista_id) REFERENCES artistas(id),
-    FOREIGN KEY (venue_id) REFERENCES venues(id),
-    FOREIGN KEY (tour_id) REFERENCES tours(id)
-);
-
--- High Performance Indexes
-CREATE INDEX idx_artistas_nombre ON artistas(nombre_artistico);
-CREATE INDEX idx_venues_nombre ON venues(nombre);
-CREATE INDEX idx_venues_ciudad ON venues(ciudad);
-CREATE INDEX idx_contactos_correo ON contactos(correo);
-CREATE INDEX idx_eventos_fecha ON eventos(fecha);
-CREATE INDEX idx_eventos_artista_fecha ON eventos(artista_id, fecha);
-`;
+  // Estructura real de la base (generada desde public/api/schema.php)
+  const tables: SchemaTable[] = SCHEMA_TABLES;
+  const rawSQL = SCHEMA_SQL;
 
   return (
     <div className="bg-zinc-950 rounded-xl border border-zinc-800 p-6 overflow-hidden">
@@ -285,7 +93,7 @@ CREATE INDEX idx_eventos_artista_fecha ON eventos(artista_id, fecha);
                     <span className="font-mono text-sm font-semibold text-zinc-100">{table.name}</span>
                   </div>
                   <span className="text-[10px] uppercase tracking-wider font-mono px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-full">
-                    InnoDB / PostgreSQL
+                    MySQL / InnoDB
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400 mb-4">{table.description}</p>
@@ -343,10 +151,10 @@ CREATE INDEX idx_eventos_artista_fecha ON eventos(artista_id, fecha);
           <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800/60">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-4 h-4 text-emerald-400" />
-              <h3 className="font-semibold text-zinc-100 font-sans">1. UUID en Formato BINARY(16) vs CHAR(36)</h3>
+              <h3 className="font-semibold text-zinc-100 font-sans">1. Identificadores de texto generados por la aplicación</h3>
             </div>
             <p className="text-zinc-400 text-[11px]">
-              Almacenar UUIDs como cadenas de texto <code className="text-amber-400 font-mono">CHAR(36)</code> genera una fragmentación severa del índice agrupado (B-Tree) en bases de datos con millones de registros, debido a su naturaleza aleatoria no secuencial. Rediseñamos el esquema para utilizar <code className="text-amber-400 font-mono">BINARY(16)</code> en la persistencia real, reduciendo el consumo de disco de 36 bytes a 16 bytes y acelerando los JOINs comerciales por un factor de hasta 4.2x.
+              Cada registro usa un identificador de texto (<code className="text-amber-400 font-mono">VARCHAR(40)</code>, por ejemplo <code className="text-amber-400 font-mono">ven-1731…</code>) que genera la propia interfaz. Es la llave primaria y la base de todas las llaves foráneas. Se eligió sobre <code className="text-amber-400 font-mono">BINARY(16)</code> porque no obliga a convertir ids en cada lectura y escritura, y a la escala de un CRM de management el rendimiento es equivalente.
             </p>
           </div>
 
@@ -376,8 +184,7 @@ CREATE INDEX idx_eventos_artista_fecha ON eventos(artista_id, fecha);
               <h3 className="font-semibold text-zinc-100 font-sans">4. Soft Deletes e Integridad Histórica</h3>
             </div>
             <p className="text-zinc-400 text-[11px]">
-              La pérdida de registros financieros o históricos de eventos es un riesgo crítico en cualquier CRM musical. Aplicamos Soft Deletes generalizados mediante campos <code className="text-amber-400 font-mono">deleted_at</code> en todas las tablas transaccionales. Los recintos se ocultan inmediatamente del panel del usuario en el frontend, pero sus métricas históricas de taquilla y shows quedan preservadas en la base de datos para análisis e inteligencia de negocios.
-            </p>
+              La pérdida de registros financieros o históricos es un riesgo crítico en un CRM musical. Las tablas <code className="text-amber-400 font-mono">artistas</code>, <code className="text-amber-400 font-mono">venues</code>, <code className="text-amber-400 font-mono">tours</code> y <code className="text-amber-400 font-mono">eventos</code> incluyen <code className="text-amber-400 font-mono">deleted_at</code>: un artista eliminado se oculta del portafolio pero conserva su historial. Además, las llaves foráneas impiden borrar un venue o un artista que todavía tiene eventos o giras, y el servidor avisa con un mensaje claro en lugar de dejar datos huérfanos.</p>
           </div>
         </div>
       )}

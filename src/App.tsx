@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import { Artist, Venue, Contact, Event, Tour, FilterState, Contract, UserAccount, Provider, RecordingProject } from './types';
 
-import { api, integrations, CollectionName } from './lib/api';
+import { api, integrations, CollectionName, COLLECTION_NAMES } from './lib/api';
 import GlobalFilters from './components/GlobalFilters';
 import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
@@ -36,7 +36,14 @@ export default function App() {
 
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const lastSaved = useRef<Record<string, string>>({});
+  // Copia de lo último que el servidor tiene (id → JSON), para enviar solo lo que cambia
+  type Snapshot = Record<CollectionName, Map<string, string>>;
+  const emptySnapshot = (): Snapshot => Object.fromEntries(COLLECTION_NAMES.map((n) => [n, new Map<string, string>()])) as Snapshot;
+  const snapshotOf = (arr: any[]) => new Map<string, string>(arr.filter((x) => x && x.id).map((x) => [x.id as string, JSON.stringify(x)]));
+  const snapshot = useRef<Snapshot>(emptySnapshot());
+  const syncChain = useRef<Promise<void>>(Promise.resolve());
+  const retryTimer = useRef<number | null>(null);
+  const stateRef = useRef<Record<CollectionName, any[]>>({ venues: [], artists: [], contacts: [], tours: [], events: [], contracts: [], providers: [], recording_projects: [] });
 
   // 2. Navigation Tab State
   const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'database' | 'providers' | 'production'>('inicio');
@@ -100,7 +107,7 @@ export default function App() {
       setCurrentUser('');
       setCurrentRole('');
       setDataLoaded(false);
-      lastSaved.current = {};
+      snapshot.current = emptySnapshot();
       setVenues([]); setArtists([]); setContacts([]); setTours([]);
       setEvents([]); setContracts([]); setProviders([]); setRecordingProjects([]);
     });
@@ -114,6 +121,13 @@ export default function App() {
       .finally(() => setAuthChecked(true));
   }, []);
 
+  const applyServerData = (d: Awaited<ReturnType<typeof api.loadData>>) => {
+    snapshot.current = Object.fromEntries(COLLECTION_NAMES.map((n) => [n, snapshotOf(d[n])])) as Snapshot;
+    setVenues(d.venues); setArtists(d.artists); setContacts(d.contacts); setTours(d.tours);
+    setEvents(d.events); setContracts(d.contracts); setProviders(d.providers);
+    setRecordingProjects(d.recording_projects);
+  };
+
   // Cargar datos y usuarios cuando hay sesión
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -121,45 +135,60 @@ export default function App() {
     Promise.all([api.loadData(), api.listUsers()])
       .then(([d, u]) => {
         if (cancelled) return;
-        lastSaved.current = {
-          venues: JSON.stringify(d.venues), artists: JSON.stringify(d.artists),
-          contacts: JSON.stringify(d.contacts), tours: JSON.stringify(d.tours),
-          events: JSON.stringify(d.events), contracts: JSON.stringify(d.contracts),
-          providers: JSON.stringify(d.providers), recording_projects: JSON.stringify(d.recording_projects),
-        };
-        setVenues(d.venues); setArtists(d.artists); setContacts(d.contacts); setTours(d.tours);
-        setEvents(d.events); setContracts(d.contracts); setProviders(d.providers);
-        setRecordingProjects(d.recording_projects);
+        applyServerData(d);
         setUsers(u.users);
         setDataLoaded(true);
       })
       .catch((e) => {
         if (e.status === 401) setIsLoggedIn(false);
-        else setSyncError('No se pudieron cargar los datos del servidor.');
+        else setSyncError(e.message || 'No se pudieron cargar los datos del servidor.');
       });
     return () => { cancelled = true; };
   }, [isLoggedIn]);
 
-  // Guardar en el servidor (con pequeña espera) cuando cambia una colección
+  stateRef.current = { venues, artists, contacts, tours, events, contracts, providers, recording_projects: recordingProjects };
+
+  // Envía al servidor solo los registros nuevos, modificados o eliminados (en cola, de uno en uno)
+  const flushChanges = () => {
+    syncChain.current = syncChain.current.then(async () => {
+      const cur = stateRef.current;
+      const changes: Record<string, { upserts: any[]; deletes: string[] }> = {};
+      const next = emptySnapshot();
+      let any = false;
+      for (const name of COLLECTION_NAMES) {
+        const arr = cur[name].filter((x) => x && x.id);
+        const now = snapshotOf(arr);
+        const before = snapshot.current[name];
+        const upserts = arr.filter((x) => before.get(x.id) !== now.get(x.id));
+        const deletes = [...before.keys()].filter((id) => !now.has(id));
+        if (upserts.length || deletes.length) { changes[name] = { upserts, deletes }; any = true; }
+        next[name] = now;
+      }
+      if (!any) return;
+      try {
+        await api.sync(changes);
+        snapshot.current = next;
+        setSyncError(null);
+      } catch (e: any) {
+        if (e.status === 401) { setIsLoggedIn(false); return; }
+        if (e.status && e.status >= 400 && e.status < 500) {
+          // El servidor rechazó el cambio (p. ej. un venue con eventos): se restablece lo guardado.
+          try { applyServerData(await api.loadData()); } catch { /* se reintentará */ }
+          setSyncError(e.message);
+          window.setTimeout(() => setSyncError(null), 9000);
+          return;
+        }
+        setSyncError('No se pudo guardar en el servidor. Reintentando…');
+        if (retryTimer.current === null) {
+          retryTimer.current = window.setTimeout(() => { retryTimer.current = null; flushChanges(); }, 5000);
+        }
+      }
+    });
+  };
+
   useEffect(() => {
     if (!dataLoaded) return;
-    const t = setTimeout(() => {
-      const current: Record<CollectionName, any[]> = {
-        venues, artists, contacts, tours, events, contracts, providers, recording_projects: recordingProjects,
-      };
-      (Object.keys(current) as CollectionName[]).forEach((name) => {
-        const json = JSON.stringify(current[name]);
-        if (lastSaved.current[name] === json) return;
-        lastSaved.current[name] = json;
-        api.saveCollection(name, current[name])
-          .then(() => setSyncError(null))
-          .catch((e) => {
-            delete lastSaved.current[name]; // reintentar en el siguiente cambio
-            if (e.status === 401) setIsLoggedIn(false);
-            else setSyncError('No se pudo guardar en el servidor. Revisa tu conexión.');
-          });
-      });
-    }, 700);
+    const t = setTimeout(flushChanges, 600);
     return () => clearTimeout(t);
   }, [dataLoaded, venues, artists, contacts, tours, events, contracts, providers, recordingProjects]);
 
