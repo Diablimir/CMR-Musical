@@ -62,7 +62,8 @@ export default function LeafletMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'standard'>('dark');
+  // Un único estilo, claro y a color (OpenStreetMap estándar): es el más legible.
+  const mapStyle = 'standard' as 'dark' | 'light' | 'standard';
 
   // Tile layers mapping
   const tileLayers = {
@@ -363,51 +364,13 @@ export default function LeafletMap({
 
   return (
     <div className="relative isolate z-0 w-full h-full flex flex-col bg-zinc-950">
-      {/* Map style toggle overlay */}
-      <div className="absolute top-3 right-3 z-[1000] flex bg-zinc-900/90 border border-zinc-800 rounded-xl p-1 shadow-md backdrop-blur-xs">
-        <button
-          onClick={() => setMapStyle('dark')}
-          className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-            mapStyle === 'dark'
-              ? 'bg-zinc-800 text-amber-400 border border-zinc-700'
-              : 'text-zinc-400 hover:text-zinc-200'
-          }`}
-          title="Mapa Oscuro"
-        >
-          <span>Oscuro</span>
-        </button>
-        <button
-          onClick={() => setMapStyle('light')}
-          className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-            mapStyle === 'light'
-              ? 'bg-zinc-800 text-amber-400 border border-zinc-700'
-              : 'text-zinc-400 hover:text-zinc-200'
-          }`}
-          title="Mapa Claro"
-        >
-          <span>Claro</span>
-        </button>
-        <button
-          onClick={() => setMapStyle('standard')}
-          className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-            mapStyle === 'standard'
-              ? 'bg-zinc-800 text-amber-400 border border-zinc-700'
-              : 'text-zinc-400 hover:text-zinc-200'
-          }`}
-          title="OpenStreetMap Standard"
-        >
-          <Globe className="w-3 h-3" />
-          <span>Físico</span>
-        </button>
-      </div>
-
       {/* Leaflet instance element */}
       <div ref={mapContainerRef} className="w-full h-full flex-1 rounded-lg overflow-hidden" />
 
       {/* Embedded style overrides for Leaflet Popups & Zoom to blend into the app's clean aesthetics */}
       <style>{`
         .leaflet-container {
-          background-color: #090d0f !important;
+          background-color: #e5e7eb !important;
           outline: none;
         }
         .custom-leaflet-popup .leaflet-popup-content-wrapper {
