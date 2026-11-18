@@ -1,4 +1,5 @@
 import { integrations } from '../lib/api';
+import PhotoPicker from './PhotoPicker';
 import React, { useState } from 'react';
 import {
   Artist, Event, Venue, Tour, PipelineItem, HistoryEvent, Contract, RecordingProject, MemberHistory
@@ -2615,35 +2616,9 @@ DOCUMENTO OFICIAL DIGITALIZADO Y GUARDADO EN EL CRM`}
                 </div>
               </div>
 
-              {/* Drag and Drop Mock File Selector */}
-              <div className="w-full bg-white border border-dashed border-slate-200 rounded-xl p-3 text-center shadow-3xs">
-                <Upload className="w-4 h-4 text-celestial-canvas mx-auto mb-1" />
-                <span className="font-bold text-slate-700 text-[10px] block">Simular Carga de Fotografía Local</span>
-                <p className="text-[9px] text-slate-400 mt-0.5 mb-1.5">Arrastre un archivo o haga clic para procesar imagen de prensa</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={() => {
-                    // Simulate random professional unsplash photo on file select to give real functional experience
-                    const simulatedPhotos = [
-                      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=80',
-                      'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=80',
-                      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=80',
-                      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=500&auto=format&fit=crop&q=80'
-                    ];
-                    const rand = simulatedPhotos[Math.floor(Math.random() * simulatedPhotos.length)];
-                    setPhotoUrlInput(rand);
-                    alert('¡Archivo de imagen procesado y cargado en el editor de forma segura!');
-                  }}
-                  className="hidden"
-                  id="simulated-file-upload"
-                />
-                <label
-                  htmlFor="simulated-file-upload"
-                  className="inline-block bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[9px] font-bold px-2 py-1 rounded cursor-pointer transition-all uppercase"
-                >
-                  Examinar Archivo
-                </label>
+              {/* Subida real de fotografía */}
+              <div className="w-full bg-white border border-dashed border-slate-200 rounded-xl p-3 shadow-3xs">
+                <PhotoPicker value={photoUrlInput} onChange={setPhotoUrlInput} label="Subir desde tu equipo" />
               </div>
             </div>
 

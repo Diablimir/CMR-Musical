@@ -1,3 +1,4 @@
+import PhotoPicker from './PhotoPicker';
 import React, { useState } from 'react';
 import { X, UserPlus, Music, MapPin, Sparkles } from 'lucide-react';
 import { Artist, ArtistStage } from '../types';
@@ -212,18 +213,7 @@ export default function AddArtistModal({ isOpen, onClose, onAddArtist }: AddArti
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              URL Foto de Perfil (Opcional)
-            </label>
-            <input
-              type="url"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-slate-50 border border-silver-haze focus:border-celestial-canvas rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none transition-all font-mono"
-            />
-          </div>
+          <PhotoPicker value={photoUrl} onChange={setPhotoUrl} />
 
           <div className="pt-2">
             <button

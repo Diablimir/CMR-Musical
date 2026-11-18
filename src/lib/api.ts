@@ -33,6 +33,19 @@ export const integrations = {
     request<any>('/api/calendar.php?action=sync-all', { method: 'POST', body: JSON.stringify({ events }) }),
 };
 
+export async function uploadImage(file: Blob, filename = 'foto.jpg'): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, filename);
+  // Sin Content-Type: el navegador añade el boundary del multipart.
+  const res = await fetch('/api/upload.php', {
+    method: 'POST', body: form, credentials: 'same-origin', headers: { 'X-Requested-With': 'flamo' },
+  });
+  let payload: any = null;
+  try { payload = await res.json(); } catch { /* vacío */ }
+  if (!res.ok) throw new Error(payload?.error || `No se pudo subir la imagen (${res.status}).`);
+  return payload.url as string;
+}
+
 export const api = {
   me: () => request<{ user: UserAccount }>('/api/auth.php?action=me'),
   login: (username: string, password: string) =>
