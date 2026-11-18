@@ -1,4 +1,4 @@
-# Bloquea el acceso directo a los archivos de configuración
-<FilesMatch "^(config\.php|config\.sample\.php|bootstrap\.php)$">
+# Bloquea el acceso directo a archivos internos y de configuración
+<FilesMatch "^(config\.php|config\.sample\.php|bootstrap\.php|schema\.php|entities\.php)$">
   Require all denied
 </FilesMatch>
