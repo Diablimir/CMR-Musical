@@ -22,6 +22,7 @@ interface ArtistProfileProps {
   contracts?: Contract[];
   onAddContract?: (contract: Contract) => void;
   recordingProjects?: RecordingProject[];
+  showDevInfo?: boolean;
 }
 
 export default function ArtistProfile({
@@ -33,7 +34,8 @@ export default function ArtistProfile({
   onDeleteArtist,
   contracts = [],
   onAddContract,
-  recordingProjects = []
+  recordingProjects = [],
+  showDevInfo = false
 }: ArtistProfileProps) {
   const [activeSubTab, setActiveSubTab] = useState<'360' | 'pipeline' | 'contracts' | 'shows' | 'history' | 'social'>('360');
   const [isSyncingSocial, setIsSyncingSocial] = useState(false);
@@ -1563,7 +1565,8 @@ export default function ArtistProfile({
                 </div>
 
                 {/* 2. DATABASE SCHEMA BLUEPRINT */}
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 shadow-sm space-y-4">
+                {showDevInfo && (
+<div className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 shadow-sm space-y-4">
                   <div className="space-y-1">
                     <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Database className="w-4 h-4 text-indigo-600" />
@@ -1690,6 +1693,7 @@ export default function ArtistProfile({
                     </div>
                   )}
                 </div>
+)}
               </div>
             </div>
           )}

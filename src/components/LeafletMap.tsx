@@ -257,6 +257,10 @@ export default function LeafletMap({
 
       marker.bindPopup(popupContent, {
         closeButton: false,
+        maxWidth: 220,
+        minWidth: 150,
+        keepInView: true,
+        autoPanPadding: [40, 40],
         className: 'custom-leaflet-popup'
       });
 
@@ -292,6 +296,29 @@ export default function LeafletMap({
       activeTimeouts.forEach(id => clearTimeout(id));
     };
   }, [venues, selectedVenueId, singleVenueHighlight]);
+
+  // Encuadra el mapa cuando cambia el conjunto de venues (alta o baja en tiempo real)
+  const venueKey = venues
+    .filter(v => Number(v.lat) && Number(v.lng))
+    .map(v => `${v.id}:${Number(v.lat).toFixed(4)},${Number(v.lng).toFixed(4)}`)
+    .sort()
+    .join('|');
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || singleVenueHighlight || !venueKey) return;
+    const pts = venues
+      .filter(v => Number(v.lat) && Number(v.lng))
+      .map(v => [Number(v.lat), Number(v.lng)] as [number, number]);
+    if (!pts.length) return;
+    const t = window.setTimeout(() => {
+      try {
+        map.invalidateSize({ animate: false });
+        if (pts.length === 1) map.setView(pts[0], 12, { animate: false });
+        else map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 12, animate: false });
+      } catch { /* ignore */ }
+    }, 150);
+    return () => clearTimeout(t);
+  }, [venueKey, mapStyle, singleVenueHighlight]);
 
   // Center on selected venue when selectedVenueId changes (specifically for lists)
   useEffect(() => {
@@ -335,7 +362,7 @@ export default function LeafletMap({
   }, []);
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-zinc-950">
+    <div className="relative isolate z-0 w-full h-full flex flex-col bg-zinc-950">
       {/* Map style toggle overlay */}
       <div className="absolute top-3 right-3 z-[1000] flex bg-zinc-900/90 border border-zinc-800 rounded-xl p-1 shadow-md backdrop-blur-xs">
         <button

@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { Shield, Lock, User, Eye, EyeOff, AlertCircle, LogIn } from 'lucide-react';
 
 interface LoginScreenProps {
-  onLogin: (username: string) => void;
+  onLogin: (user: { username: string; role: string }) => void;
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -26,7 +26,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setIsLoading(true);
     try {
       const { user } = await api.login(cleanUser, password);
-      onLogin(user.username);
+      onLogin({ username: user.username, role: user.role });
     } catch (err: any) {
       setError(err.message || 'No se pudo iniciar sesión.');
       setIsLoading(false);

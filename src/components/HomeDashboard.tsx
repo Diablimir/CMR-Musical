@@ -137,7 +137,7 @@ export default function HomeDashboard({
   };
 
   // Get status state for each venue based on events
-  const venuesWithStatus = venues.map(v => {
+  const venuesWithStatus = React.useMemo(() => venues.map(v => {
     // Find all events associated with this venue (active, non-deleted)
     const venueEvents = allEvents.filter(e => e.venueId === v.id && !e.deleted_at);
     
@@ -158,7 +158,7 @@ export default function HomeDashboard({
       completedCount: venueEvents.filter(e => e.status === 'Completed').length,
       upcomingCount: venueEvents.filter(e => e.status === 'Confirmed' || e.status === 'Draft').length,
     };
-  });
+    }), [venues, allEvents]);
 
   // Selected venue details for the side-panel
   const selectedVenueDetail = venuesWithStatus.find(v => v.id === selectedVenueId);
@@ -428,7 +428,9 @@ export default function HomeDashboard({
 
             {/* Scale/Disclaimer */}
             <div className="text-[8px] font-mono text-slate-500 text-center">
-              Coordenadas geográficas mapeadas en tiempo real para Lunario, C3 Stage, Café Iguana, Teatro Metropólitan y Foro Indie Rocks.
+              {venuesWithStatus.filter(v => Number(v.lat) && Number(v.lng)).length > 0
+                ? `${venuesWithStatus.filter(v => Number(v.lat) && Number(v.lng)).length} recinto(s) en el mapa. Se actualiza al agregar o eliminar venues.`
+                : 'Aún no hay recintos con coordenadas. Agrega un venue en la pestaña Venues y aparecerá aquí.'}
             </div>
           </div>
 

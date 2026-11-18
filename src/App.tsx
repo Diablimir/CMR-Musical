@@ -46,19 +46,27 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<string>('');
+  const [currentRole, setCurrentRole] = useState<string>('');
+  const isAdmin = currentRole === 'Super Admin';
   const [users, setUsers] = useState<UserAccount[]>([]);
 
   const [developerMode, setDeveloperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('flamo_developer_mode');
-    return saved !== null ? saved === 'true' : true; // Default true so they see it initially but can toggle it off
+    return saved === 'true';
   });
+
+  const devVisible = isAdmin && developerMode;
 
   useEffect(() => {
     localStorage.setItem('flamo_developer_mode', developerMode ? 'true' : 'false');
-    if (!developerMode && activeWorkspace === 'database') {
+  }, [developerMode]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if ((activeWorkspace === 'database' && !devVisible) || (activeWorkspace === 'users' && !isAdmin)) {
       setActiveWorkspace('inicio');
     }
-  }, [developerMode, activeWorkspace]);
+  }, [isLoggedIn, isAdmin, devVisible, activeWorkspace]);
 
   const refreshUsers = async () => {
     try {
@@ -90,6 +98,7 @@ export default function App() {
     api.logout().catch(() => {}).finally(() => {
       setIsLoggedIn(false);
       setCurrentUser('');
+      setCurrentRole('');
       setDataLoaded(false);
       lastSaved.current = {};
       setVenues([]); setArtists([]); setContacts([]); setTours([]);
@@ -100,7 +109,7 @@ export default function App() {
   // Restaurar sesión al abrir la app
   useEffect(() => {
     api.me()
-      .then(({ user }) => { if (user) { setCurrentUser(user.username); setIsLoggedIn(true); } })
+      .then(({ user }) => { if (user) { setCurrentUser(user.username); setCurrentRole(user.role); setIsLoggedIn(true); } })
       .catch(() => {})
       .finally(() => setAuthChecked(true));
   }, []);
@@ -434,7 +443,8 @@ export default function App() {
 
   if (!isLoggedIn) {
     return <LoginScreen onLogin={(user) => {
-      setCurrentUser(user);
+      setCurrentUser(user.username);
+      setCurrentRole(user.role);
       setIsLoggedIn(true);
     }} />;
   }
@@ -473,6 +483,7 @@ export default function App() {
             {/* Dev Mode & Admin stacked vertically */}
             <div className="flex flex-col items-end gap-1">
               {/* Developer mode toggle & Clear data */}
+              {isAdmin && (
               <div className="flex items-center gap-1.5 scale-90 origin-right">
                 <button
                   onClick={handleClearAllData}
@@ -499,6 +510,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
+              )}
 
               {/* User Account Details (Admin below) */}
               <div 
@@ -554,7 +566,7 @@ export default function App() {
           { id: 'legal', label: 'Legal', icon: FileText },
           { id: 'users', label: 'Usuarios', icon: UserCheck },
           { id: 'database', label: 'Esquema & DB', icon: Database },
-        ].filter((tab) => tab.id !== 'database' || developerMode).map((tab) => {
+        ].filter((tab) => (tab.id !== 'database' || devVisible) && (tab.id !== 'users' || isAdmin)).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeWorkspace === tab.id;
           return (
@@ -694,7 +706,7 @@ export default function App() {
                       { id: 'legal', label: 'Contratos / Legal', desc: 'Suite jurídica y documentos', icon: FileText },
                       { id: 'users', label: 'Usuarios', desc: 'Control de acceso de personal', icon: UserCheck },
                       { id: 'database', label: 'Esquema & DB', desc: 'Estructura relacional de tablas', icon: Database, isDevOnly: true },
-                    ].filter(tab => !tab.isDevOnly || developerMode).map((tab) => {
+                    ].filter(tab => (!tab.isDevOnly || devVisible) && (tab.id !== 'users' || isAdmin)).map((tab) => {
                       const Icon = tab.icon;
                       const isActive = activeWorkspace === tab.id;
                       return (
@@ -1148,6 +1160,7 @@ export default function App() {
             <div className="lg:col-span-3">
               {currentArtist ? (
                 <ArtistProfile
+                  showDevInfo={devVisible}
                   artist={currentArtist}
                   events={events}
                   venues={venues}
