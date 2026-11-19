@@ -7,7 +7,8 @@ require __DIR__ . '/social_lib.php';
 // Historial de redes sociales y acciones de un artista.
 //   GET  ?artist_id=…                      → { metrics: [...], actions: [...] }
 //   POST ?action=metric                    → guarda/reemplaza la captura (manual) de un día
-//   POST ?action=fetch                     → consulta Apify (instagram/tiktok) y guarda la captura de hoy
+//   POST ?action=fetch                     → consulta Apify (instagram/tiktok/youtube/facebook) y guarda la captura de hoy
+//   POST ?action=refresh                   → actualiza solo lo que aún no tiene captura de hoy (se llama al abrir la pantalla)
 //   POST ?action=metric_delete             → borra la captura de un día
 //   POST ?action=action_save | action_delete → bitácora de acciones
 $user = require_login();
@@ -56,13 +57,17 @@ try {
         if (!in_array($platform, SOCIAL_NETS, true)) respond(['error' => 'Red social no válida.'], 400);
         $handle = social_handle((string)($in['handle'] ?? ''));
         if ($handle === '') {   // por defecto, el enlace guardado del artista para esa red
-            $st = $pdo->prepare('SELECT enlace FROM artista_redes WHERE artista_id = ? AND plataforma = ?'); $st->execute([$aid, $platform]);
-            $handle = social_handle((string)($st->fetchColumn() ?: ''));
+            $handle = social_artist_handle($pdo, $aid, $platform);
         }
         $r = social_apify_fetch($platform, $handle);
         if (!$r['ok']) respond(['error' => $r['error']], 422);
         social_save_snapshot($pdo, $aid, $platform, gmdate('Y-m-d'), $r['data'], 'apify');
         respond(['ok' => true, 'handle' => $handle, 'captured' => $r['data']] + load_social($pdo, $aid));
+    }
+    if ($action === 'refresh') {   // actualización automática al abrir la pantalla (solo lo que aún no tiene captura de hoy)
+        set_time_limit(240);
+        $r = social_refresh_artist($pdo, $aid, !empty($in['force']));
+        respond(['ok' => true] + $r + load_social($pdo, $aid));
     }
     if ($action === 'metric_delete') {
         $st = $pdo->prepare('DELETE FROM artista_metricas_redes WHERE artista_id = ? AND plataforma = ? AND fecha = ?');

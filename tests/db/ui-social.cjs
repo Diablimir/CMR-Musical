@@ -38,11 +38,20 @@ const day = (off) => new Date(Date.now() + off * 86400000).toISOString().slice(0
   await p.getByRole('button', { name: /Audiencia/ }).first().click(); await p.waitForTimeout(1200);
   const s0 = await p.getByTestId('social-metrics').innerText();
   check('sin capturas: dice «Sin datos» y NO muestra cifras inventadas', s0.includes('Sin datos') && !/54\s*%|42\s*%|50\.?0?K|132/.test(s0), s0.slice(0, 200));
-  await p.getByTestId('net-instagram').getByRole('button', { name: /Actualizar ahora/ }).click(); await p.waitForTimeout(2500); await p.screenshot({ path: '/tmp/dbg2.png', fullPage: true });
-  check('«Actualizar ahora» sin Apify configurado: error claro y no guarda nada', (await p.getByRole('alert').innerText()).includes('Apify no está configurado') && q('SELECT COUNT(*) FROM artista_metricas_redes') === '0');
+  await p.waitForTimeout(2500);
+  check('al abrir la pantalla se intenta conectar solo (sin pedir datos) y, sin Apify, el error sale en la tarjeta', (await p.getByTestId('net-error-instagram').innerText()).includes('Apify no está configurado') && q('SELECT COUNT(*) FROM artista_metricas_redes') === '0');
+  check('la tarjeta ofrece «Reintentar» y dice que se actualiza sola', (await p.getByTestId('net-instagram').innerText()).includes('Reintentar') && (await p.getByTestId('net-instagram').innerText()).includes('Se actualiza sola'));
+  // agregar una red nueva: solo usuario o enlace, sin números
+  await p.getByLabel('Agregar red').selectOption('tiktok');
+  check('al elegir la red pide SOLO el usuario o enlace (no seguidores)', await p.getByLabel('Usuario o enlace de la nueva red').isVisible() && !(await p.getByTestId('manual-form').count()));
+  await p.getByLabel('Usuario o enlace de la nueva red').fill('https://www.tiktok.com/@qa.tt');
+  await p.getByRole('button', { name: 'Conectar' }).click(); await p.waitForTimeout(2500);
+  check('la red queda guardada con su enlace y aparece su tarjeta', q("SELECT enlace FROM artista_redes WHERE artista_id='qa-a1' AND plataforma='tiktok'") === 'https://www.tiktok.com/@qa.tt' && (await p.getByTestId('net-tiktok').count()) === 1);
+  check('intentó conectarse sola (error de Apify en la tarjeta, sin pedir captura manual)', (await p.getByTestId('net-error-tiktok').innerText()).includes('Apify no está configurado'));
+  // artista con el usuario que quedó de la conexión anterior
   // capturas manuales: hace 14, 7 y 0 días
   for (const [off, n] of [[-14, 1000], [-7, 1100], [0, 1250]]) {
-    await p.getByTestId('net-instagram').getByRole('button', { name: /Capturar a mano/ }).click();
+    await p.getByTestId('net-instagram').getByRole('button', { name: /capturar a mano/i }).click();
     await p.getByTestId('manual-form').locator('input[type=date]').fill(day(off));
     await p.getByLabel('Seguidores', { exact: true }).fill(String(n));
     await p.getByRole('button', { name: /Guardar captura/ }).click(); await p.waitForTimeout(900);
@@ -53,7 +62,7 @@ const day = (off) => new Date(Date.now() + off * 86400000).toISOString().slice(0
   check('el cambio dice +150 (+13.6 %)', /\+150/.test(card) && /13\.6/.test(card), card);
   check('fuente «Manual»', card.includes('Manual'));
   // captura inválida
-  await p.getByTestId('net-instagram').getByRole('button', { name: /Capturar a mano/ }).click();
+  await p.getByTestId('net-instagram').getByRole('button', { name: /capturar a mano/i }).click();
   await p.getByTestId('manual-form').locator('input[type=date]').fill(day(-3)); await p.getByLabel('Seguidores', { exact: true }).fill('-5');
   await p.getByRole('button', { name: /Guardar captura/ }).click(); await p.waitForTimeout(500);
   check('un valor negativo no se guarda', q("SELECT COUNT(*) FROM artista_metricas_redes WHERE artista_id='qa-a1'") === '3');
@@ -86,6 +95,14 @@ const day = (off) => new Date(Date.now() + off * 86400000).toISOString().slice(0
   // eliminar acción
   const del = p.getByTitle('Eliminar acción').first(); await del.click(); await p.waitForTimeout(900);
   check('se puede eliminar una acción', q("SELECT COUNT(*) FROM artista_acciones WHERE artista_id='qa-a1'") === '1');
+  // artista cuyo único dato de Instagram es el usuario que quedó de la conexión anterior
+  const art2 = { ...art, id: 'qa-a2', artisticName: 'QA Heredado', socialMedia: { instagramConnectedUser: '@qa.heredado' } };
+  await p.evaluate(async (a) => (await fetch('/api/data.php?action=sync', { method: 'POST', headers: { 'X-Requested-With': 'flamo', 'Content-Type': 'application/json' }, body: JSON.stringify({ changes: { artists: { upserts: [a] } } }) })).status, art2);
+  await p.reload(); await p.waitForSelector('text=Inicio'); await p.waitForTimeout(1500);
+  await p.getByRole('button', { name: /^\s*Artistas/ }).first().click(); await p.waitForTimeout(800); await p.getByText('QA Heredado').first().click(); await p.waitForTimeout(500);
+  await p.getByRole('button', { name: /Audiencia/ }).first().click(); await p.waitForTimeout(2500);
+  check('usuario heredado: la tarjeta de Instagram aparece ya conectada con @qa.heredado', (await p.getByTestId('net-instagram').count()) === 1 && (await p.getByLabel('Usuario o enlace de Instagram').inputValue()) === '@qa.heredado');
+  check('y la consulta automática se intentó con ese usuario', (await p.getByTestId('net-error-instagram').innerText()).includes('Apify'));
   await p.screenshot({ path: '/tmp/social.png', fullPage: true });
   check('sin errores JS', errs.length === 0, errs.join('|'));
   console.log(ok.map(x => '  ✓ ' + x).join('\n')); console.log(bad.length ? 'FALLOS:\n' + bad.join('\n') : 'Sin fallos'); await b.close();

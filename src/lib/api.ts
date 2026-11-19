@@ -48,6 +48,9 @@ export const social = {
     post<SocialData & { ok: true }>('metric', { artistId, ...m }),
   fetchLive: (artistId: string, platform: SocialPlatform, handle?: string) =>
     post<SocialData & { ok: true; handle: string }>('fetch', { artistId, platform, handle }),
+  /** Actualiza automáticamente lo que aún no tiene captura de hoy (se llama al abrir la pantalla del artista). */
+  refresh: (artistId: string, force = false) =>
+    post<SocialData & { ok: true; refreshed: SocialPlatform[]; skipped: SocialPlatform[]; errors: Partial<Record<SocialPlatform, string>> }>('refresh', { artistId, force }),
   deleteMetric: (artistId: string, platform: SocialPlatform, date: string) => post<SocialData>('metric_delete', { artistId, platform, date }),
   saveAction: (artistId: string, a: Partial<SocialAction> & { date: string; type: ActionType; title: string }) => post<SocialData>('action_save', { artistId, ...a }),
   deleteAction: (artistId: string, id: string) => post<SocialData>('action_delete', { artistId, id }),

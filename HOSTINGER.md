@@ -36,8 +36,8 @@ Abre tu dominio e inicia sesión con `admin` y la clave que pusiste. Crea los de
 - Cada registro lleva una versión: si dos personas editan **el mismo** registro, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
 - Apify, lugares y calendario funcionan en PHP (`api/apify.php`, `api/places.php`, `api/calendar.php`).
   - Apify en vivo: pon tu token en `apify_token` de `config.php`. **Sin token no se muestra ningún dato inventado**: «Actualizar ahora» responde que Apify no está configurado.
-  - Historial de redes (pestaña «Audiencia & Captación» del artista): Instagram y TikTok se capturan con Apify (datos públicos); las demás redes, a mano. Cada captura se guarda por día.
-  - **Captura diaria automática** (como Metricool): en hPanel → Avanzado → Cron Jobs, una vez al día, comando `php /home/TU_USUARIO/domains/TU_DOMINIO/public_html/api/social_cron.php`. Alternativa por URL: define `cron_token` (texto largo y aleatorio) en `config.php` y llama `https://TU_DOMINIO/api/social_cron.php?token=TU_CRON_TOKEN`.
+  - Historial de redes (pestaña «Audiencia & Captación» del artista): al agregar una red solo se escribe el usuario o enlace y **se conecta y trae los datos sola**. Instagram, TikTok, YouTube y Facebook se leen con Apify (datos públicos); las demás redes se capturan a mano. Cada captura se guarda por día.
+  - **Actualización automática:** al abrir la pantalla del artista se actualiza lo que aún no tiene captura de hoy, y una tarea programada (cron de hPanel, `php …/api/social_cron.php`, diaria 06:17) captura a todos los artistas. Alternativa por URL: define `cron_token` en `config.php` y llama `https://TU_DOMINIO/api/social_cron.php?token=TU_CRON_TOKEN`.
   - Es información pública: no incluye alcance ni demografía (eso requiere conectar las cuentas oficiales por OAuth de Meta/TikTok).
   - Calendario: un evento abre «Añadir a Google Calendar»; «sincronizar todos» descarga un `.ics` para importar.
   - La sincronización directa con la API de Google requeriría configurar OAuth en Google Cloud (no incluido).

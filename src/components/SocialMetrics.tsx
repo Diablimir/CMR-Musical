@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Plus, Trash2, Link2, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import type { Artist, Event } from '../types';
 import { social, type SocialData, type SocialPlatform, type ActionType } from '../lib/api';
@@ -40,14 +40,35 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
   const [mf, setMf] = useState({ date: todayStr(), followers: '', following: '', posts: '', engagement: '' });
   const [af, setAf] = useState<{ date: string; type: ActionType; title: string; platform: '' | SocialPlatform; notes: string }>({ date: todayStr(), type: 'Publicación', title: '', platform: '', notes: '' });
   const [addNet, setAddNet] = useState<SocialPlatform | ''>('');
+  const [addHandle, setAddHandle] = useState('');
+  const [netErrors, setNetErrors] = useState<Partial<Record<SocialPlatform, string>>>({});
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshedFor = useRef<string>('');
 
   const sm = (artist.socialMedia || {}) as Record<string, string | boolean | undefined>;
   const linkOf = (p: SocialPlatform) => (typeof sm[p] === 'string' ? (sm[p] as string) : '');
+  // Usuario efectivo: el enlace guardado o, si no hay, el usuario que quedó de la conexión anterior (p. ej. instagramConnectedUser)
+  const handleFor = (p: SocialPlatform) => handleOf(linkOf(p)) || handleOf(typeof sm[p + 'ConnectedUser'] === 'string' ? (sm[p + 'ConnectedUser'] as string) : '');
 
   useEffect(() => {
     let alive = true;
     setLoading(true); setError('');
-    social.get(artist.id).then((d) => { if (!d || !Array.isArray(d.metrics)) throw new Error('El servidor no devolvió el historial.'); if (alive) setData(d); }).catch((e) => { if (alive) setError(e.message || 'No se pudo cargar el historial.'); }).finally(() => { if (alive) setLoading(false); });
+    social.get(artist.id).then(async (d) => {
+      if (!d || !Array.isArray(d.metrics)) throw new Error('El servidor no devolvió el historial.');
+      if (!alive) return;
+      setData(d);
+      setLoading(false);
+      // Actualización automática: trae de cada red conectada la captura de hoy (el servidor omite lo que ya tiene)
+      if (refreshedFor.current !== artist.id && AUTO_PLATFORMS.some((p) => handleFor(p))) {
+        refreshedFor.current = artist.id;
+        setRefreshing(true);
+        try {
+          const r = await social.refresh(artist.id);
+          if (alive && r && Array.isArray(r.metrics)) { setData({ metrics: r.metrics, actions: r.actions }); setNetErrors(r.errors || {}); }
+        } catch (e: any) { if (alive) setError(e.message || 'No se pudo actualizar automáticamente.'); }
+        finally { if (alive) setRefreshing(false); }
+      }
+    }).catch((e) => { if (alive) setError(e.message || 'No se pudo cargar el historial.'); }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [artist.id]);
 
@@ -59,16 +80,33 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
   };
 
   // Redes a mostrar: las que tienen enlace guardado o historial
-  const nets = useMemo(() => PLATFORMS.filter((p) => linkOf(p) || data.metrics.some((m) => m.platform === p)), [artist.socialMedia, data.metrics]);
+  const nets = useMemo(() => PLATFORMS.filter((p) => handleFor(p) || linkOf(p) || data.metrics.some((m) => m.platform === p)), [artist.socialMedia, data.metrics]);
   const withData = useMemo(() => PLATFORMS.filter((p) => data.metrics.some((m) => m.platform === p)), [data.metrics]);
   useEffect(() => { if (chartPlat !== 'all' && withData.length && !withData.includes(chartPlat)) setChartPlat(withData[0]); }, [withData]);
 
   const myShows = useMemo(() => events.filter((e) => !e.deleted_at && (e.artistId === artist.id || (e as any).artists?.some((a: any) => a.artistId === artist.id))).map((e) => ({ id: e.id, name: e.name, date: e.date, status: e.status })), [events, artist.id]);
   const timeline = useMemo(() => buildTimeline(data.actions, myShows), [data.actions, myShows]);
 
+  /** Conecta una red: guarda el usuario/enlace y, si tiene captura automática, trae los datos de inmediato. */
+  const connect = async (p: SocialPlatform, raw: string) => {
+    const value = raw.trim();
+    const handle = handleOf(value);
+    if (!handle) { setError('Escribe el usuario (por ejemplo @mibanda) o pega el enlace del perfil.'); return; }
+    setError(''); setNotice('');
+    if (value !== linkOf(p)) onUpdateArtist({ ...artist, socialMedia: { ...artist.socialMedia, [p]: value }, updated_at: new Date().toISOString() });
+    if (!AUTO_PLATFORMS.includes(p)) { setNotice(`${PLATFORM_LABEL[p]} guardada. Esta red aún no tiene captura automática: puedes capturar sus números a mano.`); return; }
+    setBusy('fetch-' + p); setNetErrors((e) => ({ ...e, [p]: undefined }));
+    try {
+      const d = await social.fetchLive(artist.id, p, handle);
+      if (d && Array.isArray(d.metrics)) setData({ metrics: d.metrics, actions: d.actions });
+      setNotice(`${PLATFORM_LABEL[p]} conectada: datos de @${handle} cargados automáticamente.`);
+    } catch (e: any) { setNetErrors((x) => ({ ...x, [p]: e.message || 'No se pudo conectar.' })); }
+    finally { setBusy(''); }
+  };
+
   const setHandle = (p: SocialPlatform, value: string) => {
-    if (value.trim() === linkOf(p)) return;
-    onUpdateArtist({ ...artist, socialMedia: { ...artist.socialMedia, [p]: value.trim() }, updated_at: new Date().toISOString() });
+    if (value.trim() === linkOf(p) || !value.trim()) return;
+    void connect(p, value);   // al cambiar el usuario/enlace, se vuelve a conectar solo
   };
 
   const submitManual = (e: React.FormEvent) => {
@@ -123,11 +161,12 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-bold text-slate-800">Audiencia & Captación</h3>
         <p className="text-[11px] text-slate-500 max-w-3xl">
-          Historial <strong>real</strong> de seguidores por red, una captura por día. Se alimenta con «Actualizar ahora» (Instagram y TikTok, datos públicos vía Apify), con la captura diaria automática o a mano.
+          Historial <strong>real</strong> de seguidores por red, una captura por día. Al conectar una red (solo el usuario o el enlace) se trae sola desde la red, y se vuelve a actualizar automáticamente cada día y al abrir esta pantalla. Hoy Instagram, TikTok, YouTube y Facebook (datos públicos); las demás redes se capturan a mano.
           Nada se estima: donde no hay captura aparece «sin datos».
         </p>
       </div>
 
+      {refreshing && <div className="bg-sky-50 border border-sky-200 text-sky-700 rounded-xl px-3 py-2 text-[11px] font-semibold flex items-center gap-2" data-testid="auto-refresh"><RefreshCw className="w-3 h-3 animate-spin" />Actualizando tus redes automáticamente… (puede tardar unos segundos)</div>}
       {error && <div role="alert" className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-3 py-2 text-[11px] font-semibold">{error}</div>}
       {notice && <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-3 py-2 text-[11px] font-semibold">{notice}</div>}
 
@@ -138,9 +177,16 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
           <div className="flex items-center gap-1.5">
             <select value={addNet} onChange={(e) => setAddNet(e.target.value as SocialPlatform | '')} aria-label="Agregar red" className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-600">
               <option value="">Agregar red…</option>
-              {PLATFORMS.filter((p) => !nets.includes(p)).map((p) => <option key={p} value={p}>{PLATFORM_LABEL[p]}</option>)}
+              {PLATFORMS.filter((p) => !nets.includes(p)).map((p) => <option key={p} value={p}>{PLATFORM_LABEL[p]}{AUTO_PLATFORMS.includes(p) ? ' (automática)' : ''}</option>)}
             </select>
-            <button type="button" disabled={!addNet} onClick={() => { setManualFor(addNet as SocialPlatform); setAddNet(''); }} className="px-2.5 py-1 rounded-lg bg-slate-800 text-white text-[11px] font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1"><Plus className="w-3 h-3" />Agregar</button>
+            {addNet && (
+              <>
+                <input value={addHandle} onChange={(e) => setAddHandle(e.target.value)} placeholder="@usuario o enlace del perfil" aria-label="Usuario o enlace de la nueva red"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void connect(addNet, addHandle).then(() => { setAddNet(''); setAddHandle(''); }); } }} className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-700 w-52" />
+                <button type="button" disabled={!handleOf(addHandle)} onClick={() => void connect(addNet, addHandle).then(() => { setAddNet(''); setAddHandle(''); })}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 text-white text-[11px] font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1"><Link2 className="w-3 h-3" />Conectar</button>
+              </>
+            )}
           </div>
         </div>
 
@@ -152,14 +198,16 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {nets.map((p) => {
               const lt = latestOf(data.metrics, p);
-              const handle = handleOf(linkOf(p));
+              const handle = handleFor(p);
               const auto = AUTO_PLATFORMS.includes(p);
+              const connecting = busy === 'fetch-' + p || (refreshing && auto && !!handle && !lt);
+              const netErr = netErrors[p];
               return (
                 <div key={p} className="bg-white border border-slate-200 rounded-xl p-3 space-y-2" data-testid={`net-${p}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">{PLATFORM_LABEL[p]}</span>
-                      <span className="text-xl font-black text-slate-800 font-mono">{lt ? fmtNum(lt.last.followers) : 'Sin datos'}</span>
+                      <span className="text-xl font-black text-slate-800 font-mono">{lt ? fmtNum(lt.last.followers) : connecting ? 'Conectando…' : 'Sin datos'}</span>
                       <span className="text-[10px] text-slate-400 ml-1">{lt ? 'seguidores' : ''}</span>
                     </div>
                     {lt && <div className="text-right text-[10px] text-slate-500"><div><Delta delta={lt.delta} pct={lt.pct} /></div><div>{lt.prev ? `vs ${fmtDate(lt.prev.date)}` : 'primera captura'}</div></div>}
@@ -176,21 +224,23 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
                   <div className="flex items-center gap-1.5">
                     <Link2 className="w-3 h-3 text-slate-400 shrink-0" />
                     <input
-                      defaultValue={linkOf(p)} key={artist.id + p + linkOf(p)} placeholder="@usuario o enlace del perfil" aria-label={`Usuario o enlace de ${PLATFORM_LABEL[p]}`}
+                      defaultValue={linkOf(p) || (handle ? '@' + handle : '')} key={artist.id + p + linkOf(p) + handle} placeholder="@usuario o enlace del perfil" aria-label={`Usuario o enlace de ${PLATFORM_LABEL[p]}`}
                       onBlur={(e) => setHandle(p, e.target.value)} className={inputCls}
                     />
                   </div>
-                  <div className="flex gap-1.5 flex-wrap">
+                  {netErr && <p role="alert" className="text-[11px] text-rose-600 font-semibold" data-testid={`net-error-${p}`}>{netErr}</p>}
+                  <div className="flex gap-2 flex-wrap items-center">
                     {auto && (
                       <button type="button" disabled={!handle || busy === 'fetch-' + p}
                         title={handle ? 'Consulta el perfil público y guarda la captura de hoy' : 'Primero escribe el usuario o enlace'}
-                        onClick={() => run('fetch-' + p, () => social.fetchLive(artist.id, p, handle), `${PLATFORM_LABEL[p]}: captura de hoy guardada.`)}
+                        onClick={() => void connect(p, linkOf(p) || '@' + handle)}
                         className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold text-[11px] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1">
-                        <RefreshCw className={`w-3 h-3 ${busy === 'fetch-' + p ? 'animate-spin' : ''}`} />{busy === 'fetch-' + p ? 'Consultando…' : 'Actualizar ahora'}
+                        <RefreshCw className={`w-3 h-3 ${connecting ? 'animate-spin' : ''}`} />{connecting ? 'Consultando…' : netErr ? 'Reintentar' : 'Actualizar ahora'}
                       </button>
                     )}
-                    <button type="button" onClick={() => { setManualFor(p); setMf({ ...mf, date: todayStr() }); }} className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold text-[11px] hover:bg-slate-50 cursor-pointer">Capturar a mano</button>
-                    {!auto && <span className="text-[10px] text-slate-400 self-center">Captura automática no disponible para esta red.</span>}
+                    {auto && <span className="text-[10px] text-slate-400">Se actualiza sola cada día.</span>}
+                    <button type="button" onClick={() => { setManualFor(p); setMf({ ...mf, date: todayStr() }); }} className="text-[10px] text-slate-400 hover:text-slate-600 underline cursor-pointer">{auto ? 'Corregir / capturar a mano' : 'Capturar a mano'}</button>
+                    {!auto && <span className="text-[10px] text-slate-400">Esta red aún no tiene captura automática.</span>}
                   </div>
                 </div>
               );

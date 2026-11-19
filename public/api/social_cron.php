@@ -14,14 +14,13 @@ if (!$cli) {
 }
 set_time_limit(280);
 $pdo = db(); ensure_schema($pdo);
-$rows = $pdo->query("SELECT r.artista_id, r.plataforma, r.enlace FROM artista_redes r JOIN artistas a ON a.id = r.artista_id
-    WHERE a.deleted_at IS NULL AND r.plataforma IN ('instagram','tiktok') AND r.enlace <> '' ORDER BY r.artista_id, r.plataforma")->fetchAll();
+$ids = $pdo->query("SELECT DISTINCT r.artista_id FROM artista_redes r JOIN artistas a ON a.id = r.artista_id
+    WHERE a.deleted_at IS NULL AND r.plataforma IN ('instagram','tiktok','youtube','facebook') AND (r.enlace <> '' OR r.usuario_conectado IS NOT NULL) ORDER BY r.artista_id")->fetchAll(PDO::FETCH_COLUMN);
 $out = ['ok' => 0, 'fallidas' => 0, 'detalle' => []];
-foreach ($rows as $r) {
-    $h = social_handle((string)$r['enlace']);
-    $res = social_apify_fetch($r['plataforma'], $h);
-    if ($res['ok']) { social_save_snapshot($pdo, $r['artista_id'], $r['plataforma'], gmdate('Y-m-d'), $res['data'], 'apify'); $out['ok']++; }
-    else { $out['fallidas']++; $out['detalle'][] = "{$r['artista_id']}/{$r['plataforma']}: {$res['error']}"; }
+foreach ($ids as $aid) {
+    $r = social_refresh_artist($pdo, (string)$aid);
+    $out['ok'] += count($r['refreshed']); $out['fallidas'] += count($r['errors']);
+    foreach ($r['errors'] as $plat => $msg) $out['detalle'][] = "$aid/$plat: $msg";
 }
 if ($cli) { echo json_encode($out, JSON_UNESCAPED_UNICODE) . "\n"; exit; }
 respond($out);

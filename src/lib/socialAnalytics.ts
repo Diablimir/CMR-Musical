@@ -6,7 +6,7 @@ export const PLATFORM_LABEL: Record<SocialPlatform, string> = {
   instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', youtube: 'YouTube', spotify: 'Spotify', appleMusic: 'Apple Music', twitter: 'X / Twitter', threads: 'Threads',
 };
 export const PLATFORMS = Object.keys(PLATFORM_LABEL) as SocialPlatform[];
-export const AUTO_PLATFORMS: SocialPlatform[] = ['instagram', 'tiktok'];   // captura automática (Apify); el resto es manual
+export const AUTO_PLATFORMS: SocialPlatform[] = ['instagram', 'tiktok', 'youtube', 'facebook'];   // captura automática (Apify); el resto es manual
 export const ACTION_TYPES: ActionType[] = ['Lanzamiento', 'Campaña', 'Publicación', 'Colaboración', 'Prensa', 'Gira', 'Otro'];
 
 /** Usuario de una red desde «@usuario», «usuario» o una URL. */

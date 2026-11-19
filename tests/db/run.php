@@ -6,6 +6,7 @@ require __DIR__ . '/lib.php';
 require API . '/schema.php';
 require API . '/entities.php';
 require API . '/social_lib.php';
+if (!function_exists('apify_token')) { function apify_token(): string { return ''; } }   // sin token: la consulta falla de forma controlada
 require __DIR__ . '/seed_v1.php';
 
 $pdo = t_pdo();
@@ -466,7 +467,24 @@ $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, ti
 t_throws(fn() => $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, creado_en) VALUES ('art-1','a2','2026-01-02','Magia','x',NOW(3))"), 'la base rechaza un tipo de acción fuera del dominio');
 t_throws(fn() => $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, creado_en) VALUES ('art-1','a3','2026-01-02','Otro','   ',NOW(3))"), 'la base rechaza un título en blanco');
 t_throws(fn() => $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, plataforma, creado_en) VALUES ('art-1','a4','2026-01-02','Otro','x','myspace',NOW(3))"), 'la base rechaza una red inválida en la acción');
-$sync(['artists' => ['deletes' => ['art-1']]]);
+// YouTube y Facebook: se leen solo campos reales; sin dato → null
+$yt = social_normalize('youtube', [['channelName' => 'Mi Banda', 'numberOfSubscribers' => 4200, 'channelTotalVideos' => 31, 'isChannelVerified' => false]]);
+t_eq([$yt['seguidores'], $yt['publicaciones'], $yt['interaccion'], $yt['usuario']], [4200, 31, null, 'Mi Banda'], 'YouTube: suscriptores y videos reales; interacción sin dato (no se inventa)');
+t_eq(social_normalize('youtube', [['title' => 'sin suscriptores']]), null, 'YouTube sin suscriptores → null');
+$fb = social_normalize('facebook', [['title' => 'Mi Banda', 'pageName' => 'mibanda', 'followers' => 8800, 'likes' => 8000]]);
+t_eq([$fb['seguidores'], $fb['usuario']], [8800, 'mibanda'], 'Facebook: seguidores de la página (no se mezclan con «me gusta»)');
+t_eq(social_normalize('facebook', [['likes' => 5]]), null, 'Facebook sin followers → null');
+// actualización automática: usa el usuario guardado, incluido el de la conexión anterior, y no repite lo ya capturado hoy
+$sync($up('artists', $art('art-3', 'Tres', ['socialMedia' => ['instagramConnectedUser' => '@tres.band', 'tiktok' => 'https://www.tiktok.com/@tres.tt']])));
+t_eq([social_artist_handle($pdo, 'art-3', 'instagram'), social_artist_handle($pdo, 'art-3', 'tiktok'), social_artist_handle($pdo, 'art-3', 'youtube')], ['tres.band', 'tres.tt', ''], 'el usuario sale del enlace o, si falta, del usuario de la conexión anterior');
+$rf = social_refresh_artist($pdo, 'art-3');
+t_eq(array_keys($rf['errors']), ['instagram', 'tiktok'], 'intenta automáticamente solo las redes con usuario (sin Apify configurado falla con mensaje, sin guardar nada)');
+t_ok(str_contains($rf['errors']['instagram'], 'Apify no está configurado') && $count("SELECT COUNT(*) FROM artista_metricas_redes WHERE artista_id='art-3'") === 0, 'el error es claro y no se guarda ninguna cifra');
+social_save_snapshot($pdo, 'art-3', 'instagram', gmdate('Y-m-d'), ['seguidores' => 100], 'apify');
+$rf = social_refresh_artist($pdo, 'art-3');
+t_eq([$rf['skipped'], array_keys($rf['errors'])], [['instagram'], ['tiktok']], 'lo que ya tiene captura de hoy no se vuelve a consultar (no gasta Apify)');
+t_eq(array_keys(social_refresh_artist($pdo, 'art-3', true)['errors']), ['instagram', 'tiktok'], 'con «forzar» sí se vuelve a consultar');
+$sync(['artists' => ['deletes' => ['art-1', 'art-3']]]);
 t_eq($count('SELECT COUNT(*) FROM artista_metricas_redes') + $count('SELECT COUNT(*) FROM artista_acciones'), 0, 'al borrar el artista se borra su historial y sus acciones (CASCADE)');
 t_eq(migrate_down($pdo, 6), [7], 'rollback de la 007 elimina solo las dos tablas nuevas');
 t_ok(!db_table_exists($pdo, 'artista_metricas_redes') && !db_table_exists($pdo, 'artista_acciones') && db_table_exists($pdo, 'venue_notas'), 'el resto del esquema queda intacto');
