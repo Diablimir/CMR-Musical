@@ -1404,16 +1404,16 @@ export default function HomeDashboard({
                   </div>
                   {lineup.map((l, i) => (
                     <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <select value={l.artistId} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, artistId: e.target.value } : x)))} className="col-span-4 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
+                      <select value={l.artistId} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, artistId: e.target.value } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
                         <option value="">Artista…</option>
                         {artists.map((a) => <option key={a.id} value={a.id}>{a.artisticName}</option>)}
                       </select>
-                      <select value={l.role} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, role: e.target.value as EventArtistRole } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
+                      <select value={l.role} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, role: e.target.value as EventArtistRole } : x)))} className="col-span-2 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
                         {(['Invitado', 'Telonero', 'Soporte', 'Artista', 'Otro'] as EventArtistRole[]).map((r) => <option key={r} value={r}>{r}</option>)}
                       </select>
                       <input type="number" min={1} title="Orden de presentación" value={l.order} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, order: e.target.value } : x)))} className="col-span-1 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
                       <input type="time" title="Hora de inicio" value={l.startTime} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, startTime: e.target.value } : x)))} className="col-span-2 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
-                      <input type="number" min={0} placeholder="Honorarios" title="Honorarios (MXN)" value={l.fee} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, fee: e.target.value } : x)))} className="col-span-1 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs min-w-0" />
+                      <input type="number" min={0} placeholder="Honorarios" title="Honorarios (MXN)" value={l.fee} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, fee: e.target.value } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs min-w-0" />
                       <button type="button" onClick={() => setLineup(lineup.filter((_, k) => k !== i))} className="col-span-1 text-slate-400 hover:text-red-600 text-xs font-bold cursor-pointer" title="Quitar">✕</button>
                     </div>
                   ))}
