@@ -58,7 +58,7 @@ export default function HomeDashboard({
   const [selectedVenueIdForm, setSelectedVenueIdForm] = useState('');
   const [selectedTourId, setSelectedTourId] = useState('');
   const [principalOrder, setPrincipalOrder] = useState('1');
-  const [lineup, setLineup] = useState<{ artistId: string; role: EventArtistRole; order: string; startTime: string; fee: string }[]>([]);
+  const [lineup, setLineup] = useState<{ artistId: string; role: EventArtistRole; order: string; startTime: string; fee: string; free?: boolean; freeName?: string }[]>([]);
   const [incomeInput, setIncomeInput] = useState('');
   const [showDate, setShowDate] = useState('');
   const [capacity, setCapacity] = useState('1000');
@@ -232,7 +232,7 @@ export default function HomeDashboard({
 
     const lineupRows: EventArtist[] = [
       { artistId: selectedArtistId, role: 'Artista', isPrincipal: true, order: Math.max(1, Number(principalOrder) || 1) },
-      ...lineup.filter((l) => l.artistId).map((l, i) => ({
+      ...lineup.filter((l) => !l.free && l.artistId).map((l, i) => ({
         artistId: l.artistId, role: l.role, order: Math.max(1, Number(l.order) || i + 2),
         startTime: l.startTime || undefined, fee: l.fee.trim() !== '' ? Number(l.fee) : undefined,
       })),
@@ -248,6 +248,7 @@ export default function HomeDashboard({
       name: showName.trim(),
       artistId: selectedArtistId,
       artists: lineupRows,
+      guestBands: lineup.filter((l) => l.free && l.freeName?.trim()).map((l) => l.freeName!.trim()),
       venueId: selectedVenueIdForm,
       tourId: selectedTourId || undefined,
       date: showDate,
@@ -1229,13 +1230,18 @@ export default function HomeDashboard({
                 </form>
               </div>
 
-              {(selectedCalendarEvent.artists?.length || 0) > 1 && (
+              {((selectedCalendarEvent.artists?.length || 0) > 1 || (selectedCalendarEvent.guestBands?.length || 0) > 0) && (
                 <div className="bg-white-chalk border border-silver-haze rounded-xl p-3 space-y-1.5">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Alineación</span>
                   {selectedCalendarEvent.artists!.map((a, i) => (
                     <div key={i} className="flex items-center justify-between text-xs text-slate-700">
                       <span><b className="font-mono text-slate-400 mr-1.5">{a.order}.</b>{artists.find((x) => x.id === a.artistId)?.artisticName || 'Artista archivado'}{a.isPrincipal ? ' ★' : ''}</span>
                       <span className="text-slate-500">{a.role}{a.startTime ? ` · ${a.startTime}` : ''}{a.fee ? ` · $${a.fee.toLocaleString()}` : ''}</span>
+                    </div>
+                  ))}
+                  {(selectedCalendarEvent.guestBands || []).map((b, i) => (
+                    <div key={`gb${i}`} className="flex items-center justify-between text-xs text-slate-700">
+                      <span>{b}</span><span className="text-slate-500">Banda invitada</span>
                     </div>
                   ))}
                 </div>
@@ -1388,7 +1394,7 @@ export default function HomeDashboard({
                       onClick={() => setLineup([...lineup, { artistId: '', role: 'Invitado', order: String(lineup.length + 2), startTime: '', fee: '' }])}
                       className="text-xs font-bold text-celestial-canvas hover:underline cursor-pointer"
                     >
-                      + Añadir artista
+                      + Añadir artista o banda
                     </button>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-600">
@@ -1400,16 +1406,21 @@ export default function HomeDashboard({
                   </div>
                   {lineup.map((l, i) => (
                     <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <select value={l.artistId} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, artistId: e.target.value } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
-                        <option value="">Artista…</option>
-                        {artists.map((a) => <option key={a.id} value={a.id}>{a.artisticName}</option>)}
-                      </select>
-                      <select value={l.role} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, role: e.target.value as EventArtistRole } : x)))} className="col-span-2 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
+                      {l.free ? (
+                        <input type="text" autoFocus maxLength={120} placeholder="Nombre de la banda (sin registrar)" aria-label="Nombre de la banda no registrada" value={l.freeName || ''} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, freeName: e.target.value } : x)))} className="col-span-3 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 text-xs min-w-0" />
+                      ) : (
+                        <select value={l.artistId} onChange={(e) => { const v = e.target.value; setLineup(lineup.map((x, k) => (k === i ? (v === '__free__' ? { ...x, artistId: '', free: true, freeName: '' } : { ...x, artistId: v }) : x))); }} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
+                          <option value="">Artista…</option>
+                          {artists.map((a) => <option key={a.id} value={a.id}>{a.artisticName}</option>)}
+                          <option value="__free__">✏️ Otra banda (no registrada)…</option>
+                        </select>
+                      )}
+                      <select value={l.role} disabled={!!l.free} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, role: e.target.value as EventArtistRole } : x)))} className="col-span-2 disabled:opacity-40 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
                         {(['Invitado', 'Telonero', 'Soporte', 'Artista', 'Otro'] as EventArtistRole[]).map((r) => <option key={r} value={r}>{r}</option>)}
                       </select>
-                      <input type="number" min={1} title="Orden de presentación" value={l.order} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, order: e.target.value } : x)))} className="col-span-1 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
-                      <input type="time" title="Hora de inicio" value={l.startTime} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, startTime: e.target.value } : x)))} className="col-span-2 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
-                      <input type="number" min={0} placeholder="Honorarios" title="Honorarios (MXN)" value={l.fee} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, fee: e.target.value } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs min-w-0" />
+                      <input type="number" min={1} title="Orden de presentación" disabled={!!l.free} value={l.order} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, order: e.target.value } : x)))} className="col-span-1 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
+                      <input type="time" title="Hora de inicio" disabled={!!l.free} value={l.startTime} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, startTime: e.target.value } : x)))} className="col-span-2 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
+                      <input type="number" min={0} placeholder="Honorarios" title="Honorarios (MXN)" disabled={!!l.free} value={l.fee} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, fee: e.target.value } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs min-w-0" />
                       <button type="button" onClick={() => setLineup(lineup.filter((_, k) => k !== i))} className="col-span-1 text-slate-400 hover:text-red-600 text-xs font-bold cursor-pointer" title="Quitar">✕</button>
                     </div>
                   ))}
