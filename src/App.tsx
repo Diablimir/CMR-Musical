@@ -38,6 +38,7 @@ export default function App() {
 
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [dockHidden, setDockHidden] = useState(false);   // el menú inferior se oculta al bajar y reaparece al subir
   const [pendingCount, setPendingCount] = useState(0);   // admin: cambios por aprobar · demás: los míos pendientes
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   // Copia de lo último que el servidor tiene (id → JSON), para enviar solo lo que cambia
@@ -59,6 +60,21 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<string>('');
   const [currentRole, setCurrentRole] = useState<string>('');
   const isAdmin = currentRole === 'Super Admin';
+  useEffect(() => {
+    let last = 0;
+    const onScroll = (e: any) => {
+      const t = e.target as any;
+      const y = t === document || t === window || !t || t === document.documentElement ? window.scrollY : (t.scrollTop ?? 0);
+      if (t && t !== document && t !== window && t.scrollHeight && t.clientHeight && t.scrollHeight - t.clientHeight < 60) return;
+      const d = y - last;
+      if (Math.abs(d) < 8) return;
+      setDockHidden(d > 0 && y > 80);
+      last = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, []);
+
   useEffect(() => { document.documentElement.dataset.role = isAdmin ? 'admin' : 'limited'; }, [isAdmin]);
   const [users, setUsers] = useState<UserAccount[]>([]);
 
@@ -620,7 +636,7 @@ export default function App() {
       </header>
 
       {/* Floating Bottom Navigation Dock - Desktop only (Hidden on Mobile) */}
-      <nav className="hidden md:flex fixed bottom-5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-silver-haze p-2 rounded-2xl shadow-2xl z-40 items-center justify-between gap-1 xl:gap-1.5 w-[96%] max-w-[1280px] overflow-x-auto">
+      <nav className={`hidden md:flex fixed bottom-5 left-1/2 -translate-x-1/2 transition-transform duration-300 ${dockHidden ? 'translate-y-[200%]' : ''} bg-white/95 backdrop-blur-md border border-silver-haze p-2 rounded-2xl shadow-2xl z-40 items-center justify-between gap-1 xl:gap-1.5 w-[96%] max-w-[1280px] overflow-x-auto`}>
         {[
           { id: 'inicio', label: 'Inicio', icon: LayoutDashboard },
           { id: 'venues', label: 'Venues', icon: Building2 },
@@ -659,7 +675,7 @@ export default function App() {
       </nav>
 
       {/* Floating Bottom Navigation Dock - Mobile only (Sleek, Simplified, Squeeze-free Layout) */}
-      <nav className="flex md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-silver-haze p-1.5 rounded-2xl shadow-2xl z-40 items-center justify-around gap-1 w-[92%]">
+      <nav className={`flex md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 transition-transform duration-300 ${dockHidden ? 'translate-y-[200%]' : ''} bg-white/95 backdrop-blur-md border border-silver-haze p-1.5 rounded-2xl shadow-2xl z-40 items-center justify-around gap-1 w-[92%]`}>
         {[
           { id: 'inicio', label: 'Inicio', icon: LayoutDashboard },
           { id: 'venues', label: 'Venues', icon: Building2 },

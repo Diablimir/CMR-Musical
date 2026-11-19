@@ -304,7 +304,7 @@ export default function ArtistProfile({
         </div>
 
         {/* Dynamic subtabs */}
-        <div className="flex bg-slate-50 border border-slate-200 p-1 rounded-xl self-stretch sm:self-auto overflow-x-auto max-w-full">
+        <div className="flex bg-slate-50 border border-slate-200 p-1 rounded-xl self-stretch sm:self-auto flex-wrap gap-1 max-w-full">
           {[
             { id: '360', label: 'Resumen 360°' },
             { id: 'pipeline', label: `Pipeline Dev (${pipelineProgress}%)` },
@@ -316,7 +316,7 @@ export default function ArtistProfile({
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id as any)}
-              className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+              className={`whitespace-nowrap px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 activeSubTab === tab.id ? 'bg-celestial-canvas text-white-chalk shadow-sm border border-celestial-canvas/35' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
