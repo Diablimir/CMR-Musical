@@ -37,7 +37,7 @@ export const integrations = {
 
 // ───────── Historial de redes sociales y acciones del artista ─────────
 export type SocialPlatform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'spotify' | 'appleMusic' | 'twitter' | 'threads';
-export interface SocialMetric { platform: SocialPlatform; date: string; followers: number; following: number | null; posts: number | null; engagement: number | null; source: 'manual' | 'apify'; capturedAt: string }
+export interface SocialMetric { platform: SocialPlatform; date: string; followers: number; following: number | null; posts: number | null; engagement: number | null; source: 'manual' | 'apify' | 'meta'; capturedAt: string }
 export type ActionType = 'Lanzamiento' | 'Campaña' | 'Publicación' | 'Colaboración' | 'Prensa' | 'Gira' | 'Otro';
 export interface SocialAction { id: string; date: string; type: ActionType; title: string; notes?: string; platform?: SocialPlatform }
 export interface SocialData { metrics: SocialMetric[]; actions: SocialAction[] }
@@ -54,6 +54,19 @@ export const social = {
   deleteMetric: (artistId: string, platform: SocialPlatform, date: string) => post<SocialData>('metric_delete', { artistId, platform, date }),
   saveAction: (artistId: string, a: Partial<SocialAction> & { date: string; type: ActionType; title: string }) => post<SocialData>('action_save', { artistId, ...a }),
   deleteAction: (artistId: string, id: string) => post<SocialData>('action_delete', { artistId, id }),
+};
+
+// ───────── Cuenta oficial de Instagram (API de Meta) ─────────
+export interface MetaConnection { connected: true; username: string | null; expiresAt: string | null; lastSync: string | null; lastError: string | null }
+export interface MetaPost { id: string; date: string | null; type: string; url: string | null; text: string | null; likes: number | null; comments: number | null; reach: number | null; saves: number | null; shares: number | null; interactions: number | null; engagement: number | null }
+export interface MetaDemographics { date: string | null; edad: { key: string; value: number }[]; genero: { key: string; value: number }[]; ciudad: { key: string; value: number }[]; pais: { key: string; value: number }[] }
+export interface MetaData { connection: MetaConnection | null; reach: { date: string; reach: number }[]; demographics: MetaDemographics; posts: MetaPost[] }
+export const meta = {
+  status: () => request<{ configured: boolean; missing: string[]; redirectUri: string }>('/api/meta.php?action=status'),
+  get: (artistId: string) => request<MetaData>(`/api/meta.php?artist_id=${encodeURIComponent(artistId)}`),
+  start: (artistId: string) => request<{ url: string }>('/api/meta.php?action=start', { method: 'POST', body: JSON.stringify({ artistId }) }),
+  sync: (artistId: string) => request<{ ok: true; avisos: string[]; data: MetaData }>('/api/meta.php?action=sync', { method: 'POST', body: JSON.stringify({ artistId }) }),
+  disconnect: (artistId: string) => request<{ ok: true; data: MetaData }>('/api/meta.php?action=disconnect', { method: 'POST', body: JSON.stringify({ artistId }) }),
 };
 
 export async function uploadImage(file: Blob, filename = 'foto.jpg'): Promise<string> {

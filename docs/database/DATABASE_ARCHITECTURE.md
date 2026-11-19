@@ -1,6 +1,6 @@
-# FLAMO CRM — Arquitectura de la base de datos (esquema v7)
+# FLAMO CRM — Arquitectura de la base de datos (esquema v8)
 
-> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–007; 43 tablas; 316 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
+> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–008; 47 tablas; 356 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
 > Documentos relacionados: `DATABASE_AUDIT.md` (hallazgos y evidencia previa), `DATABASE_REFACTOR_PLAN.md` (plan por fases),
 > `DATA_DICTIONARY.md` (tablas y columnas), `schema.sql` (DDL), `CHANGELOG_DB.md` (registro de cambios).
 
@@ -16,34 +16,38 @@ CLI en `scripts/db/migrate.php`, endpoint de administración `api/migrate.php` (
 erDiagram
     cat_etapas_desarrollo ||--o{ artistas : "etapa_id (RESTRICT)"
     artistas ||--o{ artista_acciones : "artista_id (CASCADE)"
+    artistas ||--o{ artista_alcance : "artista_id (CASCADE)"
+    artistas ||--o{ artista_conexiones : "artista_id (CASCADE)"
+    contactos ||--o{ artista_contactos : "contacto_id (CASCADE)"
     cat_roles_contacto ||--o{ artista_contactos : "rol_id (RESTRICT)"
     artistas ||--o{ artista_contactos : "artista_id (CASCADE)"
-    contactos ||--o{ artista_contactos : "contacto_id (CASCADE)"
-    cat_generos ||--o{ artista_generos : "genero_id (RESTRICT)"
+    artistas ||--o{ artista_demografia : "artista_id (CASCADE)"
     artistas ||--o{ artista_generos : "artista_id (CASCADE)"
+    cat_generos ||--o{ artista_generos : "genero_id (RESTRICT)"
     artistas ||--o{ artista_hitos : "artista_id (CASCADE)"
     artistas ||--o{ artista_idiomas : "artista_id (CASCADE)"
     artistas ||--o{ artista_integrantes : "artista_id (CASCADE)"
     artistas ||--o{ artista_metricas_redes : "artista_id (CASCADE)"
     artistas ||--o{ artista_pipeline : "artista_id (CASCADE)"
+    artistas ||--o{ artista_publicaciones : "artista_id (CASCADE)"
     artistas ||--o{ artista_redes : "artista_id (CASCADE)"
     contactos ||--o{ contacto_correos : "contacto_id (CASCADE)"
     contactos ||--o{ contacto_telefonos : "contacto_id (CASCADE)"
-    contratos ||--o{ contrato_artistas : "contrato_id (CASCADE)"
     artistas ||--o{ contrato_artistas : "artista_id (RESTRICT)"
-    eventos ||--o{ contrato_eventos : "evento_id (RESTRICT)"
+    contratos ||--o{ contrato_artistas : "contrato_id (CASCADE)"
     contratos ||--o{ contrato_eventos : "contrato_id (CASCADE)"
-    proveedores ||--o{ contrato_proveedores : "proveedor_id (RESTRICT)"
+    eventos ||--o{ contrato_eventos : "evento_id (RESTRICT)"
     contratos ||--o{ contrato_proveedores : "contrato_id (CASCADE)"
+    proveedores ||--o{ contrato_proveedores : "proveedor_id (RESTRICT)"
     contratos ||--o{ contrato_tours : "contrato_id (CASCADE)"
     tours ||--o{ contrato_tours : "tour_id (RESTRICT)"
-    venues ||--o{ contrato_venues : "venue_id (RESTRICT)"
     contratos ||--o{ contrato_venues : "contrato_id (CASCADE)"
-    venues ||--o{ eventos : "venue_id (RESTRICT)"
+    venues ||--o{ contrato_venues : "venue_id (RESTRICT)"
     tours |o--o{ eventos : "tour_id (SET NULL)"
-    eventos ||--o{ evento_artistas : "evento_id (CASCADE)"
+    venues ||--o{ eventos : "venue_id (RESTRICT)"
     artistas ||--o{ evento_artistas : "artista_id (RESTRICT)"
     cat_monedas ||--o{ evento_artistas : "moneda (RESTRICT)"
+    eventos ||--o{ evento_artistas : "evento_id (CASCADE)"
     eventos ||--o{ evento_bandas_invitadas : "evento_id (CASCADE)"
     eventos ||--o{ evento_setlist : "evento_id (CASCADE)"
     proveedores ||--o{ proveedor_contactos : "proveedor_id (CASCADE)"
@@ -56,12 +60,12 @@ erDiagram
     proyecto_etapas ||--o{ proyecto_instrumentos : "proyecto_id (CASCADE)"
     proyecto_etapas ||--o{ proyecto_instrumentos : "etapa_id (CASCADE)"
     proyectos_grabacion ||--o{ proyecto_pagos : "proyecto_id (CASCADE)"
-    tours ||--o{ tour_artistas : "tour_id (CASCADE)"
     artistas ||--o{ tour_artistas : "artista_id (RESTRICT)"
+    tours ||--o{ tour_artistas : "tour_id (CASCADE)"
     venues ||--o{ venue_bandas_locales : "venue_id (CASCADE)"
-    venues ||--o{ venue_contactos : "venue_id (CASCADE)"
     contactos ||--o{ venue_contactos : "contacto_id (CASCADE)"
     cat_roles_contacto ||--o{ venue_contactos : "rol_id (RESTRICT)"
+    venues ||--o{ venue_contactos : "venue_id (CASCADE)"
     venues ||--o{ venue_horarios : "venue_id (CASCADE)"
     venues ||--o{ venue_notas : "venue_id (CASCADE)"
     eventos |o--o{ venue_notas : "evento_id (SET NULL)"
@@ -103,11 +107,36 @@ erDiagram
         varchar plataforma
         datetime creado_en
     }
+    artista_alcance {
+        varchar artista_id PK,FK
+        varchar plataforma PK
+        date fecha PK
+        int_unsigned alcance
+    }
+    artista_conexiones {
+        varchar artista_id PK,FK
+        varchar plataforma PK
+        varchar cuenta_id
+        varchar usuario
+        text token_cifrado
+        datetime expira_en
+        datetime conectado_en
+        datetime ultima_sync
+        varchar ultimo_error
+    }
     artista_contactos {
         varchar artista_id PK,FK
         varchar contacto_id PK,FK
         smallint_unsigned rol_id PK,FK
         tinyint es_principal
+    }
+    artista_demografia {
+        varchar artista_id PK,FK
+        varchar plataforma PK
+        date fecha PK
+        varchar dimension PK
+        varchar clave PK
+        int_unsigned valor
     }
     artista_generos {
         varchar artista_id PK,FK
@@ -158,6 +187,22 @@ erDiagram
         varchar nombre
         varchar categoria
         tinyint completado
+    }
+    artista_publicaciones {
+        varchar artista_id PK,FK
+        varchar plataforma PK
+        varchar post_id PK
+        datetime publicado_en
+        varchar tipo
+        varchar enlace
+        varchar texto
+        int_unsigned me_gusta
+        int_unsigned comentarios
+        int_unsigned alcance
+        int_unsigned guardados
+        int_unsigned compartidos
+        int_unsigned interacciones
+        datetime capturado_en
     }
     artista_redes {
         varchar artista_id PK,FK
@@ -454,6 +499,7 @@ Versión gráfica: `docs/diagrama-er.png` / `.svg` (se regenera con `python3 scr
 | `cat_*` | ✓ | ✓ | ✓ | ✓ | |
 | `artistas` y sus tablas hijas (`artista_redes/idiomas/integrantes/pipeline/hitos`) | ✓ | ✓ | excepción | — | Sin JSON `extra`. Excepción 3FN: `ciudad → estado → pais` (dirección postal como valor, sin catálogo gobernado) |
 | `venues`, `venue_horarios`, `venue_bandas_locales`, `venue_notas` |
+| `artista_conexiones`, `artista_alcance`, `artista_demografia`, `artista_publicaciones` | ✓ | ✓ | ✓ | ✓ | Datos oficiales de Instagram; el token se guarda cifrado |
 | `artista_metricas_redes`, `artista_acciones` | ✓ | ✓ | ✓ | ✓ | Series de tiempo con llave (artista, red, fecha); acciones con llave (artista, id) | ✓ | ✓ | excepción | — | Misma excepción geográfica; `codigo_postal → ciudad` |
 | `eventos`, `evento_setlist`, `evento_bandas_invitadas` | ✓ | ✓ | excepción | — | `utilidad` es derivada pero **no puede desajustarse** (CHECK) |
 | `contratos`, `contrato_artistas/venues/proveedores/eventos/tours` | ✓ | ✓ | ✓ | ✓ | Partes y objeto en tablas puente con llave compuesta |
@@ -518,4 +564,4 @@ o, como Super Admin: `POST /api/migrate.php?action=down&to=1&confirm=yes`. Despu
 Pérdidas posibles al revertir (documentadas): contactos sin venue, correos/teléfonos adicionales, vínculos a más de un venue y la alineación completa (solo se conserva el artista principal).
 
 **Regenerar documentación y SQL:** `php scripts/db/generate-docs.php` (base de pruebas) y `python3 scripts/make-er-diagram.py`.
-**Pruebas:** `php tests/db/run.php` (316 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).
+**Pruebas:** `php tests/db/run.php` (356 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).

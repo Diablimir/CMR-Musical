@@ -2,7 +2,8 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Plus, Trash2, Link2, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import type { Artist, Event } from '../types';
-import { social, type SocialData, type SocialPlatform, type ActionType } from '../lib/api';
+import { social, meta, type SocialData, type SocialPlatform, type ActionType, type MetaData } from '../lib/api';
+import OfficialInstagram from './OfficialInstagram';
 import {
   PLATFORMS, PLATFORM_LABEL, AUTO_PLATFORMS, ACTION_TYPES, handleOf, seriesOf, latestOf, impactOf, buildTimeline, summaryByType,
   fmtNum, fmtSigned, fmtPct, fmtDate, addDays, type Impact,
@@ -44,11 +45,31 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
   const [netErrors, setNetErrors] = useState<Partial<Record<SocialPlatform, string>>>({});
   const [refreshing, setRefreshing] = useState(false);
   const refreshedFor = useRef<string>('');
+  // Cuenta oficial de Instagram (API de Meta)
+  const [metaCfg, setMetaCfg] = useState<{ configured: boolean; missing: string[] } | null>(null);
+  const [metaData, setMetaData] = useState<MetaData | null>(null);
+  const [metaBusy, setMetaBusy] = useState<'' | 'connect' | 'sync' | 'disconnect'>('');
+  const [metaError, setMetaError] = useState('');
 
   const sm = (artist.socialMedia || {}) as Record<string, string | boolean | undefined>;
   const linkOf = (p: SocialPlatform) => (typeof sm[p] === 'string' ? (sm[p] as string) : '');
   // Usuario efectivo: el enlace guardado o, si no hay, el usuario que quedó de la conexión anterior (p. ej. instagramConnectedUser)
   const handleFor = (p: SocialPlatform) => handleOf(linkOf(p)) || handleOf(typeof sm[p + 'ConnectedUser'] === 'string' ? (sm[p + 'ConnectedUser'] as string) : '');
+
+  // Regreso de la autorización de Meta (la redirección guarda el resultado en sessionStorage)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('flamo_meta_msg');
+      if (raw) { sessionStorage.removeItem('flamo_meta_msg'); const m = JSON.parse(raw); if (m.status === 'ok') setNotice(m.msg); else setMetaError(m.msg || 'No se pudo conectar la cuenta.'); }
+    } catch { /* sin almacenamiento */ }
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    meta.status().then((c) => { if (alive) setMetaCfg(c); }).catch(() => { if (alive) setMetaCfg({ configured: false, missing: [] }); });
+    meta.get(artist.id).then((d) => { if (alive && d && d.demographics) setMetaData(d); }).catch(() => { /* aún sin datos oficiales */ });
+    return () => { alive = false; };
+  }, [artist.id]);
 
   useEffect(() => {
     let alive = true;
@@ -102,6 +123,27 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
       setNotice(`${PLATFORM_LABEL[p]} conectada: datos de @${handle} cargados automáticamente.`);
     } catch (e: any) { setNetErrors((x) => ({ ...x, [p]: e.message || 'No se pudo conectar.' })); }
     finally { setBusy(''); }
+  };
+
+  const metaConnect = async () => {
+    setMetaBusy('connect'); setMetaError('');
+    try { const { url } = await meta.start(artist.id); window.location.href = url; }
+    catch (e: any) { setMetaError(e.message || 'No se pudo iniciar la conexión.'); setMetaBusy(''); }
+  };
+  const metaSync = async () => {
+    setMetaBusy('sync'); setMetaError(''); setNotice('');
+    try {
+      const r = await meta.sync(artist.id);
+      setMetaData(r.data); setNotice('Datos oficiales actualizados.' + (r.avisos.length ? ` Avisos: ${r.avisos.join(' · ')}` : ''));
+      const d = await social.get(artist.id); if (d && Array.isArray(d.metrics)) setData(d);
+    } catch (e: any) { setMetaError(e.message || 'No se pudo actualizar.'); meta.get(artist.id).then((d) => d && d.demographics && setMetaData(d)).catch(() => {}); }
+    finally { setMetaBusy(''); }
+  };
+  const metaDisconnect = async () => {
+    setMetaBusy('disconnect'); setMetaError('');
+    try { const r = await meta.disconnect(artist.id); setMetaData(r.data); setNotice('Cuenta oficial desconectada. El historial se conserva.'); }
+    catch (e: any) { setMetaError(e.message || 'No se pudo desconectar.'); }
+    finally { setMetaBusy(''); }
   };
 
   const setHandle = (p: SocialPlatform, value: string) => {
@@ -215,7 +257,7 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
                   {lt && (
                     <div className="text-[10px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
                       <span>Capturado: {fmtDate(lt.last.date)}</span>
-                      <span className={`px-1.5 rounded font-bold ${lt.last.source === 'apify' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}`}>{lt.last.source === 'apify' ? 'Apify (automático)' : 'Manual'}</span>
+                      <span className={`px-1.5 rounded font-bold ${lt.last.source === 'meta' ? 'bg-emerald-50 text-emerald-700' : lt.last.source === 'apify' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}`}>{lt.last.source === 'meta' ? 'API oficial de Instagram' : lt.last.source === 'apify' ? 'Apify (automático)' : 'Manual'}</span>
                       {lt.last.following !== null && <span>Siguiendo: {fmtNum(lt.last.following)}</span>}
                       {lt.last.posts !== null && <span>Publicaciones: {fmtNum(lt.last.posts)}</span>}
                       {lt.last.engagement !== null && <span>Interacción: {lt.last.engagement}%</span>}
@@ -266,6 +308,11 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
         )}
       </section>
 
+      {(nets.includes('instagram') || metaData?.connection) && (
+        <OfficialInstagram configured={metaCfg ? metaCfg.configured : null} missing={metaCfg?.missing ?? []} data={metaData} busy={metaBusy} error={metaError}
+          onConnect={() => void metaConnect()} onSync={() => void metaSync()} onDisconnect={() => void metaDisconnect()} />
+      )}
+
       {/* Histórico */}
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -299,7 +346,7 @@ export default function SocialMetrics({ artist, events, onUpdateArtist }: Props)
                 const c = COLORS[PLATFORMS.indexOf(l.p) % COLORS.length];
                 const d = l.pts.map((m, k) => `${k ? 'L' : 'M'}${chart.x(m.date).toFixed(1)},${chart.y(chart.val(l, m)).toFixed(1)}`).join(' ');
                 return (<g key={l.p}><path d={d} fill="none" stroke={c} strokeWidth={2} />
-                  {l.pts.map((m) => (<circle key={m.date} cx={chart.x(m.date)} cy={chart.y(chart.val(l, m))} r={3} fill={c} stroke="#fff" strokeWidth={1}><title>{`${PLATFORM_LABEL[l.p]} · ${fmtDate(m.date)}: ${fmtNum(m.followers)} seguidores (${m.source === 'apify' ? 'Apify' : 'manual'})`}</title></circle>))}
+                  {l.pts.map((m) => (<circle key={m.date} cx={chart.x(m.date)} cy={chart.y(chart.val(l, m))} r={3} fill={c} stroke="#fff" strokeWidth={1}><title>{`${PLATFORM_LABEL[l.p]} · ${fmtDate(m.date)}: ${fmtNum(m.followers)} seguidores (${m.source === 'meta' ? 'API oficial' : m.source === 'apify' ? 'Apify' : 'manual'})`}</title></circle>))}
                   {chart.lines.length > 1 && <text x={chart.L + 6 + i * 90} y={chart.T + 22} fontSize={10} fill={c} fontWeight={700}>● {PLATFORM_LABEL[l.p]}</text>}</g>);
               })}
             </svg>

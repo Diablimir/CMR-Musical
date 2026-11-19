@@ -203,6 +203,90 @@
         ]
     },
     {
+        "name": "artista_alcance",
+        "description": "Alcance diario (cuentas alcanzadas) de la cuenta oficial de Instagram del artista.",
+        "columns": [
+            {
+                "name": "artista_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → artistas(id), al borrar: CASCADE · Artista.",
+                "key": "PK"
+            },
+            {
+                "name": "plataforma",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "fecha",
+                "type": "DATE",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "alcance",
+                "type": "INT(10) UNSIGNED",
+                "notes": "Obligatorio"
+            }
+        ],
+        "indexes": []
+    },
+    {
+        "name": "artista_conexiones",
+        "description": "Cuenta oficial de Instagram conectada por OAuth (API de Meta) para un artista. El token se guarda cifrado (AES-256-GCM) y nunca llega al navegador.",
+        "columns": [
+            {
+                "name": "artista_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → artistas(id), al borrar: CASCADE · Artista.",
+                "key": "PK"
+            },
+            {
+                "name": "plataforma",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "cuenta_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "usuario",
+                "type": "VARCHAR(100)",
+                "notes": ""
+            },
+            {
+                "name": "token_cifrado",
+                "type": "TEXT",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "expira_en",
+                "type": "DATETIME(3)",
+                "notes": ""
+            },
+            {
+                "name": "conectado_en",
+                "type": "DATETIME(3)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "ultima_sync",
+                "type": "DATETIME(3)",
+                "notes": ""
+            },
+            {
+                "name": "ultimo_error",
+                "type": "VARCHAR(255)",
+                "notes": ""
+            }
+        ],
+        "indexes": []
+    },
+    {
         "name": "artista_contactos",
         "description": "Vínculo contacto ↔ artista con rol (Manager, Booking…). Sustituye a los textos `manager` y `booking_agent`.",
         "columns": [
@@ -235,6 +319,48 @@
             "CREATE INDEX idx_artista_contactos_contacto ON artista_contactos(contacto_id);",
             "CREATE UNIQUE INDEX uq_ac_principal ON artista_contactos(artista_id,rol_id,es_principal);"
         ]
+    },
+    {
+        "name": "artista_demografia",
+        "description": "Foto de la audiencia por edad, género, ciudad y país, una por fecha de captura (la entrega Meta con 100 seguidores o más).",
+        "columns": [
+            {
+                "name": "artista_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → artistas(id), al borrar: CASCADE · Artista.",
+                "key": "PK"
+            },
+            {
+                "name": "plataforma",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "fecha",
+                "type": "DATE",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "dimension",
+                "type": "VARCHAR(10)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "clave",
+                "type": "VARCHAR(100)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "valor",
+                "type": "INT(10) UNSIGNED",
+                "notes": "Obligatorio"
+            }
+        ],
+        "indexes": []
     },
     {
         "name": "artista_generos",
@@ -485,6 +611,88 @@
             }
         ],
         "indexes": []
+    },
+    {
+        "name": "artista_publicaciones",
+        "description": "Publicaciones de la cuenta oficial con sus números: me gusta, comentarios, alcance, guardados, compartidos e interacciones. Los datos que Meta no entrega quedan en NULL.",
+        "columns": [
+            {
+                "name": "artista_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → artistas(id), al borrar: CASCADE · Artista.",
+                "key": "PK"
+            },
+            {
+                "name": "plataforma",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "post_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "publicado_en",
+                "type": "DATETIME(3)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "tipo",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "enlace",
+                "type": "VARCHAR(500)",
+                "notes": ""
+            },
+            {
+                "name": "texto",
+                "type": "VARCHAR(500)",
+                "notes": ""
+            },
+            {
+                "name": "me_gusta",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "comentarios",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "alcance",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "guardados",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "compartidos",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "interacciones",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "capturado_en",
+                "type": "DATETIME(3)",
+                "notes": "Obligatorio"
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_apu_fecha ON artista_publicaciones(artista_id,publicado_en);"
+        ]
     },
     {
         "name": "artista_redes",

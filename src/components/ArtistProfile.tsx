@@ -37,7 +37,7 @@ export default function ArtistProfile({
   onAddContract,
   recordingProjects = []
 }: ArtistProfileProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'360' | 'pipeline' | 'contracts' | 'shows' | 'history' | 'social'>('360');
+  const [activeSubTab, setActiveSubTab] = useState<'360' | 'pipeline' | 'contracts' | 'shows' | 'history' | 'social'>(() => { try { if (sessionStorage.getItem('flamo_open_social')) { sessionStorage.removeItem('flamo_open_social'); return 'social'; } } catch { /* sin almacenamiento */ } return '360'; });
   // NEW: MemberHistory and Photo Editor States
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [selectedMemberForEdit, setSelectedMemberForEdit] = useState<MemberHistory | null>(null);

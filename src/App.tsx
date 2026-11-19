@@ -224,6 +224,22 @@ export default function App() {
   // 4. Selected Entities
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [selectedArtistId, setSelectedArtistId] = useState<string>('');
+
+  // Regreso de la autorización de Meta (/?meta=ok|error&artist=ID&msg=…): abre el artista en «Audiencia & Captación» y muestra el resultado
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const q = new URLSearchParams(window.location.search);
+    const st = q.get('meta');
+    if (!st) return;
+    try { sessionStorage.setItem('flamo_meta_msg', JSON.stringify({ status: st, msg: q.get('msg') || '' })); } catch { /* sin almacenamiento */ }
+    const id = q.get('artist');
+    if (id && artists.some((x) => x.id === id)) {
+      try { sessionStorage.setItem('flamo_open_social', '1'); } catch { /* sin almacenamiento */ }
+      setSelectedArtistId(id);
+      setActiveWorkspace('artists');
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [dataLoaded]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerInitialTab, setDrawerInitialTab] = useState<'info' | 'contacts' | 'events' | 'modalities' | 'followup' | 'finances' | 'docs' | 'history' | 'map' | 'providers' | 'local-bands'>('info');
   const [isAddArtistModalOpen, setIsAddArtistModalOpen] = useState(false);

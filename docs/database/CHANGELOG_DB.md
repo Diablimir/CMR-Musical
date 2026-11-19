@@ -1,5 +1,9 @@
 # FLAMO CRM — Registro de cambios de la base de datos
 
+## v8 · Conexión oficial con Instagram  (migración 008)
+**Añadido:** `artista_conexiones` (cuenta conectada por OAuth; token **cifrado** con AES-256-GCM, nunca enviado al navegador), `artista_alcance` (alcance diario), `artista_demografia` (edad, género, ciudad, país por fecha) y `artista_publicaciones` (me gusta, comentarios, alcance, guardados, compartidos, interacciones). La fuente `meta` es válida en `artista_metricas_redes`.
+**Rollback:** `down()` elimina las 4 tablas y deja las capturas con fuente `meta` marcadas como `manual` (no se pierden, pierden su origen). Los tokens guardados se pierden: habría que volver a conectar.
+
 ## v7 · Historial de redes y acciones  (migración 007)
 **Añadido:** `artista_metricas_redes` (una captura por artista + red + día: seguidores, siguiendo, publicaciones, interacción, fuente `manual`/`apify`) y `artista_acciones` (lanzamiento, campaña, publicación, colaboración, prensa, gira, otro). Los shows se toman de `eventos` (no se duplican). Con ambas la interfaz mide el cambio de seguidores después de cada acción.
 **Quitado (sin migración):** el «modo demostración» de `api/apify.php` y los valores por defecto inventados (50 000 seguidores, 5.2 % de interacción…). Si Apify no devuelve datos reales, se responde un error y NO se guarda nada.

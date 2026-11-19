@@ -38,7 +38,14 @@ Abre tu dominio e inicia sesión con `admin` y la clave que pusiste. Crea los de
   - Apify en vivo: pon tu token en `apify_token` de `config.php`. **Sin token no se muestra ningún dato inventado**: «Actualizar ahora» responde que Apify no está configurado.
   - Historial de redes (pestaña «Audiencia & Captación» del artista): al agregar una red solo se escribe el usuario o enlace y **se conecta y trae los datos sola**. Instagram, TikTok, YouTube y Facebook se leen con Apify (datos públicos); las demás redes se capturan a mano. Cada captura se guarda por día.
   - **Actualización automática:** al abrir la pantalla del artista se actualiza lo que aún no tiene captura de hoy, y una tarea programada (cron de hPanel, `php …/api/social_cron.php`, diaria 06:17) captura a todos los artistas. Alternativa por URL: define `cron_token` en `config.php` y llama `https://TU_DOMINIO/api/social_cron.php?token=TU_CRON_TOKEN`.
-  - Es información pública: no incluye alcance ni demografía (eso requiere conectar las cuentas oficiales por OAuth de Meta/TikTok).
+  - **Instagram oficial (alcance, demografía e interacción por publicación):** requiere una app de Meta propia. Pasos (la consola de Meta cambia de nombres con frecuencia):
+    1. En https://developers.facebook.com → *Mis apps* → *Crear app* → tipo *Negocio*.
+    2. Agrega el producto *Inicio de sesión con Facebook para empresas* y, en su configuración, el *URI de redireccionamiento de OAuth válido*: `https://crm.flamo.wtf/api/meta_callback.php`.
+    3. En *Configuración → Básica* copia el *ID de la app* y la *Clave secreta* y ponlos en `api/config.php` como `meta_app_id` y `meta_app_secret`; define también `token_key` (texto largo y aleatorio, mínimo 16 caracteres; con él se cifran los tokens: no lo cambies después o habrá que reconectar las cuentas).
+    4. La cuenta de Instagram del artista debe ser **profesional** (creador o negocio) y estar ligada a una página de Facebook; quien autoriza debe administrar esa página.
+    5. Mientras la app esté en *modo desarrollo* solo funciona con personas que tengan un rol en la app (administrador, desarrollador o probador). Para conectar cuentas de terceros hay que pasar la *Revisión de la app* de Meta (permisos `instagram_manage_insights`, `instagram_basic`, `pages_show_list`, `pages_read_engagement`, `business_management`) y, normalmente, la verificación del negocio.
+    6. Entra al artista → *Audiencia & Captación* → *Conectar Instagram oficial*. Sin las claves el botón aparece desactivado y explica qué falta.
+  - Sin la conexión oficial solo se ven datos públicos (seguidores, siguiendo, publicaciones); con ella se suman alcance, demografía e interacción por publicación.
   - Calendario: un evento abre «Añadir a Google Calendar»; «sincronizar todos» descarga un `.ics` para importar.
   - La sincronización directa con la API de Google requeriría configurar OAuth en Google Cloud (no incluido).
 - Usa HTTPS (SSL gratis en hPanel) para proteger la sesión.

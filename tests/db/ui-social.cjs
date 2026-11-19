@@ -45,7 +45,7 @@ const day = (off) => new Date(Date.now() + off * 86400000).toISOString().slice(0
   await p.getByLabel('Agregar red').selectOption('tiktok');
   check('al elegir la red pide SOLO el usuario o enlace (no seguidores)', await p.getByLabel('Usuario o enlace de la nueva red').isVisible() && !(await p.getByTestId('manual-form').count()));
   await p.getByLabel('Usuario o enlace de la nueva red').fill('https://www.tiktok.com/@qa.tt');
-  await p.getByRole('button', { name: 'Conectar' }).click(); await p.waitForTimeout(2500);
+  await p.getByRole('button', { name: 'Conectar', exact: true }).click(); await p.waitForTimeout(2500);
   check('la red queda guardada con su enlace y aparece su tarjeta', q("SELECT enlace FROM artista_redes WHERE artista_id='qa-a1' AND plataforma='tiktok'") === 'https://www.tiktok.com/@qa.tt' && (await p.getByTestId('net-tiktok').count()) === 1);
   check('intentó conectarse sola (error de Apify en la tarjeta, sin pedir captura manual)', (await p.getByTestId('net-error-tiktok').innerText()).includes('Apify no está configurado'));
   // artista con el usuario que quedó de la conexión anterior

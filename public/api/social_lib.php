@@ -4,6 +4,8 @@ declare(strict_types=1);
 // Redes sociales del artista: normalización de datos reales, guardado del historial y consulta a Apify.
 // Aquí NO se inventa nada: si un dato no existe, se devuelve null/error y la interfaz lo muestra como «sin dato».
 
+require_once __DIR__ . '/meta_lib.php';
+
 const SOCIAL_NETS = ['instagram', 'tiktok', 'facebook', 'youtube', 'spotify', 'appleMusic', 'twitter', 'threads'];
 const SOCIAL_AUTO = ['instagram', 'tiktok', 'youtube', 'facebook'];   // redes con captura automática (Apify); el resto se captura a mano
 const ACTION_TYPES = ['Lanzamiento', 'Campaña', 'Publicación', 'Colaboración', 'Prensa', 'Gira', 'Otro'];
@@ -73,7 +75,7 @@ function social_normalize(string $platform, array $items): ?array {
 /** Valida y guarda (o reemplaza) la captura de un día. $d = ['seguidores', 'siguiendo'?, 'publicaciones'?, 'interaccion'?]. */
 function social_save_snapshot(PDO $pdo, string $artistId, string $platform, string $date, array $d, string $source): void {
     if (!in_array($platform, SOCIAL_NETS, true)) throw new InvalidArgumentException('Red social no válida.');
-    if (!in_array($source, ['manual', 'apify'], true)) throw new InvalidArgumentException('Fuente no válida.');
+    if (!in_array($source, ['manual', 'apify', 'meta'], true)) throw new InvalidArgumentException('Fuente no válida.');
     $dt = DateTime::createFromFormat('Y-m-d', $date);
     if (!$dt || $dt->format('Y-m-d') !== $date) throw new InvalidArgumentException('La fecha no es válida (usa AAAA-MM-DD).');
     if ($date > gmdate('Y-m-d', time() + 86400)) throw new InvalidArgumentException('La fecha no puede ser futura.');
@@ -136,6 +138,13 @@ function social_refresh_artist(PDO $pdo, string $artistId, bool $force = false):
     $out = ['refreshed' => [], 'errors' => [], 'skipped' => []];
     $today = gmdate('Y-m-d');
     foreach (SOCIAL_AUTO as $p) {
+        if ($p === 'instagram' && meta_configured() && meta_connection($pdo, $artistId)) {   // cuenta oficial conectada: se usa la API de Meta (más datos y sin scraping)
+            $st = $pdo->prepare("SELECT 1 FROM artista_metricas_redes WHERE artista_id = ? AND plataforma = 'instagram' AND fecha = ? AND fuente = 'meta'"); $st->execute([$artistId, $today]);
+            if (!$force && $st->fetchColumn()) { $out['skipped'][] = $p; continue; }
+            $r = meta_sync_artist($pdo, $artistId);
+            if ($r['ok']) $out['refreshed'][] = $p; else $out['errors'][$p] = $r['error'];
+            continue;
+        }
         $h = social_artist_handle($pdo, $artistId, $p);
         if ($h === '') continue;
         if (!$force) {

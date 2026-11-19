@@ -25,7 +25,7 @@ $count = fn(string $sql, array $a = []) => (int)t_scalar($pdo, $sql, $a);
 t_section('1. Migraciones: instalación nueva');
 $fresh();
 $applied = migrate_up($pdo);
-t_eq($applied, [1, 2, 3, 4, 5, 6, 7], 'se aplican las 7 migraciones en orden');
+t_eq($applied, [1, 2, 3, 4, 5, 6, 7, 8], 'se aplican las 8 migraciones en orden');
 foreach (['artistas','venues','contactos','contacto_correos','contacto_telefonos','venue_contactos','artista_contactos','proveedor_contactos','evento_artistas','tour_artistas','artista_generos','cat_generos','cat_roles_contacto','cat_monedas','eventos','tours','contratos','proveedores','proyectos_grabacion','venue_proveedores','cat_etapas_desarrollo','schema_migrations'] as $tb) t_ok(db_table_exists($pdo, $tb), "existe la tabla $tb");
 t_eq(migrate_up($pdo), [], 'volver a migrar no hace nada (idempotente)');
 t_eq($count('SELECT COUNT(*) FROM cat_etapas_desarrollo'), 7, 'catálogo de etapas sembrado');
@@ -423,9 +423,9 @@ $sync(['events' => ['deletes' => ['evt-1']]]);
 t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE nota_id='n-1' AND evento_id IS NULL"), 1, 'al borrar el evento la nota se conserva (SET NULL)');
 $sync(['venues' => ['deletes' => ['ven-1']]]);
 t_eq($count('SELECT COUNT(*) FROM venue_notas'), 0, 'al borrar el venue se borran sus notas (CASCADE)');
-t_eq(migrate_down($pdo, 5), [7, 6], 'rollback de la 007 y la 006 (en orden inverso)');
+t_eq(migrate_down($pdo, 5), [8, 7, 6], 'rollback de la 008, 007 y 006 (en orden inverso)');
 t_ok(!db_table_exists($pdo, 'venue_notas') && db_table_exists($pdo, 'venues'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [6, 7], 'y se pueden volver a aplicar');
+t_eq(migrate_up($pdo), [6, 7, 8], 'y se pueden volver a aplicar');
 
 t_section('20d. Historial de redes y acciones (migración 007)');
 $fresh(); migrate_up($pdo); catalog_cache_clear();
@@ -486,9 +486,65 @@ t_eq([$rf['skipped'], array_keys($rf['errors'])], [['instagram'], ['tiktok']], '
 t_eq(array_keys(social_refresh_artist($pdo, 'art-3', true)['errors']), ['instagram', 'tiktok'], 'con «forzar» sí se vuelve a consultar');
 $sync(['artists' => ['deletes' => ['art-1', 'art-3']]]);
 t_eq($count('SELECT COUNT(*) FROM artista_metricas_redes') + $count('SELECT COUNT(*) FROM artista_acciones'), 0, 'al borrar el artista se borra su historial y sus acciones (CASCADE)');
-t_eq(migrate_down($pdo, 6), [7], 'rollback de la 007 elimina solo las dos tablas nuevas');
+t_eq(migrate_down($pdo, 6), [8, 7], 'rollback de la 008 y la 007 elimina solo sus tablas');
 t_ok(!db_table_exists($pdo, 'artista_metricas_redes') && !db_table_exists($pdo, 'artista_acciones') && db_table_exists($pdo, 'venue_notas'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [7], 'y se puede volver a aplicar');
+t_eq(migrate_up($pdo), [7, 8], 'y se puede volver a aplicar');
+
+// ═══ Conexión oficial con Instagram (migración 008) ═══
+t_section('20e. Cuenta oficial de Instagram: cifrado, lectores y guardado (migración 008)');
+$k = 'clave-de-prueba-0123456789';
+$blob = meta_encrypt('TOKEN-SECRETO-ABC', $k);
+t_ok(!str_contains($blob, 'TOKEN-SECRETO') && !str_contains(base64_decode($blob), 'TOKEN-SECRETO'), 'el token cifrado no contiene el texto original');
+t_eq(meta_decrypt($blob, $k), 'TOKEN-SECRETO-ABC', 'se descifra con la misma clave');
+t_ok(meta_encrypt('TOKEN-SECRETO-ABC', $k) !== $blob, 'cada cifrado usa un vector distinto (no se repite)');
+t_throws(fn() => meta_decrypt($blob, 'otra-clave-distinta-9999'), 'con otra clave NO se puede descifrar', 'descifrar');
+$tam = base64_decode($blob); $tam[40] = chr(ord($tam[40]) ^ 1);
+t_throws(fn() => meta_decrypt(base64_encode($tam), $k), 'un token alterado se detecta (GCM)', 'descifrar');
+t_throws(fn() => meta_decrypt('no-es-base64!!', $k), 'un valor dañado se rechaza con mensaje claro', 'dañado');
+// lectores de respuestas de Meta
+t_eq(meta_parse_accounts(['data' => [['name' => 'Pág 1'], ['name' => 'Pág 2', 'instagram_business_account' => ['id' => '178', 'username' => 'mi.banda']]]]), [['id' => '178', 'username' => 'mi.banda', 'page' => 'Pág 2']], 'cuentas: solo las páginas con Instagram profesional');
+t_eq(meta_parse_account(['username' => 'mi.banda', 'followers_count' => 2500, 'follows_count' => 10, 'media_count' => 40]), ['usuario' => 'mi.banda', 'seguidores' => 2500, 'siguiendo' => 10, 'publicaciones' => 40], 'cuenta: seguidores reales');
+t_eq(meta_parse_account(['username' => 'x'])['seguidores'], null, 'cuenta sin followers_count → null (no se inventa)');
+t_eq(meta_parse_reach(['data' => [['values' => [['value' => 120, 'end_time' => '2026-11-11T08:00:00+0000'], ['value' => 100, 'end_time' => '2026-11-10T08:00:00+0000'], ['value' => 'x', 'end_time' => '2026-11-12T08:00:00+0000']]]]]), ['2026-11-09' => 100, '2026-11-10' => 120], 'alcance: el dato de end_time es del día anterior, ordenado y sin valores inválidos');
+$dm = meta_parse_demographics(['data' => [['total_value' => ['breakdowns' => [['results' => [['dimension_values' => ['F'], 'value' => 60], ['dimension_values' => ['M'], 'value' => 30], ['dimension_values' => ['U'], 'value' => 10]]]]]]]], 'genero');
+t_eq($dm, ['Mujeres' => 60, 'Hombres' => 30, 'Sin especificar' => 10], 'demografía: el género se traduce y se ordena de mayor a menor');
+t_eq(meta_parse_demographics(['data' => []], 'edad'), [], 'demografía vacía (menos de 100 seguidores) → vacío, sin inventar');
+$md = meta_parse_media(['data' => [['id' => 'p1', 'caption' => 'Hola', 'media_type' => 'VIDEO', 'permalink' => 'https://x/p1', 'timestamp' => '2026-11-10T20:00:00+0000', 'like_count' => 3, 'comments_count' => 1], ['id' => 'sin-fecha'], ['caption' => 'sin id', 'timestamp' => '2026-11-10T20:00:00+0000']]]);
+t_eq([count($md), $md[0]['publicado_en'], $md[0]['me_gusta'], $md[0]['alcance']], [1, '2026-11-10 20:00:00.000', 3, null], 'publicaciones: solo las completas; alcance aún sin dato (null)');
+t_eq(meta_parse_media_insights(['data' => [['name' => 'reach', 'values' => [['value' => 1000]]], ['name' => 'saved', 'values' => [['value' => 25]]], ['name' => 'raro', 'values' => [['value' => 'x']]]]]), ['reach' => 1000, 'saved' => 25], 'insights de una publicación: solo números válidos');
+t_eq([meta_post_engagement(['alcance' => 1000, 'interacciones' => 380]), meta_post_engagement(['alcance' => null, 'interacciones' => 5]), meta_post_engagement(['alcance' => 0, 'interacciones' => 5]), meta_post_engagement(['alcance' => 10, 'interacciones' => null])], [38.0, null, null, null], 'interacción por publicación = interacciones ÷ alcance; sin alcance o sin interacciones → sin dato');
+// guardado
+$fresh(); migrate_up($pdo); catalog_cache_clear();
+$sync($up('artists', $art('art-1', 'Uno')));
+meta_save_connection($pdo, 'art-1', '178', 'mi.banda', 'TOKEN-SECRETO-ABC', '2027-01-01 00:00:00.000', $k);
+$row = $pdo->query("SELECT token_cifrado, usuario FROM artista_conexiones WHERE artista_id='art-1'")->fetch();
+t_ok(!str_contains($row['token_cifrado'], 'TOKEN-SECRETO') && meta_decrypt($row['token_cifrado'], $k) === 'TOKEN-SECRETO-ABC', 'en la base el token está cifrado y se recupera con la clave');
+meta_save_connection($pdo, 'art-1', '178', 'mi.banda', 'TOKEN-NUEVO', null, $k);
+t_eq([$count("SELECT COUNT(*) FROM artista_conexiones"), meta_decrypt((string)t_scalar($pdo, "SELECT token_cifrado FROM artista_conexiones"), $k)], [1, 'TOKEN-NUEVO'], 'reconectar reemplaza el token (una conexión por artista)');
+t_eq(meta_store_reach($pdo, 'art-1', ['2026-11-09' => 100, '2026-11-10' => 120]), 2, 'alcance guardado');
+meta_store_reach($pdo, 'art-1', ['2026-11-10' => 130]);
+t_eq([$count('SELECT COUNT(*) FROM artista_alcance'), $count("SELECT alcance FROM artista_alcance WHERE fecha='2026-11-10'")], [2, 130], 'volver a guardar un día reemplaza (no duplica)');
+meta_store_demographics($pdo, 'art-1', '2026-11-10', 'edad', ['18-24' => 900, '25-34' => 1100]);
+meta_store_demographics($pdo, 'art-1', '2026-11-10', 'edad', ['25-34' => 1200]);
+t_eq($count("SELECT COUNT(*) FROM artista_demografia WHERE dimension='edad' AND fecha='2026-11-10'"), 1, 'la foto demográfica del día se reemplaza completa');
+$pp = meta_parse_media(['data' => [['id' => 'p1', 'media_type' => 'VIDEO', 'timestamp' => '2026-11-10T20:00:00+0000', 'like_count' => 3, 'comments_count' => 1]]]); $pp[0]['alcance'] = 100; $pp[0]['interacciones'] = 40;
+meta_store_posts($pdo, 'art-1', $pp); $pp[0]['alcance'] = 120; meta_store_posts($pdo, 'art-1', $pp);
+t_eq([$count('SELECT COUNT(*) FROM artista_publicaciones'), $count('SELECT alcance FROM artista_publicaciones')], [1, 120], 'las publicaciones se actualizan por id (no se duplican)');
+$ml = meta_load($pdo, 'art-1');
+t_ok(!str_contains(json_encode($ml), 'TOKEN') && !str_contains(json_encode($ml), 'token'), 'lo que se envía a la interfaz NUNCA incluye el token');
+t_eq([$ml['connection']['connected'], $ml['connection']['username'], count($ml['reach']), $ml['demographics']['edad'][0]['key'], round($ml['posts'][0]['engagement'], 2)], [true, 'mi.banda', 2, '25-34', 33.33], 'la interfaz recibe conexión, alcance, demografía y publicaciones con su interacción (40 ÷ 120)');
+t_throws(fn() => $pdo->exec("INSERT INTO artista_demografia (artista_id, plataforma, fecha, dimension, clave, valor) VALUES ('art-1','instagram','2026-11-10','raza','x',1)"), 'la base rechaza una dimensión fuera del dominio');
+t_throws(fn() => $pdo->exec("INSERT INTO artista_conexiones (artista_id, plataforma, cuenta_id, token_cifrado, conectado_en) VALUES ('art-1','tiktok','1','x',NOW(3))"), 'la base rechaza plataformas sin integración oficial');
+social_save_snapshot($pdo, 'art-1', 'instagram', '2026-11-10', ['seguidores' => 2500], 'meta');
+t_eq((string)t_scalar($pdo, "SELECT fuente FROM artista_metricas_redes WHERE artista_id='art-1' AND fecha='2026-11-10'"), 'meta', 'las capturas pueden venir de la API oficial (fuente «meta»)');
+$sync(['artists' => ['deletes' => ['art-1']]]);
+t_eq($count('SELECT COUNT(*) FROM artista_conexiones') + $count('SELECT COUNT(*) FROM artista_alcance') + $count('SELECT COUNT(*) FROM artista_demografia') + $count('SELECT COUNT(*) FROM artista_publicaciones'), 0, 'al borrar el artista se borra todo lo oficial (CASCADE)');
+$fresh(); migrate_up($pdo); catalog_cache_clear(); $sync($up('artists', $art('art-1', 'Uno')));
+social_save_snapshot($pdo, 'art-1', 'instagram', '2026-11-10', ['seguidores' => 2500], 'meta');
+t_eq(migrate_down($pdo, 7), [8], 'rollback de la 008');
+t_ok(!db_table_exists($pdo, 'artista_conexiones') && db_table_exists($pdo, 'artista_metricas_redes'), 'quita las 4 tablas y deja las capturas');
+t_eq((string)t_scalar($pdo, "SELECT fuente FROM artista_metricas_redes WHERE artista_id='art-1'"), 'manual', 'las capturas «meta» se conservan marcadas como «manual»');
+t_eq(migrate_up($pdo), [8], 'y se puede volver a aplicar');
 
 // ═══════════════════════════════════════════════════════════
 t_section('21. Fase 4: contracción (retirar lo obsoleto) con verificación previa y rollback');

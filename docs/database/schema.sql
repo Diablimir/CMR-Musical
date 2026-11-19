@@ -22,6 +22,29 @@ CREATE TABLE `artista_acciones` (
   CONSTRAINT `chk_aa_plataforma` CHECK (`plataforma` is null or `plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads')),
   CONSTRAINT `chk_aa_titulo` CHECK (char_length(trim(`titulo`)) > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_alcance` (
+  `artista_id` varchar(40) NOT NULL,
+  `plataforma` varchar(20) NOT NULL,
+  `fecha` date NOT NULL,
+  `alcance` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`artista_id`,`plataforma`,`fecha`),
+  CONSTRAINT `fk_aal_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_aal_plataforma` CHECK (`plataforma` = 'instagram')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_conexiones` (
+  `artista_id` varchar(40) NOT NULL,
+  `plataforma` varchar(20) NOT NULL,
+  `cuenta_id` varchar(40) NOT NULL,
+  `usuario` varchar(100) DEFAULT NULL,
+  `token_cifrado` text NOT NULL,
+  `expira_en` datetime(3) DEFAULT NULL,
+  `conectado_en` datetime(3) NOT NULL,
+  `ultima_sync` datetime(3) DEFAULT NULL,
+  `ultimo_error` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`artista_id`,`plataforma`),
+  CONSTRAINT `fk_ac_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_ac_plataforma` CHECK (`plataforma` = 'instagram')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artista_contactos` (
   `artista_id` varchar(40) NOT NULL,
   `contacto_id` varchar(40) NOT NULL,
@@ -35,6 +58,18 @@ CREATE TABLE `artista_contactos` (
   CONSTRAINT `fk_artista_contactos_entidad` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_artista_contactos_rol` FOREIGN KEY (`rol_id`) REFERENCES `cat_roles_contacto` (`id`),
   CONSTRAINT `chk_artista_contactos_principal` CHECK (`es_principal` is null or `es_principal` = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_demografia` (
+  `artista_id` varchar(40) NOT NULL,
+  `plataforma` varchar(20) NOT NULL,
+  `fecha` date NOT NULL,
+  `dimension` varchar(10) NOT NULL,
+  `clave` varchar(100) NOT NULL,
+  `valor` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`artista_id`,`plataforma`,`fecha`,`dimension`,`clave`),
+  CONSTRAINT `fk_ade_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_ade_plataforma` CHECK (`plataforma` = 'instagram'),
+  CONSTRAINT `chk_ade_dimension` CHECK (`dimension` in ('edad','genero','ciudad','pais'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artista_generos` (
   `artista_id` varchar(40) NOT NULL,
@@ -96,8 +131,8 @@ CREATE TABLE `artista_metricas_redes` (
   PRIMARY KEY (`artista_id`,`plataforma`,`fecha`),
   CONSTRAINT `fk_amr_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `chk_amr_plataforma` CHECK (`plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads')),
-  CONSTRAINT `chk_amr_fuente` CHECK (`fuente` in ('manual','apify')),
-  CONSTRAINT `chk_amr_interaccion` CHECK (`interaccion` is null or `interaccion` >= 0 and `interaccion` <= 100)
+  CONSTRAINT `chk_amr_interaccion` CHECK (`interaccion` is null or `interaccion` >= 0 and `interaccion` <= 100),
+  CONSTRAINT `chk_amr_fuente` CHECK (`fuente` in ('manual','apify','meta'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artista_pipeline` (
   `artista_id` varchar(40) NOT NULL,
@@ -109,6 +144,26 @@ CREATE TABLE `artista_pipeline` (
   PRIMARY KEY (`artista_id`,`item_id`),
   CONSTRAINT `fk_ap_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `chk_ap_categoria` CHECK (`categoria` in ('Branding','Distribución','Presencia','Booking & Management'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_publicaciones` (
+  `artista_id` varchar(40) NOT NULL,
+  `plataforma` varchar(20) NOT NULL,
+  `post_id` varchar(40) NOT NULL,
+  `publicado_en` datetime(3) NOT NULL,
+  `tipo` varchar(20) NOT NULL,
+  `enlace` varchar(500) DEFAULT NULL,
+  `texto` varchar(500) DEFAULT NULL,
+  `me_gusta` int(10) unsigned DEFAULT NULL,
+  `comentarios` int(10) unsigned DEFAULT NULL,
+  `alcance` int(10) unsigned DEFAULT NULL,
+  `guardados` int(10) unsigned DEFAULT NULL,
+  `compartidos` int(10) unsigned DEFAULT NULL,
+  `interacciones` int(10) unsigned DEFAULT NULL,
+  `capturado_en` datetime(3) NOT NULL,
+  PRIMARY KEY (`artista_id`,`plataforma`,`post_id`),
+  KEY `idx_apu_fecha` (`artista_id`,`publicado_en`),
+  CONSTRAINT `fk_apu_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_apu_plataforma` CHECK (`plataforma` = 'instagram')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artista_redes` (
   `artista_id` varchar(40) NOT NULL,
@@ -592,4 +647,4 @@ CREATE TABLE `venues` (
 INSERT INTO cat_etapas_desarrollo (id, nombre) VALUES (1, 'Desarrollo'), (2, 'Aficionado'), (3, 'Emergente'), (4, 'Media carrera'), (5, 'Consolidado'), (6, 'Consagrado'), (7, 'Internacional');
 INSERT INTO cat_roles_contacto (nombre) VALUES ('Manager'), ('Booking'), ('Promotor'), ('Técnico'), ('Hospitalidad'), ('Producción'), ('Administración'), ('Contacto comercial'), ('Contacto');
 INSERT INTO cat_monedas (codigo, nombre) VALUES ('MXN', 'Peso mexicano'), ('USD', 'Dólar estadounidense'), ('EUR', 'Euro');
-INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), ''), (7, 'metricas_redes', NOW(3), '');
+INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), ''), (7, 'metricas_redes', NOW(3), ''), (8, 'meta_oficial', NOW(3), '');
