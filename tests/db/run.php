@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/lib.php';
 require API . '/schema.php';
 require API . '/entities.php';
+require API . '/social_lib.php';
 require __DIR__ . '/seed_v1.php';
 
 $pdo = t_pdo();
@@ -23,7 +24,7 @@ $count = fn(string $sql, array $a = []) => (int)t_scalar($pdo, $sql, $a);
 t_section('1. Migraciones: instalación nueva');
 $fresh();
 $applied = migrate_up($pdo);
-t_eq($applied, [1, 2, 3, 4, 5, 6], 'se aplican las 6 migraciones en orden');
+t_eq($applied, [1, 2, 3, 4, 5, 6, 7], 'se aplican las 7 migraciones en orden');
 foreach (['artistas','venues','contactos','contacto_correos','contacto_telefonos','venue_contactos','artista_contactos','proveedor_contactos','evento_artistas','tour_artistas','artista_generos','cat_generos','cat_roles_contacto','cat_monedas','eventos','tours','contratos','proveedores','proyectos_grabacion','venue_proveedores','cat_etapas_desarrollo','schema_migrations'] as $tb) t_ok(db_table_exists($pdo, $tb), "existe la tabla $tb");
 t_eq(migrate_up($pdo), [], 'volver a migrar no hace nada (idempotente)');
 t_eq($count('SELECT COUNT(*) FROM cat_etapas_desarrollo'), 7, 'catálogo de etapas sembrado');
@@ -421,9 +422,55 @@ $sync(['events' => ['deletes' => ['evt-1']]]);
 t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE nota_id='n-1' AND evento_id IS NULL"), 1, 'al borrar el evento la nota se conserva (SET NULL)');
 $sync(['venues' => ['deletes' => ['ven-1']]]);
 t_eq($count('SELECT COUNT(*) FROM venue_notas'), 0, 'al borrar el venue se borran sus notas (CASCADE)');
-t_eq(migrate_down($pdo, 5), [6], 'rollback de la 006 elimina solo la tabla de notas');
+t_eq(migrate_down($pdo, 5), [7, 6], 'rollback de la 007 y la 006 (en orden inverso)');
 t_ok(!db_table_exists($pdo, 'venue_notas') && db_table_exists($pdo, 'venues'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [6], 'y se puede volver a aplicar');
+t_eq(migrate_up($pdo), [6, 7], 'y se pueden volver a aplicar');
+
+t_section('20d. Historial de redes y acciones (migración 007)');
+$fresh(); migrate_up($pdo); catalog_cache_clear();
+$sync($up('artists', $art('art-1', 'Uno'), $art('art-2', 'Dos')));
+// usuario de la red a partir de lo que escribe la gente
+foreach ([['@mi.banda', 'mi.banda'], ['mi_banda', 'mi_banda'], ['https://www.instagram.com/mi.banda/?hl=es', 'mi.banda'], ['instagram.com/mi.banda', 'mi.banda'], ['https://www.tiktok.com/@mi.banda', 'mi.banda'], ['', ''], ['no es un usuario!!', ''], ['https://instagram.com/', '']] as [$in, $out])
+    t_eq(social_handle($in), $out, "usuario de «{$in}»");
+// normalización de datos reales de Apify (nada inventado)
+$ig = social_normalize('instagram', [['username' => 'mi.banda', 'followersCount' => 10000, 'followsCount' => 120, 'postsCount' => 80, 'verified' => true,
+    'latestPosts' => [['likesCount' => 400, 'commentsCount' => 100], ['likesCount' => 300, 'commentsCount' => 100], ['likesCount' => -1, 'commentsCount' => 5]]]]);
+t_eq([$ig['seguidores'], $ig['siguiendo'], $ig['publicaciones'], $ig['interaccion'], $ig['verificado']], [10000, 120, 80, 4.5, true], 'Instagram: seguidores reales e interacción calculada ((400+100 y 300+100)/2 ÷ 10 000; el post con «me gusta» ocultos se ignora)');
+t_eq(social_normalize('instagram', [['username' => 'x']]), null, 'Instagram sin followersCount → null (NO se rellena con un número)');
+t_eq(social_normalize('instagram', []), null, 'sin resultados → null');
+t_eq(social_normalize('instagram', [['followersCount' => 'abc']]), null, 'seguidores no numéricos → null');
+$tt = social_normalize('tiktok', [['text' => 'v1', 'diggCount' => 900, 'commentCount' => 50, 'shareCount' => 50, 'authorMeta' => ['name' => 'mi.banda', 'fans' => 20000, 'following' => 5, 'video' => 40]], ['diggCount' => 100, 'commentCount' => 0, 'shareCount' => 0]]);
+t_eq([$tt['seguidores'], $tt['publicaciones'], $tt['interaccion']], [20000, 40, 2.75], 'TikTok: fans reales e interacción promedio de los videos ((1 000 + 100) ÷ 2 ÷ 20 000)');
+t_eq(social_normalize('tiktok', [['text' => 'sin authorMeta']]), null, 'TikTok sin datos del autor → null');
+t_eq(social_normalize('youtube', [['subscribersCount' => 5]]), null, 'redes sin captura automática no se simulan');
+// guardado del historial
+social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-01', ['seguidores' => 1000], 'manual');
+social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-08', ['seguidores' => 1100, 'siguiendo' => 50, 'publicaciones' => 12, 'interaccion' => 3.5], 'apify');
+social_save_snapshot($pdo, 'art-1', 'tiktok', '2026-01-08', ['seguidores' => 500], 'manual');
+t_eq($count("SELECT COUNT(*) FROM artista_metricas_redes WHERE artista_id='art-1'"), 3, 'una captura por red y día');
+social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-08', ['seguidores' => 1120], 'manual');
+t_eq([$count("SELECT COUNT(*) FROM artista_metricas_redes WHERE artista_id='art-1' AND plataforma='instagram'"), $count("SELECT seguidores FROM artista_metricas_redes WHERE artista_id='art-1' AND plataforma='instagram' AND fecha='2026-01-08'"), (string)t_scalar($pdo, "SELECT fuente FROM artista_metricas_redes WHERE artista_id='art-1' AND plataforma='instagram' AND fecha='2026-01-08'")], [2, 1120, 'manual'], 'capturar de nuevo el mismo día reemplaza (no duplica) y conserva la última fuente');
+t_ok((t_scalar($pdo, "SELECT interaccion FROM artista_metricas_redes WHERE artista_id='art-1' AND plataforma='instagram' AND fecha='2026-01-08'")) === null, 'los datos opcionales que no se mandan quedan vacíos (NULL), no en 0');
+foreach ([['red inválida', fn() => social_save_snapshot($pdo, 'art-1', 'myspace', '2026-01-02', ['seguidores' => 1], 'manual'), 'Red social'],
+          ['seguidores negativos', fn() => social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-02', ['seguidores' => -5], 'manual'), 'seguidores'],
+          ['seguidores vacíos', fn() => social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-02', [], 'manual'), 'seguidores'],
+          ['fecha futura', fn() => social_save_snapshot($pdo, 'art-1', 'instagram', '2099-01-01', ['seguidores' => 1], 'manual'), 'futura'],
+          ['fecha inexistente', fn() => social_save_snapshot($pdo, 'art-1', 'instagram', '2026-02-30', ['seguidores' => 1], 'manual'), 'fecha'],
+          ['interacción > 100', fn() => social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-02', ['seguidores' => 1, 'interaccion' => 140], 'manual'), 'interacción'],
+          ['fuente inválida', fn() => social_save_snapshot($pdo, 'art-1', 'instagram', '2026-01-02', ['seguidores' => 1], 'inventada'), 'Fuente']] as [$what, $fn, $frag])
+    t_throws($fn, "se rechaza: $what", $frag);
+t_throws(fn() => $pdo->exec("INSERT INTO artista_metricas_redes (artista_id, plataforma, fecha, seguidores, fuente, capturado_en) VALUES ('art-1','myspace','2026-01-03',1,'manual',NOW(3))"), 'la base rechaza una red fuera del dominio (CHECK)');
+t_throws(fn() => $pdo->exec("INSERT INTO artista_metricas_redes (artista_id, plataforma, fecha, seguidores, fuente, capturado_en) VALUES ('art-no','instagram','2026-01-03',1,'manual',NOW(3))"), 'la base rechaza capturas de un artista inexistente (FK)');
+// acciones
+$pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, creado_en) VALUES ('art-1','a1','2026-01-02','Lanzamiento','Sencillo nuevo',NOW(3))");
+t_throws(fn() => $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, creado_en) VALUES ('art-1','a2','2026-01-02','Magia','x',NOW(3))"), 'la base rechaza un tipo de acción fuera del dominio');
+t_throws(fn() => $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, creado_en) VALUES ('art-1','a3','2026-01-02','Otro','   ',NOW(3))"), 'la base rechaza un título en blanco');
+t_throws(fn() => $pdo->exec("INSERT INTO artista_acciones (artista_id, accion_id, fecha, tipo, titulo, plataforma, creado_en) VALUES ('art-1','a4','2026-01-02','Otro','x','myspace',NOW(3))"), 'la base rechaza una red inválida en la acción');
+$sync(['artists' => ['deletes' => ['art-1']]]);
+t_eq($count('SELECT COUNT(*) FROM artista_metricas_redes') + $count('SELECT COUNT(*) FROM artista_acciones'), 0, 'al borrar el artista se borra su historial y sus acciones (CASCADE)');
+t_eq(migrate_down($pdo, 6), [7], 'rollback de la 007 elimina solo las dos tablas nuevas');
+t_ok(!db_table_exists($pdo, 'artista_metricas_redes') && !db_table_exists($pdo, 'artista_acciones') && db_table_exists($pdo, 'venue_notas'), 'el resto del esquema queda intacto');
+t_eq(migrate_up($pdo), [7], 'y se puede volver a aplicar');
 
 // ═══════════════════════════════════════════════════════════
 t_section('21. Fase 4: contracción (retirar lo obsoleto) con verificación previa y rollback');

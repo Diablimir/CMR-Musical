@@ -7,11 +7,13 @@
 ## Índice
 
 - [`artistas`](#artistas) — Entidad principal: perfil del artista o agrupación. Bio, sello y ajustes de foto son columnas; redes, idiomas, integrantes, pipeline e hitos viven en tablas hijas (Fase 3).
+- [`artista_acciones`](#artista_acciones) — Bitácora de acciones del artista (lanzamientos, campañas, publicaciones, colaboraciones, prensa, giras). Los shows no se duplican: se toman de eventos al cruzar con las métricas.
 - [`artista_contactos`](#artista_contactos) — Vínculo contacto ↔ artista con rol (Manager, Booking…). Sustituye a los textos `manager` y `booking_agent`.
 - [`artista_generos`](#artista_generos) — Géneros de un artista (N:M). Un género es el principal; el resto, secundarios.
 - [`artista_hitos`](#artista_hitos) — Hitos y logros en la trayectoria de un artista.
 - [`artista_idiomas`](#artista_idiomas) — Idiomas en que canta o trabaja un artista (sin duplicados por mayúsculas).
 - [`artista_integrantes`](#artista_integrantes) — Integrantes de una agrupación, con rol, fechas de ingreso/salida y si siguen activos (historial).
+- [`artista_metricas_redes`](#artista_metricas_redes) — Historial de redes sociales de un artista: una captura por red y día (seguidores, siguiendo, publicaciones, interacción) con su fuente (manual o apify). Permite ver la evolución y cruzarla con las acciones.
 - [`artista_pipeline`](#artista_pipeline) — Pasos del plan de carrera de un artista (checklist por categoría).
 - [`artista_redes`](#artista_redes) — Redes sociales de un artista: una fila por plataforma, con enlace y estado de conexión.
 - [`cat_etapas_desarrollo`](#cat_etapas_desarrollo) — Catálogo cerrado de etapas de carrera de un artista (Desarrollo … Internacional).
@@ -102,6 +104,39 @@
 
 ---
 
+## artista_acciones
+
+**Propósito:** Bitácora de acciones del artista (lanzamientos, campañas, publicaciones, colaboraciones, prensa, giras). Los shows no se duplican: se toman de eventos al cruzar con las métricas.
+
+**Cardinalidad:** N acciones — 1 artista
+
+**Dependencias funcionales:** (artista_id, accion_id) → fecha, tipo, titulo, notas, plataforma (opcional), creado_en. CHECK: tipo en dominio cerrado, título no vacío.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `accion_id` | `varchar(40)` | NN |  | PK |  |
+| `fecha` | `date` | NN |  |  |  |
+| `tipo` | `varchar(20)` | NN |  |  |  |
+| `titulo` | `varchar(255)` | NN |  |  |  |
+| `notas` | `text` | sí | `NULL` |  |  |
+| `plataforma` | `varchar(20)` | sí | `NULL` |  |  |
+| `creado_en` | `datetime(3)` | NN |  |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_aa_plataforma`: ``plataforma` is null or `plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads')`
+- `chk_aa_tipo`: ``tipo` in ('Lanzamiento','Campaña','Publicación','Colaboración','Prensa','Gira','Otro')`
+- `chk_aa_titulo`: `char_length(trim(`titulo`)) > 0`
+
+**Índices:** `idx_aa_artista_fecha` (artista_id,fecha)
+
+---
+
 ## artista_contactos
 
 **Propósito:** Vínculo contacto ↔ artista con rol (Manager, Booking…). Sustituye a los textos `manager` y `booking_agent`.
@@ -152,8 +187,8 @@
 
 **Llaves foráneas:**
 
-- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `genero_id` → `cat_generos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -245,6 +280,38 @@
 **Restricciones CHECK:**
 
 - `chk_aint_fechas`: ``fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio``
+
+---
+
+## artista_metricas_redes
+
+**Propósito:** Historial de redes sociales de un artista: una captura por red y día (seguidores, siguiendo, publicaciones, interacción) con su fuente (manual o apify). Permite ver la evolución y cruzarla con las acciones.
+
+**Cardinalidad:** N capturas — 1 artista
+
+**Dependencias funcionales:** (artista_id, plataforma, fecha) → seguidores, siguiendo, publicaciones, interaccion, fuente, capturado_en. Capturar de nuevo el mismo día reemplaza. CHECK: plataforma y fuente en dominio cerrado, interacción 0–100.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `plataforma` | `varchar(20)` | NN |  | PK |  |
+| `fecha` | `date` | NN |  | PK |  |
+| `seguidores` | `int(10) unsigned` | NN |  |  |  |
+| `siguiendo` | `int(10) unsigned` | sí | `NULL` |  |  |
+| `publicaciones` | `int(10) unsigned` | sí | `NULL` |  |  |
+| `interaccion` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `fuente` | `varchar(10)` | NN |  |  |  |
+| `capturado_en` | `datetime(3)` | NN |  |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_amr_fuente`: ``fuente` in ('manual','apify')`
+- `chk_amr_interaccion`: ``interaccion` is null or `interaccion` >= 0 and `interaccion` <= 100`
+- `chk_amr_plataforma`: ``plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads')`
 
 ---
 
@@ -548,8 +615,8 @@
 
 **Llaves foráneas:**
 
-- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `proveedor_id` → `proveedores(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `idx_cproveedores_proveedor` (proveedor_id)
 
@@ -592,8 +659,8 @@
 
 **Llaves foráneas:**
 
-- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `idx_cvenues_venue` (venue_id)
 
@@ -632,8 +699,8 @@
 
 **Llaves foráneas:**
 
-- `tour_id` → `tours(id)` · al borrar el padre: **SET NULL**
 - `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `tour_id` → `tours(id)` · al borrar el padre: **SET NULL**
 
 **Restricciones CHECK:**
 
@@ -672,9 +739,9 @@
 
 **Llaves foráneas:**
 
+- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `moneda` → `cat_monedas(codigo)` · al borrar el padre: **RESTRICT** (protege el historial)
-- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -1152,9 +1219,9 @@
 
 **Llaves foráneas:**
 
-- `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Unicidad:**
 

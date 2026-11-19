@@ -1,5 +1,10 @@
 # FLAMO CRM — Registro de cambios de la base de datos
 
+## v7 · Historial de redes y acciones  (migración 007)
+**Añadido:** `artista_metricas_redes` (una captura por artista + red + día: seguidores, siguiendo, publicaciones, interacción, fuente `manual`/`apify`) y `artista_acciones` (lanzamiento, campaña, publicación, colaboración, prensa, gira, otro). Los shows se toman de `eventos` (no se duplican). Con ambas la interfaz mide el cambio de seguidores después de cada acción.
+**Quitado (sin migración):** el «modo demostración» de `api/apify.php` y los valores por defecto inventados (50 000 seguidores, 5.2 % de interacción…). Si Apify no devuelve datos reales, se responde un error y NO se guarda nada.
+**Rollback:** `down()` elimina solo estas dos tablas (el historial capturado después de aplicarla se pierde al revertir).
+
 ## v6 · Notas del venue  (migración 006)
 **Añadido:** `venue_notas` (venue_id, nota_id, fecha, texto, autor, evento_id): notas de seguimiento de un recinto, p. ej. cómo salió el show. CASCADE al borrar el venue; SET NULL al borrar el evento (la nota se conserva); CHECK de texto no vacío.
 **Antes de esto (sin migración):** las métricas del venue admiten `NULL` = «No aplica» (NP): no cuentan en el Flamo Score y los pesos restantes se reajustan.

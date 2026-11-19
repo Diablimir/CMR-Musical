@@ -17,7 +17,7 @@ export default defineConfig(() => {
     server: {
       // En desarrollo, el backend PHP (php -S 127.0.0.1:8000 -t public) atiende estas rutas
       proxy: {
-        '^/api/(auth|data|users|apify|places|calendar|upload)\\.php': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+        '^/api/(auth|data|users|apify|places|calendar|upload|social)\\.php': { target: 'http://127.0.0.1:8000', changeOrigin: true },
         '^/uploads/': { target: 'http://127.0.0.1:8000', changeOrigin: true },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

@@ -152,6 +152,57 @@
         ]
     },
     {
+        "name": "artista_acciones",
+        "description": "Bitácora de acciones del artista (lanzamientos, campañas, publicaciones, colaboraciones, prensa, giras). Los shows no se duplican: se toman de eventos al cruzar con las métricas.",
+        "columns": [
+            {
+                "name": "artista_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → artistas(id), al borrar: CASCADE · Artista.",
+                "key": "PK"
+            },
+            {
+                "name": "accion_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "fecha",
+                "type": "DATE",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "tipo",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "titulo",
+                "type": "VARCHAR(255)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "notas",
+                "type": "TEXT",
+                "notes": ""
+            },
+            {
+                "name": "plataforma",
+                "type": "VARCHAR(20)",
+                "notes": ""
+            },
+            {
+                "name": "creado_en",
+                "type": "DATETIME(3)",
+                "notes": "Obligatorio"
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_aa_artista_fecha ON artista_acciones(artista_id,fecha);"
+        ]
+    },
+    {
         "name": "artista_contactos",
         "description": "Vínculo contacto ↔ artista con rol (Manager, Booking…). Sustituye a los textos `manager` y `booking_agent`.",
         "columns": [
@@ -336,6 +387,61 @@
             {
                 "name": "activo",
                 "type": "TINYINT(1)",
+                "notes": "Obligatorio"
+            }
+        ],
+        "indexes": []
+    },
+    {
+        "name": "artista_metricas_redes",
+        "description": "Historial de redes sociales de un artista: una captura por red y día (seguidores, siguiendo, publicaciones, interacción) con su fuente (manual o apify). Permite ver la evolución y cruzarla con las acciones.",
+        "columns": [
+            {
+                "name": "artista_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → artistas(id), al borrar: CASCADE · Artista.",
+                "key": "PK"
+            },
+            {
+                "name": "plataforma",
+                "type": "VARCHAR(20)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "fecha",
+                "type": "DATE",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "seguidores",
+                "type": "INT(10) UNSIGNED",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "siguiendo",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "publicaciones",
+                "type": "INT(10) UNSIGNED",
+                "notes": ""
+            },
+            {
+                "name": "interaccion",
+                "type": "DECIMAL(6,2)",
+                "notes": ""
+            },
+            {
+                "name": "fuente",
+                "type": "VARCHAR(10)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "capturado_en",
+                "type": "DATETIME(3)",
                 "notes": "Obligatorio"
             }
         ],

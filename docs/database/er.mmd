@@ -1,13 +1,15 @@
 erDiagram
     cat_etapas_desarrollo ||--o{ artistas : "etapa_id (RESTRICT)"
+    artistas ||--o{ artista_acciones : "artista_id (CASCADE)"
     cat_roles_contacto ||--o{ artista_contactos : "rol_id (RESTRICT)"
     artistas ||--o{ artista_contactos : "artista_id (CASCADE)"
     contactos ||--o{ artista_contactos : "contacto_id (CASCADE)"
-    artistas ||--o{ artista_generos : "artista_id (CASCADE)"
     cat_generos ||--o{ artista_generos : "genero_id (RESTRICT)"
+    artistas ||--o{ artista_generos : "artista_id (CASCADE)"
     artistas ||--o{ artista_hitos : "artista_id (CASCADE)"
     artistas ||--o{ artista_idiomas : "artista_id (CASCADE)"
     artistas ||--o{ artista_integrantes : "artista_id (CASCADE)"
+    artistas ||--o{ artista_metricas_redes : "artista_id (CASCADE)"
     artistas ||--o{ artista_pipeline : "artista_id (CASCADE)"
     artistas ||--o{ artista_redes : "artista_id (CASCADE)"
     contactos ||--o{ contacto_correos : "contacto_id (CASCADE)"
@@ -16,17 +18,17 @@ erDiagram
     artistas ||--o{ contrato_artistas : "artista_id (RESTRICT)"
     eventos ||--o{ contrato_eventos : "evento_id (RESTRICT)"
     contratos ||--o{ contrato_eventos : "contrato_id (CASCADE)"
-    contratos ||--o{ contrato_proveedores : "contrato_id (CASCADE)"
     proveedores ||--o{ contrato_proveedores : "proveedor_id (RESTRICT)"
+    contratos ||--o{ contrato_proveedores : "contrato_id (CASCADE)"
     contratos ||--o{ contrato_tours : "contrato_id (CASCADE)"
     tours ||--o{ contrato_tours : "tour_id (RESTRICT)"
-    contratos ||--o{ contrato_venues : "contrato_id (CASCADE)"
     venues ||--o{ contrato_venues : "venue_id (RESTRICT)"
-    tours |o--o{ eventos : "tour_id (SET NULL)"
+    contratos ||--o{ contrato_venues : "contrato_id (CASCADE)"
     venues ||--o{ eventos : "venue_id (RESTRICT)"
+    tours |o--o{ eventos : "tour_id (SET NULL)"
+    eventos ||--o{ evento_artistas : "evento_id (CASCADE)"
     artistas ||--o{ evento_artistas : "artista_id (RESTRICT)"
     cat_monedas ||--o{ evento_artistas : "moneda (RESTRICT)"
-    eventos ||--o{ evento_artistas : "evento_id (CASCADE)"
     eventos ||--o{ evento_bandas_invitadas : "evento_id (CASCADE)"
     eventos ||--o{ evento_setlist : "evento_id (CASCADE)"
     proveedores ||--o{ proveedor_contactos : "proveedor_id (CASCADE)"
@@ -42,9 +44,9 @@ erDiagram
     tours ||--o{ tour_artistas : "tour_id (CASCADE)"
     artistas ||--o{ tour_artistas : "artista_id (RESTRICT)"
     venues ||--o{ venue_bandas_locales : "venue_id (CASCADE)"
-    cat_roles_contacto ||--o{ venue_contactos : "rol_id (RESTRICT)"
     venues ||--o{ venue_contactos : "venue_id (CASCADE)"
     contactos ||--o{ venue_contactos : "contacto_id (CASCADE)"
+    cat_roles_contacto ||--o{ venue_contactos : "rol_id (RESTRICT)"
     venues ||--o{ venue_horarios : "venue_id (CASCADE)"
     venues ||--o{ venue_notas : "venue_id (CASCADE)"
     eventos |o--o{ venue_notas : "evento_id (SET NULL)"
@@ -75,6 +77,16 @@ erDiagram
         decimal foto_grises
         decimal foto_sepia
         decimal foto_desenfoque
+    }
+    artista_acciones {
+        varchar artista_id PK,FK
+        varchar accion_id PK
+        date fecha
+        varchar tipo
+        varchar titulo
+        text notas
+        varchar plataforma
+        datetime creado_en
     }
     artista_contactos {
         varchar artista_id PK,FK
@@ -112,6 +124,17 @@ erDiagram
         date fecha_fin
         varchar lugar_inicio
         tinyint activo
+    }
+    artista_metricas_redes {
+        varchar artista_id PK,FK
+        varchar plataforma PK
+        date fecha PK
+        int_unsigned seguidores
+        int_unsigned siguiendo
+        int_unsigned publicaciones
+        decimal interaccion
+        varchar fuente
+        datetime capturado_en
     }
     artista_pipeline {
         varchar artista_id PK,FK

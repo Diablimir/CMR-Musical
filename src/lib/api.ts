@@ -35,6 +35,24 @@ export const integrations = {
     request<any>('/api/calendar.php?action=sync-all', { method: 'POST', body: JSON.stringify({ events }) }),
 };
 
+// ───────── Historial de redes sociales y acciones del artista ─────────
+export type SocialPlatform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'spotify' | 'appleMusic' | 'twitter' | 'threads';
+export interface SocialMetric { platform: SocialPlatform; date: string; followers: number; following: number | null; posts: number | null; engagement: number | null; source: 'manual' | 'apify'; capturedAt: string }
+export type ActionType = 'Lanzamiento' | 'Campaña' | 'Publicación' | 'Colaboración' | 'Prensa' | 'Gira' | 'Otro';
+export interface SocialAction { id: string; date: string; type: ActionType; title: string; notes?: string; platform?: SocialPlatform }
+export interface SocialData { metrics: SocialMetric[]; actions: SocialAction[] }
+const post = <T,>(action: string, body: object) => request<T>(`/api/social.php?action=${action}`, { method: 'POST', body: JSON.stringify(body) });
+export const social = {
+  get: (artistId: string) => request<SocialData>(`/api/social.php?artist_id=${encodeURIComponent(artistId)}`),
+  addMetric: (artistId: string, m: { platform: SocialPlatform; date: string; followers: number; following?: number | null; posts?: number | null; engagement?: number | null }) =>
+    post<SocialData & { ok: true }>('metric', { artistId, ...m }),
+  fetchLive: (artistId: string, platform: SocialPlatform, handle?: string) =>
+    post<SocialData & { ok: true; handle: string }>('fetch', { artistId, platform, handle }),
+  deleteMetric: (artistId: string, platform: SocialPlatform, date: string) => post<SocialData>('metric_delete', { artistId, platform, date }),
+  saveAction: (artistId: string, a: Partial<SocialAction> & { date: string; type: ActionType; title: string }) => post<SocialData>('action_save', { artistId, ...a }),
+  deleteAction: (artistId: string, id: string) => post<SocialData>('action_delete', { artistId, id }),
+};
+
 export async function uploadImage(file: Blob, filename = 'foto.jpg'): Promise<string> {
   const form = new FormData();
   form.append('file', file, filename);

@@ -6,6 +6,22 @@
 -- ==========================================================================
 
 /*M!999999\- enable the sandbox mode */ 
+CREATE TABLE `artista_acciones` (
+  `artista_id` varchar(40) NOT NULL,
+  `accion_id` varchar(40) NOT NULL,
+  `fecha` date NOT NULL,
+  `tipo` varchar(20) NOT NULL,
+  `titulo` varchar(255) NOT NULL,
+  `notas` text DEFAULT NULL,
+  `plataforma` varchar(20) DEFAULT NULL,
+  `creado_en` datetime(3) NOT NULL,
+  PRIMARY KEY (`artista_id`,`accion_id`),
+  KEY `idx_aa_artista_fecha` (`artista_id`,`fecha`),
+  CONSTRAINT `fk_aa_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_aa_tipo` CHECK (`tipo` in ('Lanzamiento','Campaña','Publicación','Colaboración','Prensa','Gira','Otro')),
+  CONSTRAINT `chk_aa_plataforma` CHECK (`plataforma` is null or `plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads')),
+  CONSTRAINT `chk_aa_titulo` CHECK (char_length(trim(`titulo`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artista_contactos` (
   `artista_id` varchar(40) NOT NULL,
   `contacto_id` varchar(40) NOT NULL,
@@ -66,6 +82,22 @@ CREATE TABLE `artista_integrantes` (
   PRIMARY KEY (`artista_id`,`integrante_id`),
   CONSTRAINT `fk_aint_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `chk_aint_fechas` CHECK (`fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_metricas_redes` (
+  `artista_id` varchar(40) NOT NULL,
+  `plataforma` varchar(20) NOT NULL,
+  `fecha` date NOT NULL,
+  `seguidores` int(10) unsigned NOT NULL,
+  `siguiendo` int(10) unsigned DEFAULT NULL,
+  `publicaciones` int(10) unsigned DEFAULT NULL,
+  `interaccion` decimal(6,2) DEFAULT NULL,
+  `fuente` varchar(10) NOT NULL,
+  `capturado_en` datetime(3) NOT NULL,
+  PRIMARY KEY (`artista_id`,`plataforma`,`fecha`),
+  CONSTRAINT `fk_amr_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_amr_plataforma` CHECK (`plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads')),
+  CONSTRAINT `chk_amr_fuente` CHECK (`fuente` in ('manual','apify')),
+  CONSTRAINT `chk_amr_interaccion` CHECK (`interaccion` is null or `interaccion` >= 0 and `interaccion` <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artista_pipeline` (
   `artista_id` varchar(40) NOT NULL,
@@ -560,4 +592,4 @@ CREATE TABLE `venues` (
 INSERT INTO cat_etapas_desarrollo (id, nombre) VALUES (1, 'Desarrollo'), (2, 'Aficionado'), (3, 'Emergente'), (4, 'Media carrera'), (5, 'Consolidado'), (6, 'Consagrado'), (7, 'Internacional');
 INSERT INTO cat_roles_contacto (nombre) VALUES ('Manager'), ('Booking'), ('Promotor'), ('Técnico'), ('Hospitalidad'), ('Producción'), ('Administración'), ('Contacto comercial'), ('Contacto');
 INSERT INTO cat_monedas (codigo, nombre) VALUES ('MXN', 'Peso mexicano'), ('USD', 'Dólar estadounidense'), ('EUR', 'Euro');
-INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), '');
+INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), ''), (7, 'metricas_redes', NOW(3), '');
