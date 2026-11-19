@@ -8,9 +8,11 @@ m = re.search(r'SCHEMA_TABLES: SchemaTableDef\[\] = (\[.*?\]);\nexport const SCH
 tables = json.loads(m.group(1))
 
 COLORS = {  # color de cabecera por grupo
-    'artistas': '#E84A2E', 'tours': '#E84A2E', 'cat_etapas_desarrollo': '#7C8794', 'proyectos_grabacion': '#E84A2E',
-    'venues': '#0A2538', 'contactos': '#0A2538', 'proveedores': '#0A2538', 'venue_proveedores': '#0A2538',
-    'eventos': '#B7791F', 'contratos': '#B7791F',
+    'artistas': '#E84A2E', 'artista_generos': '#E84A2E', 'artista_contactos': '#E84A2E', 'tours': '#E84A2E', 'tour_artistas': '#E84A2E', 'proyectos_grabacion': '#E84A2E',
+    'venues': '#0A2538', 'venue_contactos': '#0A2538', 'proveedores': '#0A2538', 'venue_proveedores': '#0A2538', 'proveedor_contactos': '#0A2538',
+    'contactos': '#2F6F5E', 'contacto_correos': '#2F6F5E', 'contacto_telefonos': '#2F6F5E',
+    'eventos': '#B7791F', 'evento_artistas': '#B7791F', 'contratos': '#B7791F',
+    'cat_etapas_desarrollo': '#7C8794', 'cat_generos': '#7C8794', 'cat_roles_contacto': '#7C8794', 'cat_monedas': '#7C8794',
 }
 edges = []
 rows = []
@@ -19,6 +21,8 @@ for t in tables:
     cells = []
     shown = 0; hidden = 0
     for c in t['columns']:
+        if 'OBSOLETO' in c.get('notes', ''):
+            continue
         tag = c.get('key')
         mm0 = re.search(r'→ (\w+)\(', c.get('notes', ''))
         if not tag and not mm0:
@@ -44,7 +48,7 @@ for t in tables:
     <TR><TD COLSPAN="3" BGCOLOR="{color}"><FONT COLOR="white"><B>{t["name"]}</B></FONT></TD></TR>
     {"".join(cells)}</TABLE>>];''')
 
-lines = ['digraph ER {', '  graph [rankdir=TB, splines=true, nodesep=0.9, ranksep=1.1, pad=0.5, fontname="Helvetica", bgcolor="white", label=<<B>FLAMO CRM · Diagrama entidad-relación</B><BR/><FONT POINT-SIZE="11" COLOR="#64748B">Solo columnas clave · línea punteada = al borrar el padre queda en NULL · pata de gallo = muchos</FONT>>, labelloc=t, fontsize=18];',
+lines = ['digraph ER {', '  graph [rankdir=LR, splines=true, nodesep=0.7, ranksep=1.0, pad=0.5, fontname="Helvetica", bgcolor="white", label=<<B>FLAMO CRM · Diagrama entidad-relación</B><BR/><FONT POINT-SIZE="11" COLOR="#64748B">Esquema v3 · solo columnas clave · punteada = al borrar el padre queda en NULL · pata de gallo = muchos</FONT>>, labelloc=t, fontsize=18];',
          '  node [shape=plain, fontname="Helvetica", fontsize=11];', '  edge [fontname="Helvetica", fontsize=9, fontcolor="#475569", color="#64748B", arrowsize=0.9];'] + rows
 for (src_t, col, dst, dcol, rule, req) in edges:
     style = 'dashed' if rule == 'SET NULL' else 'solid'

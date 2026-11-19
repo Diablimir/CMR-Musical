@@ -13,7 +13,9 @@ interface AddArtistModalProps {
 export default function AddArtistModal({ isOpen, onClose, onAddArtist }: AddArtistModalProps) {
   const [artisticName, setArtisticName] = useState('');
   const [legalName, setLegalName] = useState('');
-  const [genre, setGenre] = useState('Alternativo');
+  const [genre, setGenre] = useState('');
+  const [subgenres, setSubgenres] = useState('');
+  const [bookingAgent, setBookingAgent] = useState('');
   const [stage, setStage] = useState<ArtistStage>('Desarrollo');
   const [city, setCity] = useState('Ciudad de México');
   const [country, setCountry] = useState('México');
@@ -33,25 +35,22 @@ export default function AddArtistModal({ isOpen, onClose, onAddArtist }: AddArti
       artisticName: artisticName.trim(),
       legalName: legalName.trim() || `${artisticName.trim()} Entertainment S.A.`,
       photo: defaultPhoto,
-      bio: `${artisticName.trim()} es un artista en etapa ${stage} dentro del portafolio comercial de Flamo CRM.`,
-      genre: genre.trim() || 'Alternativo',
-      subgenres: ['Indie', 'Alternative'],
+      bio: '',
+      genre: genre.trim(),
+      subgenres: subgenres.split(',').map((g) => g.trim()).filter(Boolean),
       languages: ['Español'],
       startDate: new Date().toISOString().substring(0, 10),
       city: city.trim() || 'CDMX',
       state: 'CDMX',
       country: country.trim() || 'México',
-      members: [`${artisticName.trim()} (Vocal/Líder)`],
-      manager: manager.trim() || 'Flamo Management',
-      bookingAgent: 'Flamo Booking Agency',
-      label: 'Independiente',
-      publisher: 'Flamo Publishing',
-      distributor: 'TuneCore',
+      members: [],
+      manager: manager.trim(),
+      bookingAgent: bookingAgent.trim(),
+      label: '',
+      publisher: '',
+      distributor: '',
       stage: stage,
-      socialMedia: {
-        instagram: `https://instagram.com/${artisticName.toLowerCase().replace(/\s+/g, '_')}`,
-        spotify: `https://spotify.com`,
-      },
+      socialMedia: {},
       pipeline: createDefaultPipeline(),
       history: [
         {
@@ -72,7 +71,9 @@ export default function AddArtistModal({ isOpen, onClose, onAddArtist }: AddArti
     // Reset form
     setArtisticName('');
     setLegalName('');
-    setGenre('Alternativo');
+    setGenre('');
+    setSubgenres('');
+    setBookingAgent('');
     setStage('Desarrollo');
     setCity('Ciudad de México');
     setCountry('México');
@@ -130,7 +131,7 @@ export default function AddArtistModal({ isOpen, onClose, onAddArtist }: AddArti
                   type="text"
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
-                  placeholder="Ej. Indie Rock, Pop, Urbano"
+                  placeholder="Ej. Indie Rock"
                   className="w-full bg-slate-50 border border-silver-haze focus:border-celestial-canvas rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-800 focus:outline-none transition-all"
                 />
               </div>
@@ -209,6 +210,28 @@ export default function AddArtistModal({ isOpen, onClose, onAddArtist }: AddArti
               value={manager}
               onChange={(e) => setManager(e.target.value)}
               placeholder="Ej. Andrés Mendoza (Flamo Management)"
+              className="w-full bg-slate-50 border border-silver-haze focus:border-celestial-canvas rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Subgéneros (separados por coma, opcional)</label>
+            <input
+              type="text"
+              value={subgenres}
+              onChange={(e) => setSubgenres(e.target.value)}
+              placeholder="Ej. Pop, Urbano"
+              className="w-full bg-slate-50 border border-silver-haze focus:border-celestial-canvas rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Agente de booking (opcional)</label>
+            <input
+              type="text"
+              value={bookingAgent}
+              onChange={(e) => setBookingAgent(e.target.value)}
+              placeholder="Persona o agencia"
               className="w-full bg-slate-50 border border-silver-haze focus:border-celestial-canvas rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none transition-all"
             />
           </div>

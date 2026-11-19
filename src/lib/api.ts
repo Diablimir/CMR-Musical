@@ -4,6 +4,7 @@ export const COLLECTION_NAMES = [
   'venues', 'artists', 'contacts', 'tours', 'events', 'contracts', 'providers', 'recording_projects',
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];
+export interface SyncResult { ok: true; versions?: Record<string, Record<string, number>>; dirty?: string[]; }
 export type ServerData = Record<CollectionName, any[]>;
 
 async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
@@ -17,6 +18,7 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const err: any = new Error(payload?.error || `Error ${res.status}`);
     err.status = res.status;
+    err.code = payload?.code;
     throw err;
   }
   return payload as T;
@@ -55,7 +57,7 @@ export const api = {
   loadData: () => request<ServerData>('/api/data.php'),
   // Envía solo los registros que cambiaron: { coleccion: { upserts: [...], deletes: [ids] } }
   sync: (changes: Record<string, { upserts: any[]; deletes: string[] }>) =>
-    request<{ ok: true }>('/api/data.php?action=sync', { method: 'POST', body: JSON.stringify({ changes }) }),
+    request<SyncResult>('/api/data.php?action=sync', { method: 'POST', body: JSON.stringify({ changes }) }),
 
   listUsers: () => request<{ users: UserAccount[] }>('/api/users.php'),
   createUser: (u: { username: string; name: string; role: string; password: string }) =>

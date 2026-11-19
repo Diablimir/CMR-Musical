@@ -60,6 +60,7 @@ export interface PhotoStyle {
 
 export interface Artist {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   artisticName: string;
   legalName: string;
   photo: string;
@@ -100,17 +101,37 @@ export interface HistoryEvent {
   type: 'milestone' | 'release' | 'signing' | 'tour' | 'achievement';
 }
 
+export interface ContactChannel {
+  value: string;
+  label?: string | null;
+  primary?: boolean;
+}
+
+export interface ContactLink {
+  type: 'venue' | 'artist' | 'provider';
+  id: string;
+  role: string;
+  isPrincipal?: boolean;
+}
+
 export interface Contact {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-  venueId: string;
+  version?: number;
+  name: string; // nombre completo (nombre + apellidos)
+  email: string; // correo principal
+  phone: string; // teléfono principal
+  role: string; // rol en el primer venue vinculado
+  venueId: string; // primer venue vinculado ('' si no tiene)
+  firstName?: string;
+  lastName?: string;
+  emails?: ContactChannel[];
+  phones?: ContactChannel[];
+  links?: ContactLink[];
 }
 
 export interface Venue {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   name: string;
   address: string;
   city: string;
@@ -163,10 +184,26 @@ export interface EventFeedback {
   optimizationNotes?: string; // Notas para optimizar el orden en el futuro
 }
 
+export type EventArtistRole = 'Artista' | 'Invitado' | 'Telonero' | 'Soporte' | 'Otro';
+
+export interface EventArtist {
+  artistId: string;
+  role?: EventArtistRole;
+  isPrincipal?: boolean;
+  order?: number; // orden de presentación
+  startTime?: string; // HH:MM
+  endTime?: string;
+  fee?: number; // honorarios
+  currency?: string;
+  status?: 'Pendiente' | 'Confirmado' | 'Cancelado';
+}
+
 export interface Event {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   name: string;
-  artistId: string;
+  artistId: string; // artista principal
+  artists?: EventArtist[]; // alineación completa
   venueId: string;
   date: string;
   capacity: number;
@@ -187,6 +224,7 @@ export interface Event {
 
 export interface Provider {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   name: string;
   category: 'Sonido' | 'Ingeniero de Audio' | 'Iluminación' | 'Catering' | 'Backline' | 'Escenografía' | 'Seguridad' | 'Personal de Apoyo' | 'Otros';
   contactName: string;
@@ -245,6 +283,7 @@ export interface ProjectStage {
 
 export interface RecordingProject {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   title: string;
   artistId: string;
   status: 'Planificación' | 'Pre-producción' | 'Grabando' | 'Mezcla' | 'Masterización' | 'Completado';
@@ -260,8 +299,10 @@ export interface RecordingProject {
 
 export interface Tour {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   name: string;
-  artistId: string;
+  artistId: string; // artista principal
+  artistIds?: string[]; // todos los artistas de la gira
   startDate: string;
   endDate: string;
   status: 'Planning' | 'Active' | 'Completed' | 'Cancelled';
@@ -286,6 +327,7 @@ export interface FilterState {
 
 export interface Contract {
   id: string;
+  version?: number; // control de concurrencia (lo asigna el servidor)
   title: string;
   artistId?: string;
   venueId?: string;

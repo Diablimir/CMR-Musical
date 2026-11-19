@@ -128,7 +128,7 @@ export default function VenueDrawer({
   if (!venue) return null;
 
   // Filter contacts associated with this venue
-  const venueContacts = contacts.filter((c) => c.venueId === venue.id);
+  const venueContacts = contacts.filter((c) => c.venueId === venue.id || c.links?.some((l) => l.type === 'venue' && l.id === venue.id));
 
   // Filter events associated with this venue
   const venueEvents = events.filter((e) => e.venueId === venue.id);

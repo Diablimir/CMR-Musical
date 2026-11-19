@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2, Users, Music, DollarSign, Award, Trash2, Search, Plus,
   Database, Star, MapPin, ExternalLink, AlertCircle, Sparkles, Filter, Check, FileText, UserCheck, LayoutDashboard,
-  Truck, Disc, Flame, Menu, X, ChevronRight
+  Truck, Disc, Flame, Menu, X, ChevronRight, Contact2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -18,6 +18,7 @@ import UxSettings from './components/UxSettings';
 import LegalSuite from './components/LegalSuite';
 import LoginScreen from './components/LoginScreen';
 import UserManagement from './components/UserManagement';
+import ContactsDirectory from './components/ContactsDirectory';
 import HomeDashboard from './components/HomeDashboard';
 import ProvidersSuite from './components/ProvidersSuite';
 import ProductionSuite from './components/ProductionSuite';
@@ -39,14 +40,14 @@ export default function App() {
   // Copia de lo último que el servidor tiene (id → JSON), para enviar solo lo que cambia
   type Snapshot = Record<CollectionName, Map<string, string>>;
   const emptySnapshot = (): Snapshot => Object.fromEntries(COLLECTION_NAMES.map((n) => [n, new Map<string, string>()])) as Snapshot;
-  const snapshotOf = (arr: any[]) => new Map<string, string>(arr.filter((x) => x && x.id).map((x) => [x.id as string, JSON.stringify(x)]));
+  const snapshotOf = (arr: any[]) => new Map<string, string>(arr.filter((x) => x && x.id).map((x) => { const { version, ...rest } = x; return [x.id as string, JSON.stringify(rest)] as [string, string]; }));
   const snapshot = useRef<Snapshot>(emptySnapshot());
   const syncChain = useRef<Promise<void>>(Promise.resolve());
   const retryTimer = useRef<number | null>(null);
   const stateRef = useRef<Record<CollectionName, any[]>>({ venues: [], artists: [], contacts: [], tours: [], events: [], contracts: [], providers: [], recording_projects: [] });
 
   // 2. Navigation Tab State
-  const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'database' | 'providers' | 'production'>('inicio');
+  const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'database' | 'providers' | 'production' | 'contacts'>('inicio');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Authentication (sesión en el servidor) y gestión de usuarios
@@ -148,6 +149,27 @@ export default function App() {
 
   stateRef.current = { venues, artists, contacts, tours, events, contracts, providers, recording_projects: recordingProjects };
 
+  // El servidor asigna una versión nueva a cada registro guardado (bloqueo optimista)
+  const applyVersions = (versions?: Record<string, Record<string, number>>) => {
+    if (!versions) return;
+    const setters: Record<string, React.Dispatch<React.SetStateAction<any[]>>> = {
+      venues: setVenues, artists: setArtists, contacts: setContacts, tours: setTours,
+      events: setEvents, contracts: setContracts, providers: setProviders, recording_projects: setRecordingProjects,
+    };
+    for (const [name, map] of Object.entries(versions)) {
+      setters[name]?.((prev) => prev.map((o: any) => (map[o.id] !== undefined && o.version !== map[o.id] ? { ...o, version: map[o.id] } : o)));
+    }
+  };
+
+  // El servidor puede crear contactos por su cuenta (manager, contacto de proveedor): se vuelven a leer
+  const refreshContacts = async () => {
+    try {
+      const d = await api.loadData();
+      snapshot.current.contacts = snapshotOf(d.contacts);
+      setContacts(d.contacts);
+    } catch { /* se actualizará en la siguiente carga */ }
+  };
+
   // Envía al servidor solo los registros nuevos, modificados o eliminados (en cola, de uno en uno)
   const flushChanges = () => {
     syncChain.current = syncChain.current.then(async () => {
@@ -166,9 +188,11 @@ export default function App() {
       }
       if (!any) return;
       try {
-        await api.sync(changes);
+        const res = await api.sync(changes);
         snapshot.current = next;
         setSyncError(null);
+        applyVersions(res.versions);
+        if (res.dirty?.includes('contacts')) refreshContacts();
       } catch (e: any) {
         if (e.status === 401) { setIsLoggedIn(false); return; }
         if (e.status && e.status >= 400 && e.status < 500) {
@@ -300,6 +324,10 @@ export default function App() {
       id: `con-${Date.now()}`,
     };
     setContacts((prev) => [...prev, contact]);
+  };
+
+  const handleSaveContact = (contact: Contact) => {
+    setContacts((prev) => (prev.some((c) => c.id === contact.id) ? prev.map((c) => (c.id === contact.id ? contact : c)) : [...prev, contact]));
   };
 
   const handleDeleteContact = (contactId: string) => {
@@ -589,6 +617,7 @@ export default function App() {
           { id: 'inicio', label: 'Inicio', icon: LayoutDashboard },
           { id: 'venues', label: 'Venues', icon: Building2 },
           { id: 'providers', label: 'Proveedores', icon: Truck },
+          { id: 'contacts', label: 'Contactos', icon: Contact2 },
           { id: 'production', label: 'Producción', icon: Disc },
           { id: 'artists', label: 'Artistas', icon: Users },
           { id: 'finances', label: 'Finanzas', icon: DollarSign },
@@ -733,6 +762,7 @@ export default function App() {
                       { id: 'production', label: 'Producción', desc: 'Hojas técnicas y sonorización', icon: Disc },
                       { id: 'finances', label: 'Finanzas', desc: 'Control de taquilla y cobros', icon: DollarSign },
                       { id: 'legal', label: 'Contratos / Legal', desc: 'Suite jurídica y documentos', icon: FileText },
+                      { id: 'contacts', label: 'Contactos', desc: 'Directorio de personas y sus vínculos', icon: Contact2 },
                       { id: 'users', label: 'Usuarios', desc: 'Control de acceso de personal', icon: UserCheck },
                       { id: 'database', label: 'Esquema & DB', desc: 'Estructura relacional de tablas', icon: Database, isDevOnly: true },
                     ].filter(tab => (!tab.isDevOnly || devVisible) && (tab.id !== 'users' || isAdmin)).map((tab) => {
@@ -1247,6 +1277,18 @@ export default function App() {
             venues={activeVenues}
             tours={tours}
             events={events}
+          />
+        )}
+
+        {/* WORKSPACE: DIRECTORIO DE CONTACTOS */}
+        {activeWorkspace === 'contacts' && (
+          <ContactsDirectory
+            contacts={contacts}
+            venues={venues.filter((v) => !v.deleted_at)}
+            artists={activeArtists}
+            providers={providers}
+            onSave={handleSaveContact}
+            onDelete={handleDeleteContact}
           />
         )}
 

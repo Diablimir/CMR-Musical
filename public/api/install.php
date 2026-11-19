@@ -23,12 +23,6 @@ $pdo->exec('CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     created_at VARCHAR(20) NOT NULL
 )');
-$pdo->exec('CREATE TABLE IF NOT EXISTS collections (
-    name VARCHAR(40) NOT NULL PRIMARY KEY,
-    data LONGTEXT NOT NULL,
-    updated_at VARCHAR(25) NOT NULL,
-    updated_by VARCHAR(64) NOT NULL
-)');
 $pdo->exec('CREATE TABLE IF NOT EXISTS login_attempts (
     ident VARCHAR(190) NOT NULL,
     ts INT NOT NULL

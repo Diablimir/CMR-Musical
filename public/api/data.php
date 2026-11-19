@@ -29,18 +29,20 @@ if ($method === 'POST' && ($_GET['action'] ?? '') === 'sync') {
         $stats = apply_changes($pdo, $in['changes']);
         respond(['ok' => true] + $stats);
     } catch (SyncError $e) {
-        respond(['error' => $e->getMessage()], $e->httpCode);
+        respond(['error' => $e->getMessage(), 'code' => $e->errCode], $e->httpCode);
     } catch (PDOException $e) {
-        $driverCode = (int)($e->errorInfo[1] ?? 0);
-        if (($e->errorInfo[0] ?? '') === '23000') {
-            $msg = match ($driverCode) {
-                1451 => 'No se puede eliminar: hay registros relacionados (por ejemplo, un venue con eventos, o un artista con giras o eventos). Elimina primero lo relacionado.',
-                1452 => 'No se pudo guardar: hace referencia a un registro que no existe (artista, venue o gira).',
-                default => 'No se pudo guardar por una relación entre datos (por ejemplo, un venue con eventos no se puede eliminar).',
-            };
-            respond(['error' => $msg], 409);
-        }
-        respond(['error' => 'Error al guardar en la base de datos.'], 500);
+        $errno = (int)($e->errorInfo[1] ?? 0);
+        $msg = match (true) {
+            $errno === 1451 => 'No se puede eliminar: hay registros relacionados que se perderían (por ejemplo, un venue o artista con eventos, giras o contratos). Elimina o reasigna primero lo relacionado.',
+            $errno === 1452 => 'No se pudo guardar: hace referencia a un registro que no existe (artista, venue, gira, evento o proveedor).',
+            $errno === 1062 => 'No se pudo guardar: ya existe un registro igual (valor duplicado).',
+            in_array($errno, [4025, 3819], true) => 'No se pudo guardar: algún valor está fuera del rango o dominio permitido.',
+            $errno === 1406 => 'No se pudo guardar: un texto es demasiado largo.',
+            $errno === 1213 || $errno === 1205 => 'La base de datos está ocupada. Inténtalo de nuevo en unos segundos.',
+            default => null,
+        };
+        if ($msg !== null) respond(['error' => $msg, 'code' => 'db_' . $errno], in_array($errno, [4025, 3819, 1406], true) ? 422 : 409);
+        respond(['error' => 'Error al guardar en la base de datos.', 'code' => 'db_error'], 500);
     }
 }
 

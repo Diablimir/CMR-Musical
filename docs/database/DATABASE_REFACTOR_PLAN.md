@@ -1,10 +1,12 @@
 # FLAMO CRM — Plan de refactorización de la base de datos
 
+> **Estado:** Fases 1 y 2 implementadas y verificadas (ver `DATABASE_ARCHITECTURE.md` y `CHANGELOG_DB.md`). Decisiones del dueño del producto: eventos con varios artistas ✔, giras compartidas ✔, ingreso del evento capturado ✔.
+
 Basado en `DATABASE_AUDIT.md`. Estrategia: **expandir → migrar → validar → adaptar → contraer**, por fases independientes y reversibles. Producción hoy no tiene datos de negocio, pero el plan está pensado para instalaciones con datos.
 
 ## Principios
 - **Contrato de API estable**: `GET /api/data.php` y `POST ?action=sync` siguen devolviendo/recibiendo los mismos objetos (`Artist`, `Event`, …). La interfaz no se reescribe de golpe; `entities.php` traduce a las tablas nuevas.
-- **Doble escritura** en la transición: las columnas viejas se mantienen sincronizadas hasta la fase de contracción. Así el rollback es posible sin perder datos.
+- **Rollback por regeneración** (decisión tomada al implementar): el código nuevo deja de escribir las columnas viejas y `down()` las **reconstruye** desde las tablas nuevas (probado en `tests/db/run.php` §4). Es más simple y seguro que mantener dos escrituras en paralelo.
 - **Nada destructivo en producción** hasta una ventana de verificación (propuesta: 2 semanas con la doble escritura activa).
 - Toda migración: **idempotente por paso**, registrada en una tabla `schema_migrations(version, aplicada_en, checksum)`.
 - Antes de cada fase en producción: respaldo (`mysqldump` desde hPanel → Bases de datos → phpMyAdmin → Exportar) y exportación JSON de todas las tablas.

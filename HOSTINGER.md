@@ -26,9 +26,14 @@ Abre `https://TU-DOMINIO/api/install.php?token=TU_TOKEN`. Debe responder `ok`.
 ## 6. Entrar
 Abre tu dominio e inicia sesión con `admin` y la clave que pusiste. Crea los demás usuarios en la pestaña **Usuarios**.
 
+## Base de datos relacional y migraciones
+- Sube también la carpeta `api/migrations/`. La **primera carga con sesión** tras publicar aplica las migraciones pendientes (con candado); no hace falta tocar phpMyAdmin.
+- Antes de actualizar una base con datos reales, haz un respaldo (hPanel → Bases de datos → phpMyAdmin → Exportar).
+- Revertir: `php scripts/db/migrate.php down 1` (por SSH) o, como Super Admin, `POST /api/migrate.php?action=down&to=1&confirm=yes`; luego vuelve a subir el código anterior. Detalle en `docs/database/DATABASE_ARCHITECTURE.md` §10.
+
 ## Notas
-- Los datos viven en MySQL; las contraseñas se guardan cifradas (`password_hash`).
-- Las colecciones se guardan completas (gana la última escritura). Si dos personas editan a la vez, puede perderse un cambio.
+- Los datos viven en tablas MySQL relacionales (ver `docs/database/`); las contraseñas se guardan cifradas (`password_hash`).
+- Cada registro lleva una versión: si dos personas editan **el mismo** registro, la segunda recibe un aviso en lugar de pisar el cambio de la primera.
 - Apify, lugares y calendario funcionan en PHP (`api/apify.php`, `api/places.php`, `api/calendar.php`).
   - Apify en vivo: pon tu token en `apify_token` de `config.php`. Sin token se muestran datos de demostración.
   - Calendario: un evento abre «Añadir a Google Calendar»; «sincronizar todos» descarga un `.ics` para importar.

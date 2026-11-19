@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, MapPin, Eye, Info, List, CalendarDays, X, Phone, Globe, Star
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
-import { Event, Artist, Venue, Tour } from '../types';
+import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour } from '../types';
 
 interface HomeDashboardProps {
   events: Event[];
@@ -50,6 +50,9 @@ export default function HomeDashboard({
   const [selectedArtistId, setSelectedArtistId] = useState('');
   const [selectedVenueIdForm, setSelectedVenueIdForm] = useState('');
   const [selectedTourId, setSelectedTourId] = useState('');
+  const [principalOrder, setPrincipalOrder] = useState('1');
+  const [lineup, setLineup] = useState<{ artistId: string; role: EventArtistRole; order: string; startTime: string; fee: string }[]>([]);
+  const [incomeInput, setIncomeInput] = useState('');
   const [showDate, setShowDate] = useState('');
   const [capacity, setCapacity] = useState('1000');
   const [attendance, setAttendance] = useState('0');
@@ -176,6 +179,9 @@ export default function HomeDashboard({
     setSelectedArtistId(artists[0]?.id || '');
     setSelectedVenueIdForm(venues[0]?.id || '');
     setSelectedTourId('');
+    setPrincipalOrder('1');
+    setLineup([]);
+    setIncomeInput('');
     setShowDate(initialDate || new Date().toISOString().substring(0, 10));
     setCapacity('1000');
     setAttendance('0');
@@ -212,12 +218,28 @@ export default function HomeDashboard({
     const att = Number(attendance) || 0;
     const exp = Number(expenses) || 0;
     const cap = Number(capacity) || 0;
-    const calculatedIncome = att * price;
+    // El ingreso puede capturarse aparte (cortesías, patrocinios…); si se deja vacío = asistencia × precio
+    const calculatedIncome = incomeInput.trim() !== '' && !isNaN(Number(incomeInput)) ? Number(incomeInput) : att * price;
     const calculatedProfit = calculatedIncome - exp;
+
+    const lineupRows: EventArtist[] = [
+      { artistId: selectedArtistId, role: 'Artista', isPrincipal: true, order: Math.max(1, Number(principalOrder) || 1) },
+      ...lineup.filter((l) => l.artistId).map((l, i) => ({
+        artistId: l.artistId, role: l.role, order: Math.max(1, Number(l.order) || i + 2),
+        startTime: l.startTime || undefined, fee: l.fee.trim() !== '' ? Number(l.fee) : undefined,
+      })),
+    ];
+    const seen = new Set<string>();
+    for (const r of lineupRows) {
+      const k = `${r.artistId}|${r.order}`;
+      if (seen.has(k)) { setFormError('Un artista no puede repetirse con el mismo orden de presentación.'); return; }
+      seen.add(k);
+    }
 
     const newEvtObj: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'deleted_at'> = {
       name: showName.trim(),
       artistId: selectedArtistId,
+      artists: lineupRows,
       venueId: selectedVenueIdForm,
       tourId: selectedTourId || undefined,
       date: showDate,
@@ -1211,6 +1233,18 @@ export default function HomeDashboard({
                 </form>
               </div>
 
+              {(selectedCalendarEvent.artists?.length || 0) > 1 && (
+                <div className="bg-white-chalk border border-silver-haze rounded-xl p-3 space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Alineación</span>
+                  {selectedCalendarEvent.artists!.map((a, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs text-slate-700">
+                      <span><b className="font-mono text-slate-400 mr-1.5">{a.order}.</b>{artists.find((x) => x.id === a.artistId)?.artisticName || 'Artista archivado'}{a.isPrincipal ? ' ★' : ''}</span>
+                      <span className="text-slate-500">{a.role}{a.startTime ? ` · ${a.startTime}` : ''}{a.fee ? ` · $${a.fee.toLocaleString()}` : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Financial Box */}
               <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 space-y-3">
                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest block">Análisis Financiero</span>
@@ -1296,7 +1330,7 @@ export default function HomeDashboard({
       {/* PLANIFICAR SHOW MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 bg-cosmic-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-silver-haze rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-fade-in">
+          <div className="bg-white border border-silver-haze rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl animate-fade-in">
             <div className="p-4 bg-slate-50 border-b border-silver-haze flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase text-cosmic-black tracking-wider flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-tomato-curry" />
@@ -1348,6 +1382,41 @@ export default function HomeDashboard({
                       <option key={a.id} value={a.id}>{a.artisticName}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2 bg-white-chalk border border-silver-haze rounded-xl p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Alineación del evento (opcional)</span>
+                    <button
+                      type="button"
+                      onClick={() => setLineup([...lineup, { artistId: '', role: 'Invitado', order: String(lineup.length + 2), startTime: '', fee: '' }])}
+                      className="text-xs font-bold text-celestial-canvas hover:underline cursor-pointer"
+                    >
+                      + Añadir artista
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                    <span className="font-bold">Artista principal:</span>
+                    <span>{artists.find((a) => a.id === selectedArtistId)?.artisticName || '—'}</span>
+                    <label className="ml-auto flex items-center gap-1.5">Orden
+                      <input type="number" min={1} value={principalOrder} onChange={(e) => setPrincipalOrder(e.target.value)} className="w-14 bg-white border border-silver-haze rounded-lg px-2 py-1 font-mono text-xs" />
+                    </label>
+                  </div>
+                  {lineup.map((l, i) => (
+                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                      <select value={l.artistId} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, artistId: e.target.value } : x)))} className="col-span-4 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
+                        <option value="">Artista…</option>
+                        {artists.map((a) => <option key={a.id} value={a.id}>{a.artisticName}</option>)}
+                      </select>
+                      <select value={l.role} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, role: e.target.value as EventArtistRole } : x)))} className="col-span-3 bg-white border border-silver-haze rounded-lg px-2 py-1.5 text-xs">
+                        {(['Invitado', 'Telonero', 'Soporte', 'Artista', 'Otro'] as EventArtistRole[]).map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                      <input type="number" min={1} title="Orden de presentación" value={l.order} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, order: e.target.value } : x)))} className="col-span-1 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
+                      <input type="time" title="Hora de inicio" value={l.startTime} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, startTime: e.target.value } : x)))} className="col-span-2 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs" />
+                      <input type="number" min={0} placeholder="Honorarios" title="Honorarios (MXN)" value={l.fee} onChange={(e) => setLineup(lineup.map((x, k) => (k === i ? { ...x, fee: e.target.value } : x)))} className="col-span-1 bg-white border border-silver-haze rounded-lg px-2 py-1.5 font-mono text-xs min-w-0" />
+                      <button type="button" onClick={() => setLineup(lineup.filter((_, k) => k !== i))} className="col-span-1 text-slate-400 hover:text-red-600 text-xs font-bold cursor-pointer" title="Quitar">✕</button>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="space-y-1">
@@ -1427,6 +1496,19 @@ export default function HomeDashboard({
                     onChange={(e) => setExpenses(e.target.value)}
                     className="w-full bg-white-chalk border border-silver-haze rounded-xl p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-tomato-curry/20"
                   />
+                </div>
+
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Ingreso total real (opcional)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={incomeInput}
+                    onChange={(e) => setIncomeInput(e.target.value)}
+                    placeholder="Vacío = asistencia × precio del boleto"
+                    className="w-full bg-white-chalk border border-silver-haze rounded-xl p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-tomato-curry/20"
+                  />
+                  <p className="text-[11px] text-slate-400">Captúralo si difiere de asistencia × precio (cortesías, patrocinios, otros ingresos). La utilidad se calcula sola.</p>
                 </div>
 
                 <div className="space-y-1 md:col-span-2">
