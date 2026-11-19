@@ -20,9 +20,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST' && ($_GET['action'] ?? '') === 'sync') {
-    limit_body(MAX_BYTES);   // se rechaza por Content-Length ANTES de leer el cuerpo en memoria
-    $raw = file_get_contents('php://input');
-    if (strlen((string)$raw) > MAX_BYTES) respond(['error' => 'Datos demasiado grandes.'], 413);
+    $raw = read_body_limited(MAX_BYTES);   // tope duro: nunca se leen más de MAX_BYTES + 1 bytes, con o sin Content-Length
     $in = json_decode((string)$raw, true);
     if (!is_array($in) || !isset($in['changes']) || !is_array($in['changes'])) respond(['error' => 'Formato inválido.'], 400);
 

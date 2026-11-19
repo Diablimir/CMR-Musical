@@ -47,37 +47,44 @@ function other_admins(PDO $pdo, string $excludeId): int {
 }
 
 if ($method === 'PUT') {
-    $name = trim((string)($in['name'] ?? $target['name']));
-    $role = trim((string)($in['role'] ?? $target['role']));
-    if ($name === '' || $role === '') respond(['error' => 'Nombre y rol son obligatorios.'], 400);
-    if (!in_array($role, ALLOWED_ROLES, true)) respond(['error' => 'Rol no válido.'], 400);
     $pdo->beginTransaction();
-    $pdo->query("SELECT id FROM users WHERE role = 'Super Admin' FOR UPDATE")->fetchAll();   // serializa los cambios de administradores
-    if ($target['role'] === 'Super Admin' && $role !== 'Super Admin' && other_admins($pdo, $id) === 0) {
-        $pdo->rollBack();
-        respond(['error' => 'Debe quedar al menos un Super Admin.'], 400);
-    }
-    $hash = $target['password_hash'];
-    if (isset($in['password']) && $in['password'] !== '') {
-        if (strlen((string)$in['password']) < 8) { $pdo->rollBack(); respond(['error' => 'La contraseña debe tener al menos 8 caracteres.'], 400); }
-        $hash = password_hash((string)$in['password'], PASSWORD_DEFAULT);
-    }
-    $pdo->prepare('UPDATE users SET name = ?, role = ?, password_hash = ? WHERE id = ?')->execute([$name, $role, $hash, $id]);
-    $pdo->commit();
-    if ($id === $me['id']) { start_session(); $_SESSION['pw'] = pw_stamp($hash); }   // quien cambia su propia contraseña sigue dentro; las demás sesiones se cierran
+    try {
+        // Primero se bloquean los Super Admin y la fila objetivo; DESPUÉS se relee (si no, un cambio simultáneo podría restaurar datos viejos).
+        $pdo->query("SELECT id FROM users WHERE role = 'Super Admin'" . for_update($pdo))->fetchAll();
+        $st = $pdo->prepare('SELECT * FROM users WHERE id = ?' . for_update($pdo)); $st->execute([$id]);
+        $target = $st->fetch();
+        if (!$target) { $pdo->rollBack(); respond(['error' => 'Usuario no encontrado.'], 404); }
+        $name = trim((string)($in['name'] ?? $target['name']));
+        $role = trim((string)($in['role'] ?? $target['role']));
+        if ($name === '' || $role === '') { $pdo->rollBack(); respond(['error' => 'Nombre y rol son obligatorios.'], 400); }
+        if (!in_array($role, ALLOWED_ROLES, true)) { $pdo->rollBack(); respond(['error' => 'Rol no válido.'], 400); }
+        if ($target['role'] === 'Super Admin' && $role !== 'Super Admin' && other_admins($pdo, $id) === 0) { $pdo->rollBack(); respond(['error' => 'Debe quedar al menos un Super Admin.'], 400); }
+        $newHash = null;
+        if (isset($in['password']) && $in['password'] !== '') {
+            if (strlen((string)$in['password']) < 8) { $pdo->rollBack(); respond(['error' => 'La contraseña debe tener al menos 8 caracteres.'], 400); }
+            $newHash = password_hash((string)$in['password'], PASSWORD_DEFAULT);
+        }
+        // El hash solo se toca si se pidió cambiar la contraseña (un PUT simultáneo sin contraseña no puede reactivar sesiones viejas).
+        if ($newHash !== null) $pdo->prepare('UPDATE users SET name = ?, role = ?, password_hash = ? WHERE id = ?')->execute([$name, $role, $newHash, $id]);
+        else $pdo->prepare('UPDATE users SET name = ?, role = ? WHERE id = ?')->execute([$name, $role, $id]);
+        $pdo->commit();
+    } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
+    if ($newHash !== null && $id === $me['id']) { start_session(); $_SESSION['pw'] = pw_stamp($newHash); }   // quien cambia su propia contraseña sigue dentro; las demás sesiones se cierran
     respond(['ok' => true]);
 }
 
 if ($method === 'DELETE') {
     if ($id === $me['id']) respond(['error' => 'No puedes eliminar tu propia cuenta.'], 400);
     $pdo->beginTransaction();
-    $pdo->query("SELECT id FROM users WHERE role = 'Super Admin' FOR UPDATE")->fetchAll();
-    if ($target['role'] === 'Super Admin' && other_admins($pdo, $id) === 0) {
-        $pdo->rollBack();
-        respond(['error' => 'Debe quedar al menos un Super Admin.'], 400);
-    }
-    $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
-    $pdo->commit();
+    try {
+        $pdo->query("SELECT id FROM users WHERE role = 'Super Admin'" . for_update($pdo))->fetchAll();
+        $st = $pdo->prepare('SELECT * FROM users WHERE id = ?' . for_update($pdo)); $st->execute([$id]);
+        $t = $st->fetch();
+        if (!$t) { $pdo->rollBack(); respond(['error' => 'Usuario no encontrado.'], 404); }
+        if ($t['role'] === 'Super Admin' && other_admins($pdo, $id) === 0) { $pdo->rollBack(); respond(['error' => 'Debe quedar al menos un Super Admin.'], 400); }
+        $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+        $pdo->commit();
+    } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
     respond(['ok' => true]);
 }
 

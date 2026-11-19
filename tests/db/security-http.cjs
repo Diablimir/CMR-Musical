@@ -119,6 +119,26 @@ const median = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
   for (let i = 0; i < 14; i++) await mm.req('/api/meta.php?action=sync', { method: 'POST', body: { artistId: 'qa-sec' } });
   check('Meta: sincronizar sin límite está frenado (429)', (await mm.req('/api/meta.php?action=sync', { method: 'POST', body: { artistId: 'qa-sec' } })).status === 429);
 
+  // ── Revisión de Codex: cuota por cuenta resuelta, tope por cuenta, contadores separados, estado ligado al usuario, PUT sin contraseña ──
+  const acc = new Client('21.1.1.1'); let q = 0; for (let i = 0; i < 6; i++) { await acc.login('admin', 'x' + i); }
+  for (let i = 0; i < 6; i++) q = (await acc.login('admín', 'y' + i)).status;   // «admín» = «admin» para MariaDB (colación sin acentos)
+  check('«admín» y «admin» comparten la misma cuota (no se divide con variantes de acento)', q === 429, String(q));
+  await admin.req('/api/users.php', { method: 'POST', body: { username: 'sec-cap', name: 'Cap', role: 'Gestor de Contenido', password: 'Password-123' } });
+  let cap = 0; for (let i = 0; i < 62; i++) cap = (await new Client('30.2.' + Math.floor(i / 250) + '.' + (i % 250 + 1)).login('sec-cap', 'mala' + i)).status;
+  check('tope por cuenta: rotando 62 IPs distintas el atacante igual recibe 429 (no elude el límite cambiando X-Forwarded-For)', cap === 429, String(cap));
+  check('…y otra cuenta no se ve afectada', (await new Client('31.1.1.1').login('sec-user', 'Nueva-Clave-456')).status === 200);
+  const sd = new Client('32.1.1.1'); await sd.login('sec-user', 'Nueva-Clave-456');
+  await admin.req('/api/users.php?id=' + secId, { method: 'PUT', body: { name: 'Sec User Renombrado' } });
+  check('un PUT sin contraseña NO toca el hash: la sesión del usuario sigue válida', (await sd.req('/api/data.php')).status === 200);
+  let rf = []; for (let i = 0; i < 24; i++) rf.push((await mm.req('/api/social.php?action=refresh', { method: 'POST', body: { artistId: 'qa-sec' } })).status);
+  const ft = (await mm.req('/api/social.php?action=fetch', { method: 'POST', body: { artistId: 'qa-sec', platform: 'instagram' } })).status;
+  check('contadores separados: agotar «refresh» no consume el cupo de «fetch»', !rf.includes(429) && ft !== 429, `${rf.filter(x => x === 429).length} límites en refresh, fetch=${ft}`);
+  const st2 = await mm.req('/api/meta.php?action=start', { method: 'POST', body: { artistId: 'qa-sec' } });
+  const swap = new Client('33.1.1.1'); swap.jar = { ...mm.jar }; await swap.login('sec-user', 'Nueva-Clave-456');   // otra cuenta se autentica en el mismo navegador
+  const dlg = await fetch(st2.j.url, { redirect: 'manual' }); const cb2 = (dlg.headers.get('location') || '').replace(/^https?:\/\/[^/]+/, '');
+  const r2 = await swap.req(cb2);
+  check('Meta: un flujo pendiente NO lo hereda otra cuenta que inicia sesión en el mismo navegador', (r2.headers.get('location') || '').includes('meta=error'), r2.headers.get('location'));
+
   // ── Última protección: no se puede dejar al CRM sin Super Admin ──
   const adminId = list.find(u => u.username === 'admin').id;
   const dl = await admin.req('/api/users.php?id=' + adminId, { method: 'DELETE' });

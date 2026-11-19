@@ -12,29 +12,33 @@ if ($raw === '') respond(['error' => 'Se requiere una URL de Google Maps o un t�
 if (strlen($raw) > 2000) respond(['error' => 'Consulta demasiado larga.'], 400);
 
 // Solo se siguen enlaces de Google (evita usar el servidor para llamar a sitios arbitrarios).
-function is_google_host(string $url): bool {
+/** Si la URL es de Google por https:443 y TODAS sus IP (A y AAAA) son públicas, devuelve una IPv4 para fijar la conexión; si no, null. */
+function google_pin(string $url): ?string {
     $p = parse_url($url);
-    // Solo HTTPS en el puerto 443 (evita usar el servidor para sondear puertos o servicios internos).
-    if (!$p || strtolower($p['scheme'] ?? '') !== 'https' || empty($p['host']) || (isset($p['port']) && (int)$p['port'] !== 443) || isset($p['user']) || isset($p['pass'])) return false;
+    // Solo HTTPS en el puerto 443, sin credenciales (evita sondear puertos o servicios internos).
+    if (!$p || strtolower($p['scheme'] ?? '') !== 'https' || empty($p['host']) || (isset($p['port']) && (int)$p['port'] !== 443) || isset($p['user']) || isset($p['pass'])) return null;
     $h = strtolower($p['host']);
     $ok = false;
     foreach (['google.com', 'google.com.mx', 'goo.gl', 'maps.app.goo.gl', 'g.co'] as $d) {
         if ($h === $d || str_ends_with($h, '.' . $d)) { $ok = true; break; }
     }
-    if (!$ok) return false;
-    // La IP a la que resuelve el nombre debe ser pública (nada de redes privadas, loopback o reservadas).
-    $ips = gethostbynamel($h) ?: [];
-    if (!$ips) return false;
-    foreach ($ips as $ip) if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return false;
-    return true;
+    if (!$ok) return null;
+    $v4 = []; $all = [];
+    foreach (@dns_get_record($h, DNS_A | DNS_AAAA) ?: [] as $r) { $ip = $r['ip'] ?? $r['ipv6'] ?? null; if ($ip) { $all[] = $ip; if (isset($r['ip'])) $v4[] = $ip; } }
+    if (!$v4) return null;
+    foreach ($all as $ip) if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return null;
+    return $v4[0];
 }
+function is_google_host(string $url): bool { return google_pin($url) !== null; }
 
 $target = $raw;
 if (preg_match('#^https?://#i', $raw)) {
     if (!is_google_host($raw)) respond(['error' => 'Solo se admiten enlaces de Google Maps.'], 400);
     $cur = $raw;
     for ($i = 0; $i < 5; $i++) {
-        [$code, , $h] = http_request($cur, 'GET', null, [], 10);
+        $pin = google_pin($cur);
+        if ($pin === null) break;
+        [$code, , $h] = http_request($cur, 'GET', null, [], 10, [strtolower(parse_url($cur, PHP_URL_HOST)) . ':443:' . $pin]);   // la conexión usa la IP ya validada
         if ($code >= 300 && $code < 400 && !empty($h['location'])) {
             $next = $h['location'];
             if (!preg_match('#^https?://#i', $next)) {

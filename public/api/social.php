@@ -54,7 +54,7 @@ try {
         respond(['ok' => true] + load_social($pdo, $aid));
     }
     if ($action === 'fetch') {
-        rate_limit('social:' . $user['id'], 20, 600);
+        rate_limit('socialfetch:' . $user['id'], 20, 600);
         if (!in_array($platform, SOCIAL_NETS, true)) respond(['error' => 'Red social no válida.'], 400);
         $handle = social_handle((string)($in['handle'] ?? ''));
         if ($handle === '') {   // por defecto, el enlace guardado del artista para esa red
@@ -66,7 +66,7 @@ try {
         respond(['ok' => true, 'handle' => $handle, 'captured' => $r['data']] + load_social($pdo, $aid));
     }
     if ($action === 'refresh') {   // actualización automática al abrir la pantalla (solo lo que aún no tiene captura de hoy)
-        rate_limit('social:' . $user['id'], 30, 600);
+        rate_limit('socialrefresh:' . $user['id'], 30, 600);
         set_time_limit(240);
         $r = social_refresh_artist($pdo, $aid, !empty($in['force']));
         respond(['ok' => true] + $r + load_social($pdo, $aid));

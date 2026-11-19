@@ -52,6 +52,7 @@ function start_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
     ini_set('session.use_strict_mode', '1');   // no acepta identificadores de sesión inventados por el cliente
     ini_set('session.use_only_cookies', '1');
+    ini_set('session.gc_maxlifetime', (string)SESSION_ABSOLUTE);   // el servidor no debe purgar las sesiones antes de su caducidad (por defecto 24 min)
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
     session_set_cookie_params([
         'lifetime' => 0,
@@ -69,10 +70,17 @@ function limit_body(int $max): void {
     if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > $max) respond(['error' => 'La solicitud es demasiado grande.'], 413);
 }
 
+/** Lee el cuerpo con tope duro: como máximo $max + 1 bytes (si no trae Content-Length, tampoco se puede saturar la memoria). */
+function read_body_limited(int $max): string {
+    limit_body($max);
+    $raw = file_get_contents('php://input', false, null, 0, $max + 1);
+    if ($raw !== false && strlen($raw) > $max) respond(['error' => 'La solicitud es demasiado grande.'], 413);
+    return $raw === false ? '' : $raw;
+}
+
 function body(): array {
-    limit_body(2 * 1024 * 1024);
-    $raw = file_get_contents('php://input');
-    if ($raw === false || $raw === '') return [];
+    $raw = read_body_limited(2 * 1024 * 1024);
+    if ($raw === '') return [];
     $data = json_decode($raw, true);
     return is_array($data) ? $data : [];
 }
@@ -117,7 +125,7 @@ function require_admin(): array {
 }
 
 // Petición HTTP saliente con cURL. Devuelve [código, cuerpo, cabeceras] (código 0 si falla).
-function http_request(string $url, string $method = 'GET', ?string $body = null, array $headers = [], int $timeout = 20): array {
+function http_request(string $url, string $method = 'GET', ?string $body = null, array $headers = [], int $timeout = 20, array $resolve = []): array {
     if (!function_exists('curl_init')) return [0, '', []];
     $ch = curl_init($url);
     $respHeaders = [];
@@ -136,6 +144,7 @@ function http_request(string $url, string $method = 'GET', ?string $body = null,
             return strlen($line);
         },
     ]);
+    if ($resolve) curl_setopt($ch, CURLOPT_RESOLVE, $resolve);   // fija la IP ya validada (evita que el DNS cambie entre la comprobación y la conexión)
     if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
     $out = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -159,7 +168,11 @@ function client_ip(): string {
 function rate_limit(string $key, int $max, int $window = 600): void {
     $pdo = db(); $now = time(); $ident = 'rl:' . substr($key, 0, 150);
     $pdo->prepare('DELETE FROM login_attempts WHERE ident = ? AND ts < ?')->execute([$ident, $now - $window]);
-    $c = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ident = ?'); $c->execute([$ident]);
-    if ((int)$c->fetchColumn() >= $max) respond(['error' => 'Demasiadas solicitudes seguidas. Espera unos minutos e inténtalo de nuevo.', 'code' => 'rate_limited'], 429);
+    // Se reserva el cupo ANTES de contar: dos peticiones simultáneas ya no pueden aprobar el mismo cupo libre.
     $pdo->prepare('INSERT INTO login_attempts (ident, ts) VALUES (?, ?)')->execute([$ident, $now]);
+    $c = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ident = ?'); $c->execute([$ident]);
+    if ((int)$c->fetchColumn() > $max) respond(['error' => 'Demasiadas solicitudes seguidas. Espera unos minutos e inténtalo de nuevo.', 'code' => 'rate_limited'], 429);
 }
+
+/** Cláusula de bloqueo de filas (solo MySQL/MariaDB; SQLite, usado en desarrollo, no la admite). */
+function for_update(PDO $pdo): string { return $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : ''; }

@@ -32,6 +32,8 @@ if (!is_file($guard)) {
     @file_put_contents($guard, "# Solo imágenes: nunca ejecutar código en esta carpeta\n<FilesMatch \"\\.(php|phtml|php[0-9]|phar|pl|cgi)$\">\n  Require all denied\n</FilesMatch>\nOptions -ExecCGI -Indexes\n");
 }
 
+if (!function_exists('imagecreatefromstring')) respond(['error' => 'El servidor no tiene la extensión GD para procesar imágenes.'], 500);
+
 $name = bin2hex(random_bytes(12));
 $saved = false;
 

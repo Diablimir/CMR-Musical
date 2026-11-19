@@ -69,6 +69,12 @@ function meta_post(string $path, array $params): array {
     return $j;
 }
 
+/** Canje de tokens: POST (secretos en el cuerpo); si Meta no lo admite (respuesta no interpretable o «petición no soportada») se reintenta con el GET documentado. */
+function meta_token_call(array $params): array {
+    try { return meta_post('oauth/access_token', $params); }
+    catch (MetaError $e) { if (!in_array($e->metaCode, [0, 3], true)) throw $e; return meta_get('oauth/access_token', $params); }
+}
+
 function meta_auth_url(string $state): string {
     $base = meta_cfg('meta_dialog_url', META_DEFAULT_DIALOG);
     return $base . '?' . http_build_query(['client_id' => meta_cfg('meta_app_id'), 'redirect_uri' => meta_redirect_uri(), 'state' => $state, 'scope' => META_SCOPES, 'response_type' => 'code']);
@@ -76,9 +82,9 @@ function meta_auth_url(string $state): string {
 
 /** code → token de usuario de larga duración (≈60 días). @return array{token:string,expires:?string} */
 function meta_exchange_code(string $code): array {
-    $short = meta_post('oauth/access_token', ['client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'redirect_uri' => meta_redirect_uri(), 'code' => $code]);
+    $short = meta_token_call(['client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'redirect_uri' => meta_redirect_uri(), 'code' => $code]);
     if (empty($short['access_token'])) throw new MetaError('Meta no entregó un token de acceso.');
-    $long = meta_post('oauth/access_token', ['grant_type' => 'fb_exchange_token', 'client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'fb_exchange_token' => $short['access_token']]);
+    $long = meta_token_call(['grant_type' => 'fb_exchange_token', 'client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'fb_exchange_token' => $short['access_token']]);
     $tok = (string)($long['access_token'] ?? $short['access_token']);
     $exp = isset($long['expires_in']) && is_numeric($long['expires_in']) ? gmdate('Y-m-d H:i:s', time() + (int)$long['expires_in']) . '.000' : null;
     return ['token' => $tok, 'expires' => $exp];

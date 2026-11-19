@@ -1,6 +1,6 @@
 # FLAMO CRM — Seguridad y escalabilidad
 
-> Auditoría del 19-nov-2026: revisión propia + auditoría independiente de solo lectura hecha por Codex (OpenAI), cada hallazgo verificado en el código o por una prueba antes de corregirlo. Las pruebas están en `tests/db/security-http.cjs` (38 comprobaciones por HTTP), `tests/db/run.php` (366 de base de datos) y `tests/db/ui-csp.cjs`.
+> Auditoría del 19-nov-2026: revisión propia + auditoría independiente de solo lectura hecha por Codex (OpenAI), cada hallazgo verificado en el código o por una prueba antes de corregirlo. Las pruebas están en `tests/db/security-http.cjs` (44 comprobaciones por HTTP), `tests/db/run.php` (366 de base de datos) y `tests/db/ui-csp.cjs`.
 
 ## Controles que ya existían y se verificaron
 | Área | Estado |
@@ -31,6 +31,24 @@
 | Sin política de contenido (CSP) | Media | CSP estricta en `.htaccess`: scripts solo propios; probada bloqueando una inyección | `ui-csp` |
 | Demografía de Meta podía quedar a medias | Baja | Transacción por dimensión | `run.php` |
 
+### Segunda ronda: Codex revisó las correcciones y encontró 14 puntos (los válidos se corrigieron)
+| Observación de Codex | Resultado |
+|---|---|
+| Rotando `X-Forwarded-For` se eludía el límite por usuario+IP | **Corregido:** tope adicional por cuenta (60 / 15 min) |
+| «admín» y «admin» dividían la cuota (colación sin acentos) | **Corregido:** la cuota usa el ID de la cuenta resuelta |
+| Los intentos rechazados (429) también se registraban y alargaban el bloqueo | **Corregido:** solo se registran los aceptados |
+| `rate_limit()` contaba e insertaba por separado (carrera) | **Corregido:** se reserva el cupo antes de contar |
+| `fetch` y `refresh` compartían contador | **Corregido:** contadores separados |
+| Sin `Content-Length` el cuerpo se leía completo | **Corregido:** lectura con tope duro de límite + 1 bytes |
+| PHP purgaba sesiones a los 24 min (`gc_maxlifetime`) aunque la caducidad fuera de 2 h | **Corregido:** `gc_maxlifetime` = 12 h |
+| `users.php`: el objetivo se leía antes de bloquearlo; un PUT simultáneo podía restaurar el hash viejo; `FOR UPDATE` falla en SQLite | **Corregido:** bloquear primero, releer, tocar el hash solo si se pidió, rollback en excepción, bloqueo solo en MySQL |
+| `places.php`: solo se validaban registros A; DNS rebinding | **Corregido:** se validan A y AAAA y se fija la IP validada con `CURLOPT_RESOLVE` |
+| Subida sin GD daba 422 engañoso | **Corregido:** 500 explícito (en producción GD existe) |
+| El canje de tokens por POST podría no ser compatible con Graph | **Corregido:** POST con respaldo al GET documentado solo si Meta no lo admite |
+| Un flujo de OAuth pendiente lo heredaba otra cuenta en el mismo navegador | **Corregido:** ligado al usuario y borrado al iniciar sesión |
+| CSP: `img-src https:` demasiado amplio | **Corregido:** solo OpenStreetMap, Carto y Unsplash (se verificó que las fotos reales son archivos propios) |
+| 36 MP podrían agotar un worker con 128 MiB | **No aplica:** el hosting tiene `memory_limit` de 1536 MB (medido) |
+
 ## Pendiente de decisión (no se cambió sin tu confirmación)
 1. **Permisos por rol.** La interfaz muestra 6 roles (Super Admin, Administrador, Director de Booking, Director de Finanzas, Gestor de Contenido, Abogado Legal CRM), pero el servidor solo distingue «Super Admin» (usuarios y migraciones) del resto: cualquier usuario con sesión puede leer y modificar todo por la API. Es aceptable si todos son personal de confianza; si no, hay que definir quién ve y edita qué.
 2. **Versión obligatoria al actualizar.** Omitir `version` en una actualización evita el aviso de conflicto (compatibilidad con clientes antiguos).
@@ -44,5 +62,5 @@
 | 20 000 eventos | 528 ms | 10.1 MB | 0.4 MB | 120 MB | 4 ms |
 
 - Las **escrituras** escalan bien (sincronización por diferencias, 2–4 ms por registro) y todas las llaves foráneas tienen índice.
-- La **carga inicial** trae todo: con ~20 000 eventos usa 120 MB de PHP y 10 MB de JSON (producción ya comprime y guarda en caché los archivos de la interfaz). Hacia 50 000 eventos puede acercarse al `memory_limit` del hosting. El siguiente paso es cargar solo una ventana de fechas (p. ej. últimos 24 meses + próximos) y pedir lo antiguo bajo demanda.
+- La **carga inicial** trae todo: con ~20 000 eventos usa 120 MB de PHP y 10 MB de JSON (producción ya comprime y guarda en caché los archivos de la interfaz). El hosting tiene `memory_limit` de 1536 MB, así que la memoria no es el límite cercano; lo será el tiempo de carga y el tamaño del JSON. El siguiente paso es cargar solo una ventana de fechas (p. ej. últimos 24 meses + próximos) y pedir lo antiguo bajo demanda.
 - `login_attempts` tiene índices (migración 009) para que los límites de uso no se degraden bajo ataque.

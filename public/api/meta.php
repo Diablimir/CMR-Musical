@@ -43,7 +43,7 @@ try {
         if (!meta_configured()) respond(['error' => 'Falta configurar la app de Meta en el servidor: ' . implode(', ', meta_missing()) . ' (ver HOSTINGER.md).', 'code' => 'meta_not_configured'], 409);
         start_session();
         $state = bin2hex(random_bytes(16));
-        $_SESSION['meta_oauth'] = ['state' => $state, 'artist' => $aid, 'at' => time()];
+        $_SESSION['meta_oauth'] = ['state' => $state, 'artist' => $aid, 'at' => time(), 'uid' => $user['id']];   // ligado a quien lo inició
         respond(['url' => meta_auth_url($state)]);
     }
     if ($action === 'sync') {
