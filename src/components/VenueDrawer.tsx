@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ScoreRubricEditor from './ScoreRubricEditor';
+import { computeGlobalScore } from '../lib/venueScoreRubric';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Info, Users, Calendar, BarChart3, MessageSquare, DollarSign,
@@ -94,8 +96,19 @@ export default function VenueDrawer({
     { id: 'd-5', name: 'Comprobante de Depósito Garantía (Anticipo 50%).pdf', date: '2026-05-02', status: 'signed', size: '820 KB' },
   ]);
 
+  // Al abrir otro venue (o reabrir el panel) se vuelve a la pestaña inicial. NO depende del objeto venue:
+  // si no, cada cambio (p. ej. mover una métrica) te regresaba a «Información».
+  const venueId = venue?.id;
   React.useEffect(() => {
-    if (venue) {
+    if (venueId) {
+      setActiveTab(initialTab || 'info');
+      setIsEditing(false);
+    }
+  }, [venueId, initialTab, isOpen]);
+
+  // Los campos del formulario de edición se sincronizan con el venue, sin tocar la pestaña ni cortar una edición en curso.
+  React.useEffect(() => {
+    if (venue && !isEditing) {
       setEditName(venue.name);
       setEditAddress(venue.address);
       setEditCity(venue.city);
@@ -111,12 +124,8 @@ export default function VenueDrawer({
       setEditTikTok(venue.tiktok || '');
       setEditEmail(venue.email || '');
       setEditWA(venue.whatsapp || '');
-      setIsEditing(false);
-      if (initialTab) {
-        setActiveTab(initialTab);
-      }
     }
-  }, [venue, initialTab]);
+  }, [venue, isEditing]);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -133,17 +142,8 @@ export default function VenueDrawer({
   // Filter events associated with this venue
   const venueEvents = events.filter((e) => e.venueId === venue.id);
 
-  // Calculations for Score
-  const calculateScore = (v: Venue) => {
-    return Math.round(
-      (v.scoreRentabilidad * 0.25) +
-      (v.scoreResponseTime * 0.15) +
-      (v.scorePuntualidadPago * 0.20) +
-      (v.scoreNegociacion * 0.15) +
-      (v.scoreProduccion * 0.15) +
-      (v.scoreHospitalidad * 0.10)
-    );
-  };
+  // Flamo Score (ponderado; ver src/lib/venueScoreRubric.ts)
+  const calculateScore = computeGlobalScore;
 
   const globalScore = calculateScore(venue);
 
@@ -613,47 +613,7 @@ export default function VenueDrawer({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {[
-                        { key: 'scoreRentabilidad', label: 'Rentabilidad (25%)', color: 'bg-amber-500' },
-                        { key: 'scoreResponseTime', label: 'Respuesta (15%)', color: 'bg-emerald-500' },
-                        { key: 'scorePuntualidadPago', label: 'Puntualidad (20%)', color: 'bg-amber-500' },
-                        { key: 'scoreNegociacion', label: 'Negociación (15%)', color: 'bg-indigo-500' },
-                        { key: 'scoreProduccion', label: 'Producción (15%)', color: 'bg-rose-500' },
-                        { key: 'scoreHospitalidad', label: 'Hospitalidad (10%)', color: 'bg-purple-500' },
-                      ].map((item) => {
-                        const scoreVal = (venue[item.key as keyof Venue] as number) || 0;
-                        return (
-                          <div key={item.key} className="bg-slate-50 border border-slate-200 p-3 rounded-lg space-y-2">
-                            <div className="flex justify-between items-center gap-1">
-                              <span className="text-[11px] font-semibold text-slate-800">{item.label}</span>
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={scoreVal}
-                                  onChange={(e) => {
-                                    const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                                    handleScoreChange(item.key as keyof Venue, val);
-                                  }}
-                                  className="w-12 bg-slate-100 border border-slate-200 text-amber-700 font-mono font-bold text-xs text-center rounded px-1 py-0.5 focus:outline-none focus:border-amber-500"
-                                />
-                                <span className="text-[10px] text-slate-500 font-mono">%</span>
-                              </div>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={scoreVal}
-                              onChange={(e) => handleScoreChange(item.key as keyof Venue, Number(e.target.value))}
-                              className="w-full accent-amber-500 h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer"
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <ScoreRubricEditor compact values={{ scoreRentabilidad: venue.scoreRentabilidad, scoreResponseTime: venue.scoreResponseTime, scorePuntualidadPago: venue.scorePuntualidadPago, scoreNegociacion: venue.scoreNegociacion, scoreProduccion: venue.scoreProduccion, scoreHospitalidad: venue.scoreHospitalidad }} onChange={(k, v) => handleScoreChange(k, v)} />
                   </div>
                 </div>
               )}
@@ -1086,55 +1046,7 @@ export default function VenueDrawer({
                       </div>
                     </div>
 
-                    <div className="space-y-5">
-                      {[
-                        { key: 'scoreRentabilidad', label: 'Rentabilidad Comercial (25%)', color: 'bg-amber-500', desc: 'Retorno de inversión del boletaje y viáticos en giras pasadas.' },
-                        { key: 'scoreResponseTime', label: 'Tiempo de Respuesta en Negociación (15%)', color: 'bg-emerald-500', desc: 'Velocidad de cotización, envío de fechas disponibles y comunicación.' },
-                        { key: 'scorePuntualidadPago', label: 'Puntualidad de Pago de Garantía / Splits (20%)', color: 'bg-amber-500', desc: 'Cumplimiento de plazos de anticipo contratado y liquidación de taquilla.' },
-                        { key: 'scoreNegociacion', label: 'Facilidad de Negociación (15%)', color: 'bg-indigo-500', desc: 'Apertura a esquemas mixtos (split, garantía versus porcentaje).' },
-                        { key: 'scoreProduccion', label: 'Calidad Técnica & Rider de Producción (15%)', color: 'bg-rose-500', desc: 'Sistemas PA, iluminación y técnicos locales certificados.' },
-                        { key: 'scoreHospitalidad', label: 'Hospitalidad, Catering & Experiencia (10%)', color: 'bg-purple-500', desc: 'Trato al artista, camerinos acondicionados e integridad general.' },
-                      ].map((item) => {
-                        const scoreVal = venue[item.key as keyof Venue] as number || 0;
-                        return (
-                          <div key={item.key} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <div className="flex justify-between items-center gap-2">
-                              <div>
-                                <span className="text-xs font-semibold text-slate-800 block">{item.label}</span>
-                                <p className="text-[10px] text-slate-500">{item.desc}</p>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={scoreVal}
-                                  onChange={(e) => {
-                                    const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                                    handleScoreChange(item.key as keyof Venue, val);
-                                  }}
-                                  className="w-14 bg-slate-100 border border-slate-200 text-amber-700 font-mono font-bold text-xs text-center rounded-lg px-1 py-1 focus:outline-none focus:border-amber-500"
-                                />
-                                <span className="text-xs font-mono font-bold text-slate-500">%</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 pt-1">
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={scoreVal}
-                                onChange={(e) => handleScoreChange(item.key as keyof Venue, Number(e.target.value))}
-                                className="flex-1 accent-amber-500 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
-                              />
-                              <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                                <div className={`h-full ${item.color} transition-all duration-300`} style={{ width: `${scoreVal}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <ScoreRubricEditor values={{ scoreRentabilidad: venue.scoreRentabilidad, scoreResponseTime: venue.scoreResponseTime, scorePuntualidadPago: venue.scorePuntualidadPago, scoreNegociacion: venue.scoreNegociacion, scoreProduccion: venue.scoreProduccion, scoreHospitalidad: venue.scoreHospitalidad }} onChange={(k, v) => handleScoreChange(k, v)} />
                   </div>
                 </div>
               )}

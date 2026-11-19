@@ -216,21 +216,6 @@ export default function App() {
     return () => clearTimeout(t);
   }, [dataLoaded, venues, artists, contacts, tours, events, contracts, providers, recordingProjects]);
 
-  const handleClearAllData = () => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar TODOS los datos de muestra para comenzar desde 0? Esta acción vaciará eventos, artistas, venues, contratos y proveedores.')) {
-      setVenues([]);
-      setArtists([]);
-      setContacts([]);
-      setTours([]);
-      setEvents([]);
-      setContracts([]);
-      setProviders([]);
-      setRecordingProjects([]);
-      setSelectedArtistId('');
-      setSelectedVenueId(null);
-    }
-  };
-
   // 3. Filters State
   const initialFilterState: FilterState = {
     year: '',
@@ -542,14 +527,6 @@ export default function App() {
               {/* Developer mode toggle & Clear data */}
               {isAdmin && (
               <div className="flex items-center gap-1.5 scale-90 origin-right">
-                <button
-                  onClick={handleClearAllData}
-                  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer"
-                  title="Eliminar todos los datos para comenzar desde 0"
-                >
-                  <Trash2 className="w-2.5 h-2.5" />
-                  <span>Vaciar Datos</span>
-                </button>
                 <div className="flex items-center gap-2 bg-white-chalk border border-silver-haze rounded-lg px-2 py-0.5 shadow-3xs">
                   <span className="text-[8px] uppercase font-bold text-slate-400 tracking-wider">Modo Dev</span>
                   <button
@@ -798,26 +775,6 @@ export default function App() {
                     })}
                   </div>
                 </div>
-
-                {/* Clear All Data Button (solo Super Admin) */}
-                {isAdmin && (
-                <div className="bg-red-50/60 border border-red-200/80 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
-                  <div className="space-y-0.5">
-                    <span className="text-[11px] font-bold text-red-700 block">Vaciar Datos</span>
-                    <span className="text-[9px] text-red-500 block">Reinicia todas las tablas a 0</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      handleClearAllData();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Vaciar</span>
-                  </button>
-                </div>
-                )}
 
               </div>
 
