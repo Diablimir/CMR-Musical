@@ -89,19 +89,23 @@ function entity_defs(): array {
     if ($defs !== null) return $defs;
     $score = [0, 100];
     $defs = [
-        'artists' => ['table' => 'artistas', 'extra' => true, 'virtual' => ['genre', 'subgenres', 'manager', 'bookingAgent'], 'cols' => [
+        'artists' => ['table' => 'artistas', 'extra' => false, 'virtual' => ['genre', 'subgenres', 'manager', 'bookingAgent', 'languages', 'socialMedia', 'pipeline', 'history', 'members', 'memberHistory', 'photoStyle'], 'cols' => [
             'id' => ['id', 'id'], 'artisticName' => ['nombre_artistico', 's'], 'legalName' => ['nombre_legal', 's'],
             'stage' => ['etapa_id', 'stage'], 'isrc' => ['isrc_default', 'sn'], 'iswc' => ['iswc_default', 'sn'],
             'pro' => ['sociedad_gestion', 'sn'], 'rfc' => ['rfc', 'sn'], 'city' => ['ciudad', 's'],
             'state' => ['estado', 's'], 'country' => ['pais', 's'], 'photo' => ['foto', 's'],
+            'bio' => ['bio', 's'], 'startDate' => ['fecha_inicio', 'd'], 'label' => ['sello', 's'], 'publisher' => ['editorial', 's'], 'distributor' => ['distribuidora', 's'],
         ] + ts3()],
-        'venues' => ['table' => 'venues', 'extra' => true, 'virtual' => ['providerIds', 'contactoPrincipalId'], 'cols' => [
+        'venues' => ['table' => 'venues', 'extra' => false, 'virtual' => ['providerIds', 'contactoPrincipalId', 'hours', 'localBands'], 'cols' => [
             'id' => ['id', 'id'], 'name' => ['nombre', 's'], 'address' => ['direccion', 's'], 'city' => ['ciudad', 's'],
             'state' => ['estado', 's'], 'country' => ['pais', 's'], 'postalCode' => ['codigo_postal', 's'],
             'lat' => ['latitud', 'f', [-90, 90]], 'lng' => ['longitud', 'f', [-180, 180]], 'rating' => ['rating', 'f', [0, 5]],
             'scoreRentabilidad' => ['score_rentabilidad', 'i', $score], 'scoreResponseTime' => ['score_respuesta', 'i', $score],
             'scorePuntualidadPago' => ['score_puntualidad_pago', 'i', $score], 'scoreNegociacion' => ['score_negociacion', 'i', $score],
             'scoreProduccion' => ['score_produccion', 'i', $score], 'scoreHospitalidad' => ['score_hospitalidad', 'i', $score],
+            'website' => ['sitio_web', 's'], 'phone' => ['telefono', 's'], 'userRatingsCount' => ['num_resenas', 'i', [0, null]], 'placeId' => ['place_id', 's'],
+            'establishmentType' => ['tipo_establecimiento', 's'], 'instagram' => ['instagram', 'sn'], 'facebook' => ['facebook', 'sn'], 'tiktok' => ['tiktok', 'sn'],
+            'whatsapp' => ['whatsapp', 'sn'], 'email' => ['correo', 'sn'], 'youtube' => ['youtube', 'sn'], 'twitter' => ['twitter', 'sn'],
         ] + ts3()],
         'providers' => ['table' => 'proveedores', 'extra' => false, 'virtual' => ['venueIds', 'contactName', 'phone', 'email'], 'cols' => [
             'id' => ['id', 'id'], 'name' => ['nombre', 's'],
@@ -113,20 +117,19 @@ function entity_defs(): array {
             'id' => ['id', 'id'], 'name' => ['nombre', 's'], 'startDate' => ['fecha_inicio', 'd'], 'endDate' => ['fecha_fin', 'd'],
             'status' => ['status', 'enum', ['Planning', 'Active', 'Completed', 'Cancelled']],
         ] + ts3()],
-        'events' => ['table' => 'eventos', 'extra' => true, 'virtual' => ['artistId', 'artists', 'profit'], 'cols' => [
+        'events' => ['table' => 'eventos', 'extra' => false, 'virtual' => ['artistId', 'artists', 'profit', 'feedback', 'guestBands', 'setlist'], 'cols' => [
             'id' => ['id', 'id'], 'name' => ['nombre', 's'], 'venueId' => ['venue_id', 'fkreq'], 'tourId' => ['tour_id', 'fk'],
             'date' => ['fecha', 'd'], 'status' => ['estado', 'enum', ['Draft', 'Confirmed', 'Completed', 'Cancelled']],
             'capacity' => ['capacidad', 'i', [0, null]], 'attendance' => ['asistencia', 'i', [0, null]], 'ticketPrice' => ['precio_boleto', 'f', [0, null]],
             'totalIncome' => ['ingreso_total', 'f', [0, null]], 'expenses' => ['gastos_totales', 'f', [0, null]],
         ] + ts3()],
-        'contracts' => ['table' => 'contratos', 'extra' => false, 'virtual' => [], 'cols' => [
-            'id' => ['id', 'id'], 'title' => ['titulo', 's'], 'artistId' => ['artista_id', 'fk'], 'venueId' => ['venue_id', 'fk'],
-            'tourId' => ['tour_id', 'fk'], 'eventId' => ['evento_id', 'fk'],
+        'contracts' => ['table' => 'contratos', 'extra' => false, 'virtual' => ['artistId', 'venueId', 'tourId', 'eventId', 'artistIds', 'venueIds', 'providerIds', 'eventIds', 'tourIds'], 'cols' => [
+            'id' => ['id', 'id'], 'title' => ['titulo', 's'],
             'type' => ['tipo', 'enum', ['Management', 'Booking', 'Performance', 'Co-production', 'NDA', 'Foro/Arrendamiento', 'Other']],
             'status' => ['estado', 'enum', ['Draft', 'Pending', 'Signed', 'Rejected', 'Active']],
             'fileName' => ['nombre_archivo', 's'], 'fileSize' => ['tamano_bytes', 'size'], 'uploadedAt' => ['fecha_subida', 'dtn'], 'notes' => ['notas', 'sn'],
         ]],
-        'recording_projects' => ['table' => 'proyectos_grabacion', 'extra' => true, 'virtual' => [], 'cols' => [
+        'recording_projects' => ['table' => 'proyectos_grabacion', 'extra' => false, 'virtual' => ['songs', 'costs', 'payments', 'stages'], 'cols' => [
             'id' => ['id', 'id'], 'title' => ['titulo', 's'], 'artistId' => ['artista_id', 'fk'],
             'status' => ['estado', 'enum', ['Planificación', 'Pre-producción', 'Grabando', 'Mezcla', 'Masterización', 'Completado']],
             'releaseDate' => ['fecha_lanzamiento', 'dn'], 'studio' => ['estudio', 'sn'], 'producer' => ['productor', 'sn'], 'created_at' => ['created_at', 'dt'],
@@ -176,6 +179,24 @@ function to_row(string $key, array $def, array $obj): array {
     if ($key === 'events') {
         $row['utilidad'] = round($row['ingreso_total'] - $row['gastos_totales'], 2);   // derivado: nunca se desajusta
     }
+    if ($key === 'artists') {
+        $ps = is_array($obj['photoStyle'] ?? null) ? $obj['photoStyle'] : [];
+        foreach (['zoom' => ['foto_zoom', 0.0001, 100], 'rotation' => ['foto_rotacion', -3600, 3600], 'contrast' => ['foto_contraste', 0, 1000], 'brightness' => ['foto_brillo', 0, 1000],
+                  'grayscale' => ['foto_grises', 0, 1000], 'sepia' => ['foto_sepia', 0, 1000], 'blur' => ['foto_desenfoque', 0, 1000]] as $k => [$col, $min, $max]) {
+            $v = $ps[$k] ?? null;
+            if ($v === null || $v === '') { $row[$col] = null; continue; }
+            if (!is_numeric($v) || $v < $min || $v > $max) fail($key, $obj, "el ajuste de foto «{$k}» está fuera de rango.");
+            $row[$col] = (float)$v;
+        }
+    }
+    if ($key === 'events') {
+        $fb = is_array($obj['feedback'] ?? null) ? $obj['feedback'] : [];
+        $txt = fn($k) => isset($fb[$k]) && trim((string)$fb[$k]) !== '' ? (string)$fb[$k] : null;
+        $row['feedback_artista'] = $txt('artistThoughts'); $row['reaccion_publico'] = $txt('crowdReaction'); $row['notas_optimizacion'] = $txt('optimizationNotes');
+        $pr = $fb['pacingRating'] ?? null;
+        if ($pr !== null && $pr !== '' && (!is_numeric($pr) || $pr < 1 || $pr > 5)) fail($key, $obj, 'la valoración del ritmo debe estar entre 1 y 5.');
+        $row['valoracion_ritmo'] = ($pr === null || $pr === '') ? null : (int)round((float)$pr);
+    }
     if ($key === 'tours' && $row['fecha_inicio'] !== null && $row['fecha_fin'] !== null && $row['fecha_fin'] < $row['fecha_inicio']) fail($key, $obj, 'la fecha de fin no puede ser anterior a la de inicio.');
     if (!empty($def['extra'])) {
         $extra = array_diff_key($obj, $def['cols'], array_flip($def['virtual']), ['version' => 1]);
@@ -203,7 +224,15 @@ function from_row(array $def, array $row): array {
             case 'size': $obj[$field] = bytes_to_size($v === null ? null : (int)$v); break;
         }
     }
-    foreach (['socialMedia', 'photoStyle', 'feedback'] as $k) if (isset($obj[$k]) && $obj[$k] === []) $obj[$k] = new stdClass();   // {} (no [])
+    if (array_key_exists('foto_zoom', $row)) {
+        $ps = []; foreach (['zoom' => 'foto_zoom', 'rotation' => 'foto_rotacion', 'contrast' => 'foto_contraste', 'brightness' => 'foto_brillo', 'grayscale' => 'foto_grises', 'sepia' => 'foto_sepia', 'blur' => 'foto_desenfoque'] as $k => $c) if ($row[$c] !== null) $ps[$k] = (float)$row[$c];
+        if ($ps) $obj['photoStyle'] = $ps;
+    }
+    if (array_key_exists('feedback_artista', $row)) {
+        $fb = []; foreach (['artistThoughts' => 'feedback_artista', 'crowdReaction' => 'reaccion_publico', 'optimizationNotes' => 'notas_optimizacion'] as $k => $c) if ($row[$c] !== null) $fb[$k] = $row[$c];
+        if ($row['valoracion_ritmo'] !== null) $fb['pacingRating'] = (int)$row['valoracion_ritmo'];
+        if ($fb) $obj['feedback'] = $fb;
+    }
     if (array_key_exists('version', $row)) $obj['version'] = (int)$row['version'];
     return $obj;
 }
@@ -269,6 +298,59 @@ function load_all(PDO $pdo): array {
         $a['manager'] = $mgr[$a['id']]['Manager'] ?? ''; $a['bookingAgent'] = $mgr[$a['id']]['Booking'] ?? '';
     }
     unset($a);
+    // grupos que antes vivían en JSON
+    $G = fn(string $sql) => group_by($pdo->query($sql)->fetchAll(), 'k');
+    $idi = $G('SELECT artista_id k, idioma FROM artista_idiomas ORDER BY artista_id, orden');
+    $red = $G('SELECT artista_id k, plataforma, enlace, conectado, usuario_conectado FROM artista_redes');
+    $pip = $G('SELECT artista_id k, item_id, nombre, categoria, completado FROM artista_pipeline ORDER BY artista_id, orden');
+    $hit = $G('SELECT artista_id k, hito_id, fecha, titulo, descripcion, tipo FROM artista_hitos ORDER BY artista_id, orden');
+    $int = $G('SELECT artista_id k, integrante_id, nombre, rol, fecha_inicio, fecha_fin, lugar_inicio, activo FROM artista_integrantes ORDER BY artista_id, orden');
+    foreach ($out['artists'] as &$a) {
+        $id = $a['id'];
+        $a['languages'] = array_column($idi[$id] ?? [], 'idioma');
+        $sm = []; foreach ($red[$id] ?? [] as $r) { if ($r['enlace'] !== '') $sm[$r['plataforma']] = $r['enlace']; if ($r['conectado']) $sm[$r['plataforma'] . 'Connected'] = true; if ($r['usuario_conectado'] !== null) $sm[$r['plataforma'] . 'ConnectedUser'] = $r['usuario_conectado']; }
+        $a['socialMedia'] = $sm ?: new stdClass();
+        $a['pipeline'] = array_map(fn($p) => ['id' => $p['item_id'], 'name' => $p['nombre'], 'category' => $p['categoria'], 'completed' => (bool)$p['completado']], $pip[$id] ?? []);
+        $a['history'] = array_map(fn($h) => ['id' => $h['hito_id'], 'date' => $h['fecha'] ?? '', 'title' => $h['titulo'], 'description' => $h['descripcion'] ?? '', 'type' => $h['tipo']], $hit[$id] ?? []);
+        $a['memberHistory'] = array_map(fn($m) => array_filter(['id' => $m['integrante_id'], 'name' => $m['nombre'], 'role' => $m['rol'], 'startDate' => $m['fecha_inicio'] ?? '', 'endDate' => $m['fecha_fin'], 'venueName' => $m['lugar_inicio'], 'active' => (bool)$m['activo']], fn($v) => $v !== null), $int[$id] ?? []);
+        $a['members'] = array_values(array_map(fn($m) => $m['name'] . ' (' . $m['role'] . ')', array_filter($a['memberHistory'], fn($m) => $m['active'])));
+    }
+    unset($a);
+    $hor = $G('SELECT venue_id k, descripcion FROM venue_horarios ORDER BY venue_id, orden');
+    $ban = $G('SELECT venue_id k, nombre FROM venue_bandas_locales ORDER BY venue_id, orden');
+    foreach ($out['venues'] as &$v) { $v['hours'] = array_column($hor[$v['id']] ?? [], 'descripcion'); $v['localBands'] = array_column($ban[$v['id']] ?? [], 'nombre'); }
+    unset($v);
+    $inv = $G('SELECT evento_id k, nombre FROM evento_bandas_invitadas ORDER BY evento_id, orden');
+    $set = $G('SELECT evento_id k, item_id, titulo, duracion_seg, tempo, notas_transicion FROM evento_setlist ORDER BY evento_id, orden');
+    foreach ($out['events'] as &$e) {
+        $e['guestBands'] = array_column($inv[$e['id']] ?? [], 'nombre');
+        $e['setlist'] = array_map(fn($x) => array_filter(['id' => $x['item_id'], 'songTitle' => $x['titulo'], 'duration' => bytes_dur($x['duracion_seg'] === null ? null : (int)$x['duracion_seg']), 'tempo' => $x['tempo'], 'transitionNotes' => $x['notas_transicion']], fn($q) => $q !== null), $set[$e['id']] ?? []);
+    }
+    unset($e);
+    $son = $G('SELECT proyecto_id k, cancion_id, titulo, duracion_seg, compositor, estado, progreso, notas FROM proyecto_canciones ORDER BY proyecto_id, orden');
+    $cos = $G('SELECT proyecto_id k, costo_id, concepto, categoria, monto, notas FROM proyecto_costos ORDER BY proyecto_id, orden');
+    $pag = $G('SELECT proyecto_id k, pago_id, concepto, monto, fecha_vencimiento, estado, notas FROM proyecto_pagos ORDER BY proyecto_id, orden');
+    $eta = $G('SELECT proyecto_id k, etapa_id, nombre, estado, fecha_inicio, fecha_fin, notas FROM proyecto_etapas ORDER BY proyecto_id, orden');
+    $ins = []; foreach ($pdo->query('SELECT * FROM proyecto_instrumentos ORDER BY proyecto_id, etapa_id, orden')->fetchAll() as $i) $ins[$i['proyecto_id'] . '|' . $i['etapa_id']][] = $i;
+    $nn = fn(array $x) => array_filter($x, fn($q) => $q !== null);
+    foreach ($out['recording_projects'] as &$r) {
+        $id = $r['id'];
+        $r['songs'] = array_map(fn($x) => $nn(['id' => $x['cancion_id'], 'title' => $x['titulo'], 'duration' => bytes_dur($x['duracion_seg'] === null ? null : (int)$x['duracion_seg']), 'composer' => $x['compositor'], 'status' => $x['estado'], 'progress' => (int)$x['progreso'], 'notes' => $x['notas']]), $son[$id] ?? []);
+        $r['costs'] = array_map(fn($x) => $nn(['id' => $x['costo_id'], 'concept' => $x['concepto'], 'category' => $x['categoria'], 'amount' => (float)$x['monto'], 'notes' => $x['notas']]), $cos[$id] ?? []);
+        $r['payments'] = array_map(fn($x) => $nn(['id' => $x['pago_id'], 'concept' => $x['concepto'], 'amount' => (float)$x['monto'], 'dueDate' => $x['fecha_vencimiento'] ?? '', 'status' => $x['estado'], 'notes' => $x['notas']]), $pag[$id] ?? []);
+        $r['stages'] = array_map(fn($x) => $nn(['id' => $x['etapa_id'], 'name' => $x['nombre'], 'status' => $x['estado'], 'startDate' => $x['fecha_inicio'], 'endDate' => $x['fecha_fin'], 'notes' => $x['notas'],
+            'instruments' => array_map(fn($q) => $nn(['id' => $q['instrumento_id'], 'name' => $q['nombre'], 'status' => $q['estado'], 'musician' => $q['musico']]), $ins[$id . '|' . $x['etapa_id']] ?? [])]), $eta[$id] ?? []);
+    }
+    unset($r);
+    // partes y objeto de los contratos
+    $cp = ['artistIds' => ['contrato_artistas', 'artista_id'], 'venueIds' => ['contrato_venues', 'venue_id'], 'providerIds' => ['contrato_proveedores', 'proveedor_id'], 'eventIds' => ['contrato_eventos', 'evento_id'], 'tourIds' => ['contrato_tours', 'tour_id']];
+    $links = []; foreach ($cp as $field => [$t, $c]) foreach ($pdo->query("SELECT contrato_id, $c v FROM `$t` ORDER BY contrato_id, $c")->fetchAll() as $l) $links[$field][$l['contrato_id']][] = $l['v'];
+    foreach ($out['contracts'] as &$c) {
+        foreach (array_keys($cp) as $field) $c[$field] = $links[$field][$c['id']] ?? [];
+        foreach (['artistId' => 'artistIds', 'venueId' => 'venueIds', 'eventId' => 'eventIds', 'tourId' => 'tourIds'] as $one => $many) if ($c[$many]) $c[$one] = $c[$many][0];
+        if (empty($c['tourId']) && $c['eventIds']) { $tid = q_one($pdo, 'SELECT tour_id FROM eventos WHERE id = ?', [$c['eventIds'][0]]); if ($tid !== null) $c['tourId'] = $tid; }   // la gira se deduce del evento
+    }
+    unset($c);
     // artistas de giras y de eventos
     $ta = group_by($pdo->query('SELECT tour_id, artista_id, es_principal FROM tour_artistas ORDER BY tour_id, (es_principal IS NULL), artista_id')->fetchAll(), 'tour_id');
     foreach ($out['tours'] as &$t) { $r = $ta[$t['id']] ?? []; $t['artistIds'] = array_column($r, 'artista_id'); $t['artistId'] = $t['artistIds'][0] ?? ''; }
@@ -473,6 +555,142 @@ function set_event_artists(PDO $pdo, string $id, array $obj): void {
     }
 }
 
+function bytes_dur(?int $s): ?string { return $s === null ? null : intdiv($s, 60) . ':' . str_pad((string)($s % 60), 2, '0', STR_PAD_LEFT); }
+function dur_secs(mixed $v): ?int { return is_string($v) && preg_match('/^(\d{1,3}):([0-5]\d)$/', trim($v), $m) ? (int)$m[1] * 60 + (int)$m[2] : null; }
+function text_or_null(mixed $v, int $max = 65000): ?string { if ($v === null || is_array($v)) return null; $s = trim((string)$v); return $s === '' ? null : mb_substr($s, 0, $max); }
+function must_in(string $key, array $obj, string $label, mixed $v, array $allowed): string {
+    if (!in_array($v, $allowed, true)) fail($key, $obj, "el valor «" . (is_scalar($v) ? $v : '') . "» no es válido para «{$label}». Valores permitidos: " . implode(', ', $allowed) . '.');
+    return $v;
+}
+/** id de elemento hijo: se conserva el de la interfaz; si falta o se repite, se genera. */
+function child_id(array &$seen, mixed $id, string $prefix, int $i): string {
+    $id = is_string($id) && $id !== '' ? mb_substr($id, 0, 40) : $prefix . '-' . ($i + 1);
+    while (isset($seen[$id])) $id = mb_substr($id, 0, 34) . '-' . $i . count($seen);
+    return $seen[$id] = $id;
+}
+function replace_rows(PDO $pdo, string $table, string $keyCol, string $id, array $rows): void {
+    q_run($pdo, "DELETE FROM `$table` WHERE `$keyCol` = ?", [$id]);
+    foreach ($rows as $r) {
+        $cols = array_keys($r);
+        q_run($pdo, "INSERT INTO `$table` (`$keyCol`, `" . implode('`, `', $cols) . '`) VALUES (?' . str_repeat(', ?', count($cols)) . ')', array_merge([$id], array_values($r)));
+    }
+}
+function nonempty_list(mixed $v): array { return is_array($v) ? array_values($v) : []; }
+
+function set_artist_groups(PDO $pdo, string $id, array $obj): void {
+    $k = 'artists';
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['languages'] ?? []) as $i => $l) { $l = text_or_null($l, 60); if ($l !== null && !isset($seen[mb_strtolower($l)])) { $seen[mb_strtolower($l)] = 1; $rows[] = ['idioma' => $l, 'orden' => min(count($rows) + 1, 255)]; } }
+    replace_rows($pdo, 'artista_idiomas', 'artista_id', $id, $rows);
+
+    $nets = ['instagram', 'tiktok', 'facebook', 'youtube', 'spotify', 'appleMusic', 'twitter', 'threads', 'whatsapp', 'website'];
+    $sm = is_array($obj['socialMedia'] ?? null) ? $obj['socialMedia'] : []; $rows = [];
+    foreach ($nets as $net) {
+        $link = text_or_null($sm[$net] ?? null, 500); $conn = !empty($sm[$net . 'Connected']); $usr = text_or_null($sm[$net . 'ConnectedUser'] ?? null, 100);
+        if ($link === null && !$conn && $usr === null) continue;
+        $rows[] = ['plataforma' => $net, 'enlace' => $link ?? '', 'conectado' => $conn ? 1 : 0, 'usuario_conectado' => $usr];
+    }
+    replace_rows($pdo, 'artista_redes', 'artista_id', $id, $rows);
+
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['pipeline'] ?? []) as $i => $it) {
+        if (!is_array($it)) continue;
+        $rows[] = ['item_id' => child_id($seen, $it['id'] ?? null, 'p', $i), 'orden' => $i + 1, 'nombre' => mb_substr((string)($it['name'] ?? ''), 0, 255),
+            'categoria' => must_in($k, $obj, 'categoría del pipeline', $it['category'] ?? '', ['Branding', 'Distribución', 'Presencia', 'Booking & Management']), 'completado' => !empty($it['completed']) ? 1 : 0];
+    }
+    replace_rows($pdo, 'artista_pipeline', 'artista_id', $id, $rows);
+
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['history'] ?? []) as $i => $it) {
+        if (!is_array($it)) continue;
+        $rows[] = ['hito_id' => child_id($seen, $it['id'] ?? null, 'h', $i), 'orden' => $i + 1, 'fecha' => to_date($it['date'] ?? null), 'titulo' => mb_substr((string)($it['title'] ?? ''), 0, 255),
+            'descripcion' => text_or_null($it['description'] ?? null), 'tipo' => must_in($k, $obj, 'tipo de hito', $it['type'] ?? '', ['milestone', 'release', 'signing', 'tour', 'achievement'])];
+    }
+    replace_rows($pdo, 'artista_hitos', 'artista_id', $id, $rows);
+
+    // integrantes: memberHistory manda; `members` ("Nombre (Rol)") es derivado y solo se usa si no hay historial
+    $rows = []; $seen = []; $hist = array_filter(nonempty_list($obj['memberHistory'] ?? []), 'is_array');
+    if ($hist) {
+        foreach (array_values($hist) as $i => $it) {
+            $nm = text_or_null($it['name'] ?? null, 255); if ($nm === null) continue;
+            $fi = to_date($it['startDate'] ?? null); $ff = to_date($it['endDate'] ?? null);
+            if ($fi !== null && $ff !== null && $ff < $fi) fail($k, $obj, "el integrante «{$nm}» termina antes de empezar.");
+            $rows[] = ['integrante_id' => child_id($seen, $it['id'] ?? null, 'm', $i), 'orden' => count($rows) + 1, 'nombre' => $nm, 'rol' => text_or_null($it['role'] ?? null, 100) ?? 'Músico', 'fecha_inicio' => $fi, 'fecha_fin' => $ff, 'lugar_inicio' => text_or_null($it['venueName'] ?? null, 255), 'activo' => !empty($it['active']) ? 1 : 0];
+        }
+    } else {
+        foreach (nonempty_list($obj['members'] ?? []) as $i => $m) {
+            if (!is_string($m) || trim($m) === '') continue;
+            $parts = explode('(', $m); $nm = trim($parts[0]); if ($nm === '') continue;
+            $rows[] = ['integrante_id' => child_id($seen, null, 'm', $i), 'orden' => count($rows) + 1, 'nombre' => mb_substr($nm, 0, 255), 'rol' => isset($parts[1]) ? (mb_substr(trim(str_replace(')', '', $parts[1])), 0, 100) ?: 'Músico') : 'Músico', 'fecha_inicio' => null, 'fecha_fin' => null, 'lugar_inicio' => null, 'activo' => 1];
+        }
+    }
+    replace_rows($pdo, 'artista_integrantes', 'artista_id', $id, $rows);
+}
+
+function set_venue_groups(PDO $pdo, string $id, array $obj): void {
+    foreach ([['hours', 'venue_horarios', 'descripcion'], ['localBands', 'venue_bandas_locales', 'nombre']] as [$field, $table, $col]) {
+        $rows = []; foreach (nonempty_list($obj[$field] ?? []) as $v) { $v = text_or_null($v, 255); if ($v !== null) $rows[] = ['orden' => count($rows) + 1, $col => $v]; }
+        replace_rows($pdo, $table, 'venue_id', $id, $rows);
+    }
+}
+
+function set_event_groups(PDO $pdo, string $id, array $obj): void {
+    $rows = []; foreach (nonempty_list($obj['guestBands'] ?? []) as $v) { $v = text_or_null($v, 255); if ($v !== null) $rows[] = ['orden' => count($rows) + 1, 'nombre' => $v]; }
+    replace_rows($pdo, 'evento_bandas_invitadas', 'evento_id', $id, $rows);
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['setlist'] ?? []) as $i => $it) {
+        if (!is_array($it)) continue;
+        $tempo = $it['tempo'] ?? null; if ($tempo !== null && $tempo !== '') must_in('events', $obj, 'tempo', $tempo, ['Lento', 'Medio', 'Rápido']); else $tempo = null;
+        $rows[] = ['item_id' => child_id($seen, $it['id'] ?? null, 's', $i), 'orden' => $i + 1, 'titulo' => mb_substr((string)($it['songTitle'] ?? ''), 0, 255), 'duracion_seg' => dur_secs($it['duration'] ?? null), 'tempo' => $tempo, 'notas_transicion' => text_or_null($it['transitionNotes'] ?? null)];
+    }
+    replace_rows($pdo, 'evento_setlist', 'evento_id', $id, $rows);
+}
+
+function set_project_groups(PDO $pdo, string $id, array $obj): void {
+    $k = 'recording_projects'; $num = function ($v, string $what) use ($k, $obj) { if ($v === null || $v === '') return 0.0; if (!is_numeric($v) || $v < 0) fail($k, $obj, "$what no puede ser negativo."); return (float)$v; };
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['songs'] ?? []) as $i => $it) { if (!is_array($it)) continue;
+        $pr = $it['progress'] ?? 0; if (!is_numeric($pr) || $pr < 0 || $pr > 100) fail($k, $obj, 'el progreso de una canción debe estar entre 0 y 100.');
+        $rows[] = ['cancion_id' => child_id($seen, $it['id'] ?? null, 'so', $i), 'orden' => $i + 1, 'titulo' => mb_substr((string)($it['title'] ?? ''), 0, 255), 'duracion_seg' => dur_secs($it['duration'] ?? null), 'compositor' => text_or_null($it['composer'] ?? null, 255),
+            'estado' => must_in($k, $obj, 'estado de la canción', $it['status'] ?? '', ['Composición', 'Demo', 'Grabación de Instrumentos', 'Grabación de Voces', 'Mezcla', 'Masterizado', 'Listo']), 'progreso' => (int)round((float)$pr), 'notas' => text_or_null($it['notes'] ?? null)]; }
+    replace_rows($pdo, 'proyecto_canciones', 'proyecto_id', $id, $rows);
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['costs'] ?? []) as $i => $it) { if (!is_array($it)) continue;
+        $rows[] = ['costo_id' => child_id($seen, $it['id'] ?? null, 'c', $i), 'orden' => $i + 1, 'concepto' => mb_substr((string)($it['concept'] ?? ''), 0, 255),
+            'categoria' => must_in($k, $obj, 'categoría del costo', $it['category'] ?? '', ['Estudio/Grabación', 'Músicos de Sesión', 'Mezcla', 'Masterización', 'Arreglos/Producción', 'Otros']), 'monto' => $num($it['amount'] ?? 0, 'un costo'), 'notas' => text_or_null($it['notes'] ?? null)]; }
+    replace_rows($pdo, 'proyecto_costos', 'proyecto_id', $id, $rows);
+    $rows = []; $seen = [];
+    foreach (nonempty_list($obj['payments'] ?? []) as $i => $it) { if (!is_array($it)) continue;
+        $rows[] = ['pago_id' => child_id($seen, $it['id'] ?? null, 'pa', $i), 'orden' => $i + 1, 'concepto' => mb_substr((string)($it['concept'] ?? ''), 0, 255), 'monto' => $num($it['amount'] ?? 0, 'un pago'), 'fecha_vencimiento' => to_date($it['dueDate'] ?? null),
+            'estado' => must_in($k, $obj, 'estado del pago', $it['status'] ?? 'Pendiente', ['Pendiente', 'Pagado']), 'notas' => text_or_null($it['notes'] ?? null)]; }
+    replace_rows($pdo, 'proyecto_pagos', 'proyecto_id', $id, $rows);
+    q_run($pdo, 'DELETE FROM proyecto_etapas WHERE proyecto_id = ?', [$id]);   // los instrumentos caen en cascada
+    $seen = [];
+    foreach (nonempty_list($obj['stages'] ?? []) as $i => $it) { if (!is_array($it)) continue;
+        $eid = child_id($seen, $it['id'] ?? null, 'st', $i); $fi = to_date($it['startDate'] ?? null); $ff = to_date($it['endDate'] ?? null);
+        if ($fi !== null && $ff !== null && $ff < $fi) fail($k, $obj, 'una etapa termina antes de empezar.');
+        q_run($pdo, 'INSERT INTO proyecto_etapas (proyecto_id, etapa_id, orden, nombre, estado, fecha_inicio, fecha_fin, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [$id, $eid, $i + 1, must_in($k, $obj, 'nombre de la etapa', $it['name'] ?? '', ['Pre-producción', 'Grabación', 'Revisión', 'Mezcla', 'Masterización', 'Listo']), must_in($k, $obj, 'estado de la etapa', $it['status'] ?? 'Pendiente', ['Pendiente', 'En Progreso', 'Completado']), $fi, $ff, text_or_null($it['notes'] ?? null)]);
+        $seen2 = [];
+        foreach (nonempty_list($it['instruments'] ?? []) as $j => $ins) { if (!is_array($ins)) continue;
+            q_run($pdo, 'INSERT INTO proyecto_instrumentos (proyecto_id, etapa_id, instrumento_id, orden, nombre, estado, musico) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$id, $eid, child_id($seen2, $ins['id'] ?? null, 'i', $j), $j + 1, mb_substr((string)($ins['name'] ?? ''), 0, 255), must_in($k, $obj, 'estado del instrumento', $ins['status'] ?? 'Pendiente', ['Pendiente', 'Grabando', 'Listo']), text_or_null($ins['musician'] ?? null, 255)]);
+        }
+    }
+}
+
+/** Partes (artistas, venues, proveedores) y objeto (eventos, giras) del contrato. Las columnas sueltas del formato anterior se aceptan. */
+function set_contract_links(PDO $pdo, string $id, array $obj): void {
+    $spec = ['artistIds' => ['artistId', 'contrato_artistas', 'artista_id'], 'venueIds' => ['venueId', 'contrato_venues', 'venue_id'], 'providerIds' => [null, 'contrato_proveedores', 'proveedor_id'],
+             'eventIds' => ['eventId', 'contrato_eventos', 'evento_id'], 'tourIds' => ['tourId', 'contrato_tours', 'tour_id']];
+    foreach ($spec as $many => [$one, $table, $col]) {
+        $ids = isset($obj[$many]) && is_array($obj[$many]) ? $obj[$many] : ($one !== null && !empty($obj[$one]) ? [$obj[$one]] : []);
+        $ids = array_values(array_unique(array_filter($ids, fn($x) => is_string($x) && $x !== '')));
+        q_run($pdo, "DELETE FROM `$table` WHERE contrato_id = ?", [$id]);
+        foreach ($ids as $v) q_run($pdo, "INSERT INTO `$table` (contrato_id, `$col`) VALUES (?, ?)", [$id, $v]);
+    }
+}
+
 function upsert_sql(string $table, array $cols): string {
     $set = implode(', ', array_map(fn($c) => "$c = VALUES($c)", array_filter($cols, fn($c) => $c !== 'id')));
     return "INSERT INTO $table (" . implode(', ', $cols) . ') VALUES (' . implode(', ', array_fill(0, count($cols), '?')) . ") ON DUPLICATE KEY UPDATE $set";
@@ -508,12 +726,14 @@ function apply_changes(PDO $pdo, array $changes, bool $lenient = false): array {
 
                     switch ($key) {
                         case 'artists':
+                            set_artist_groups($pdo, $row['id'], $obj);
                             set_artist_genres($pdo, $row['id'], $obj);
                             set_artist_contact($pdo, $row['id'], 'Manager', (string)($obj['manager'] ?? ''), $ctx);
                             set_artist_contact($pdo, $row['id'], 'Booking', (string)($obj['bookingAgent'] ?? ''), $ctx);
                             break;
                         case 'venues':
                             if (isset($obj['providerIds']) && is_array($obj['providerIds'])) replace_pivot($pdo, 'venues', $row['id'], $obj['providerIds']);
+                            set_venue_groups($pdo, $row['id'], $obj);
                             $ctx['principalWanted'][$row['id']] = (string)($obj['contactoPrincipalId'] ?? '');
                             break;
                         case 'providers':
@@ -521,7 +741,9 @@ function apply_changes(PDO $pdo, array $changes, bool $lenient = false): array {
                             set_provider_contact($pdo, $row['id'], $row['nombre'], $obj, $ctx);
                             break;
                         case 'tours':  set_tour_artists($pdo, $row['id'], $obj); break;
-                        case 'events': set_event_artists($pdo, $row['id'], $obj); break;
+                        case 'events': set_event_artists($pdo, $row['id'], $obj); set_event_groups($pdo, $row['id'], $obj); break;
+                        case 'contracts': set_contract_links($pdo, $row['id'], $obj); break;
+                        case 'recording_projects': set_project_groups($pdo, $row['id'], $obj); break;
                     }
                 } catch (SyncError | PDOException $e) {
                     if ($lenient && !($e instanceof ConflictError)) { $pdo->exec('ROLLBACK TO SAVEPOINT rec'); $stats['skipped']++; continue; }

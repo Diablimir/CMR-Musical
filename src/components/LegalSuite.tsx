@@ -32,8 +32,8 @@ export default function LegalSuite({
   // Form states for uploading a new contract
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState<Contract['type']>('Performance');
-  const [newArtistId, setNewArtistId] = useState('');
-  const [newVenueId, setNewVenueId] = useState('');
+  const [newArtistIds, setNewArtistIds] = useState<string[]>([]);
+  const [newVenueIds, setNewVenueIds] = useState<string[]>([]);
   const [newEventId, setNewEventId] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -51,7 +51,7 @@ export default function LegalSuite({
     
     const matchesType = selectedType === 'all' || c.type === selectedType;
     const matchesStatus = selectedStatus === 'all' || c.status === selectedStatus;
-    const matchesArtist = selectedArtistFilter === 'all' || c.artistId === selectedArtistFilter;
+    const matchesArtist = selectedArtistFilter === 'all' || (c.artistIds ?? (c.artistId ? [c.artistId] : [])).includes(selectedArtistFilter);
 
     return matchesSearch && matchesType && matchesStatus && matchesArtist;
   });
@@ -113,8 +113,10 @@ export default function LegalSuite({
       id: `con-${Date.now()}`,
       title: newTitle,
       type: newType,
-      artistId: newArtistId || undefined,
-      venueId: newVenueId || undefined,
+      artistId: newArtistIds[0],
+      venueId: newVenueIds[0],
+      artistIds: newArtistIds,
+      venueIds: newVenueIds,
       eventId: newEventId || undefined,
       fileName: fileMeta.name,
       fileSize: fileMeta.size,
@@ -128,8 +130,8 @@ export default function LegalSuite({
     // Reset Form
     setNewTitle('');
     setNewType('Performance');
-    setNewArtistId('');
-    setNewVenueId('');
+    setNewArtistIds([]);
+    setNewVenueIds([]);
     setNewEventId('');
     setNewNotes('');
     setUploadedFile(null);
@@ -405,19 +407,19 @@ ${contract.notes || 'Ninguna nota ingresada en el registro corporativo.'}`;
                           </td>
                           <td className="px-5 py-4 font-semibold text-slate-700">
                             <div className="space-y-1">
-                              {c.artistId && (
-                                <div className="flex items-center gap-1">
+                              {(c.artistIds ?? (c.artistId ? [c.artistId] : [])).map((id) => (
+                                <div key={'a' + id} className="flex items-center gap-1">
                                   <Users className="w-3 h-3 text-slate-400" />
-                                  <span>{getArtistName(c.artistId)}</span>
+                                  <span>{getArtistName(id)}</span>
                                 </div>
-                              )}
-                              {c.venueId && (
-                                <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                              ))}
+                              {(c.venueIds ?? (c.venueId ? [c.venueId] : [])).map((id) => (
+                                <div key={'v' + id} className="flex items-center gap-1 text-[10px] text-slate-500">
                                   <Building2 className="w-3 h-3 text-slate-400" />
-                                  <span>{getVenueName(c.venueId)}</span>
+                                  <span>{getVenueName(id)}</span>
                                 </div>
-                              )}
-                              {!c.artistId && !c.venueId && (
+                              ))}
+                              {!(c.artistIds?.length || c.artistId) && !(c.venueIds?.length || c.venueId) && (
                                 <span className="text-slate-400 font-normal">Corporativo Flamo</span>
                               )}
                             </div>
@@ -640,35 +642,32 @@ ${contract.notes || 'Ninguna nota ingresada en el registro corporativo.'}`;
                   </select>
                 </div>
 
-                {/* Artist Selection */}
+                {/* Partes del contrato */}
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Vincular con Artista</label>
-                  <select
-                    value={newArtistId}
-                    onChange={(e) => setNewArtistId(e.target.value)}
-                    className="w-full bg-white-chalk border border-silver-haze rounded-xl p-2.5 text-slate-700 focus:outline-none"
-                  >
-                    <option value="">Ninguno (Corporativo)</option>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Artistas que firman (puedes elegir varios)</label>
+                  <div className="max-h-32 overflow-y-auto bg-white-chalk border border-silver-haze rounded-xl p-2 space-y-1">
+                    {artists.filter(a => !a.deleted_at).length === 0 && <p className="text-xs text-slate-400 p-1">Sin artistas (contrato corporativo).</p>}
                     {artists.filter(a => !a.deleted_at).map((art) => (
-                      <option key={art.id} value={art.id}>{art.artisticName}</option>
+                      <label key={art.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                        <input type="checkbox" checked={newArtistIds.includes(art.id)} onChange={(e) => setNewArtistIds(e.target.checked ? [...newArtistIds, art.id] : newArtistIds.filter((x) => x !== art.id))} />
+                        {art.artisticName}
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Venue Selection */}
               <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Vincular con Foro / Sede</label>
-                <select
-                  value={newVenueId}
-                  onChange={(e) => setNewVenueId(e.target.value)}
-                  className="w-full bg-white-chalk border border-silver-haze rounded-xl p-2.5 text-slate-700 focus:outline-none"
-                >
-                  <option value="">Ninguno</option>
+                <label className="text-[10px] uppercase font-bold text-slate-400">Foros / sedes involucrados (puedes elegir varios)</label>
+                <div className="max-h-32 overflow-y-auto bg-white-chalk border border-silver-haze rounded-xl p-2 space-y-1">
+                  {venues.filter(v => !v.deleted_at).length === 0 && <p className="text-xs text-slate-400 p-1">Sin venues registrados.</p>}
                   {venues.filter(v => !v.deleted_at).map((v) => (
-                    <option key={v.id} value={v.id}>{v.name} ({v.city})</option>
+                    <label key={v.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                      <input type="checkbox" checked={newVenueIds.includes(v.id)} onChange={(e) => setNewVenueIds(e.target.checked ? [...newVenueIds, v.id] : newVenueIds.filter((x) => x !== v.id))} />
+                      {v.name} ({v.city})
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Notes */}

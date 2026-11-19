@@ -37,12 +37,12 @@ Basado en `DATABASE_AUDIT.md`. Estrategia: **expandir → migrar → validar →
 
 **Interfaz (Fase 2):** chips de géneros con autocompletado; directorio de **Contactos** con búsqueda y roles; en el evento, **alineación** (lista de artistas con orden/horario/honorarios) solo si se confirma la regla de negocio.
 
-### Fase 3 — Grupos repetidos y contratos
+### Fase 3 — Grupos repetidos y contratos  ✅ implementada (migración 004)
 - `evento_setlist`, `proyecto_canciones`, `proyecto_costos`, `proyecto_pagos`, `proyecto_etapas` (+ `proyecto_artistas`/`proyecto_colaboradores` si hay colaboraciones), `venue_horarios`, `venue_bandas_locales`, `artista_redes`, `artista_integrantes`.
 - Contratos: `contrato_artistas`, `contrato_venues`, `contrato_proveedores`, `contrato_eventos` (+ `contrato_tours` solo si hay contratos de gira completa). Se retiran `artista_id/venue_id/tour_id/evento_id` por redundantes (Fase 4).
 - **Interfaz:** selector de partes del contrato (varias), con autocompletado de artista/venue al elegir evento (evita incoherencias); etiqueta «archivado» para entidades desactivadas sin romper el historial.
 
-### Fase 4 — Contracción (solo tras verificar)
+### Fase 4 — Contracción (solo tras verificar)  ✅ implementada (migración 005)
 Retirar columnas/estructuras obsoletas (`eventos.artista_id`, `artistas.genero`, `artistas.manager`, `contratos.*_id`, `venues.contacto_principal_id`, JSON migrado). Script separado, **no se ejecuta sin tu autorización explícita** y sin respaldo previo.
 
 ## Estrategia de rollback

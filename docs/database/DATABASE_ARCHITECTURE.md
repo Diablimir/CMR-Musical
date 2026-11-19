@@ -1,6 +1,6 @@
-# FLAMO CRM — Arquitectura de la base de datos (esquema v3)
+# FLAMO CRM — Arquitectura de la base de datos (esquema v5)
 
-> Estado: **Fases 1 y 2 implementadas, probadas y verificadas.** Fases 3 y 4 pendientes (ver §9).
+> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–005; 40 tablas; 265 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
 > Documentos relacionados: `DATABASE_AUDIT.md` (hallazgos y evidencia previa), `DATABASE_REFACTOR_PLAN.md` (plan por fases),
 > `DATA_DICTIONARY.md` (tablas y columnas), `schema.sql` (DDL), `CHANGELOG_DB.md` (registro de cambios).
 
@@ -15,33 +15,54 @@ CLI en `scripts/db/migrate.php`, endpoint de administración `api/migrate.php` (
 ```mermaid
 erDiagram
     cat_etapas_desarrollo ||--o{ artistas : "etapa_id (RESTRICT)"
-    cat_roles_contacto ||--o{ artista_contactos : "rol_id (RESTRICT)"
     artistas ||--o{ artista_contactos : "artista_id (CASCADE)"
     contactos ||--o{ artista_contactos : "contacto_id (CASCADE)"
+    cat_roles_contacto ||--o{ artista_contactos : "rol_id (RESTRICT)"
     artistas ||--o{ artista_generos : "artista_id (CASCADE)"
     cat_generos ||--o{ artista_generos : "genero_id (RESTRICT)"
+    artistas ||--o{ artista_hitos : "artista_id (CASCADE)"
+    artistas ||--o{ artista_idiomas : "artista_id (CASCADE)"
+    artistas ||--o{ artista_integrantes : "artista_id (CASCADE)"
+    artistas ||--o{ artista_pipeline : "artista_id (CASCADE)"
+    artistas ||--o{ artista_redes : "artista_id (CASCADE)"
     contactos ||--o{ contacto_correos : "contacto_id (CASCADE)"
     contactos ||--o{ contacto_telefonos : "contacto_id (CASCADE)"
-    tours |o--o{ contratos : "tour_id (RESTRICT)"
-    eventos |o--o{ contratos : "evento_id (RESTRICT)"
-    venues |o--o{ contratos : "venue_id (RESTRICT)"
-    artistas |o--o{ contratos : "artista_id (RESTRICT)"
+    artistas ||--o{ contrato_artistas : "artista_id (RESTRICT)"
+    contratos ||--o{ contrato_artistas : "contrato_id (CASCADE)"
+    eventos ||--o{ contrato_eventos : "evento_id (RESTRICT)"
+    contratos ||--o{ contrato_eventos : "contrato_id (CASCADE)"
+    proveedores ||--o{ contrato_proveedores : "proveedor_id (RESTRICT)"
+    contratos ||--o{ contrato_proveedores : "contrato_id (CASCADE)"
+    tours ||--o{ contrato_tours : "tour_id (RESTRICT)"
+    contratos ||--o{ contrato_tours : "contrato_id (CASCADE)"
+    contratos ||--o{ contrato_venues : "contrato_id (CASCADE)"
+    venues ||--o{ contrato_venues : "venue_id (RESTRICT)"
     venues ||--o{ eventos : "venue_id (RESTRICT)"
     tours |o--o{ eventos : "tour_id (SET NULL)"
+    eventos ||--o{ evento_artistas : "evento_id (CASCADE)"
     artistas ||--o{ evento_artistas : "artista_id (RESTRICT)"
     cat_monedas ||--o{ evento_artistas : "moneda (RESTRICT)"
-    eventos ||--o{ evento_artistas : "evento_id (CASCADE)"
+    eventos ||--o{ evento_bandas_invitadas : "evento_id (CASCADE)"
+    eventos ||--o{ evento_setlist : "evento_id (CASCADE)"
     contactos ||--o{ proveedor_contactos : "contacto_id (CASCADE)"
     cat_roles_contacto ||--o{ proveedor_contactos : "rol_id (RESTRICT)"
     proveedores ||--o{ proveedor_contactos : "proveedor_id (CASCADE)"
-    artistas |o--o{ proyectos_grabacion : "artista_id (SET NULL)"
+    artistas |o--o{ proyectos_grabacion : "artista_id (RESTRICT)"
+    proyectos_grabacion ||--o{ proyecto_canciones : "proyecto_id (CASCADE)"
+    proyectos_grabacion ||--o{ proyecto_costos : "proyecto_id (CASCADE)"
+    proyectos_grabacion ||--o{ proyecto_etapas : "proyecto_id (CASCADE)"
+    proyecto_etapas ||--o{ proyecto_instrumentos : "proyecto_id (CASCADE)"
+    proyecto_etapas ||--o{ proyecto_instrumentos : "etapa_id (CASCADE)"
+    proyectos_grabacion ||--o{ proyecto_pagos : "proyecto_id (CASCADE)"
     artistas ||--o{ tour_artistas : "artista_id (RESTRICT)"
     tours ||--o{ tour_artistas : "tour_id (CASCADE)"
+    venues ||--o{ venue_bandas_locales : "venue_id (CASCADE)"
     venues ||--o{ venue_contactos : "venue_id (CASCADE)"
     contactos ||--o{ venue_contactos : "contacto_id (CASCADE)"
     cat_roles_contacto ||--o{ venue_contactos : "rol_id (RESTRICT)"
-    venues ||--o{ venue_proveedores : "venue_id (CASCADE)"
+    venues ||--o{ venue_horarios : "venue_id (CASCADE)"
     proveedores ||--o{ venue_proveedores : "proveedor_id (CASCADE)"
+    venues ||--o{ venue_proveedores : "venue_id (CASCADE)"
     artistas {
         varchar id PK
         varchar nombre_artistico
@@ -55,6 +76,18 @@ erDiagram
         varchar estado
         varchar pais
         text foto
+        text bio
+        date fecha_inicio
+        varchar sello
+        varchar editorial
+        varchar distribuidora
+        decimal foto_zoom
+        decimal foto_rotacion
+        decimal foto_contraste
+        decimal foto_brillo
+        decimal foto_grises
+        decimal foto_sepia
+        decimal foto_desenfoque
     }
     artista_contactos {
         varchar artista_id PK,FK
@@ -67,6 +100,46 @@ erDiagram
         smallint_unsigned genero_id PK,FK
         tinyint es_principal
         tinyint_unsigned orden
+    }
+    artista_hitos {
+        varchar artista_id PK,FK
+        varchar hito_id PK
+        smallint_unsigned orden
+        date fecha
+        varchar titulo
+        text descripcion
+        varchar tipo
+    }
+    artista_idiomas {
+        varchar artista_id PK,FK
+        varchar idioma PK
+        tinyint_unsigned orden
+    }
+    artista_integrantes {
+        varchar artista_id PK,FK
+        varchar integrante_id PK
+        smallint_unsigned orden
+        varchar nombre
+        varchar rol
+        date fecha_inicio
+        date fecha_fin
+        varchar lugar_inicio
+        tinyint activo
+    }
+    artista_pipeline {
+        varchar artista_id PK,FK
+        varchar item_id PK
+        smallint_unsigned orden
+        varchar nombre
+        varchar categoria
+        tinyint completado
+    }
+    artista_redes {
+        varchar artista_id PK,FK
+        varchar plataforma PK
+        varchar enlace
+        tinyint conectado
+        varchar usuario_conectado
     }
     cat_etapas_desarrollo {
         tinyint id PK
@@ -107,16 +180,32 @@ erDiagram
     contratos {
         varchar id PK
         varchar titulo
-        varchar artista_id FK
-        varchar venue_id FK
-        varchar tour_id FK
-        varchar evento_id FK
         varchar tipo
         varchar estado
         varchar nombre_archivo
         text notas
         datetime fecha_subida
         bigint tamano_bytes
+    }
+    contrato_artistas {
+        varchar contrato_id PK,FK
+        varchar artista_id PK,FK
+    }
+    contrato_eventos {
+        varchar contrato_id PK,FK
+        varchar evento_id PK,FK
+    }
+    contrato_proveedores {
+        varchar contrato_id PK,FK
+        varchar proveedor_id PK,FK
+    }
+    contrato_tours {
+        varchar contrato_id PK,FK
+        varchar tour_id PK,FK
+    }
+    contrato_venues {
+        varchar contrato_id PK,FK
+        varchar venue_id PK,FK
     }
     eventos {
         varchar id PK
@@ -131,6 +220,10 @@ erDiagram
         decimal ingreso_total
         decimal gastos_totales
         decimal utilidad
+        text feedback_artista
+        text reaccion_publico
+        tinyint valoracion_ritmo
+        text notas_optimizacion
     }
     evento_artistas {
         bigint_unsigned id PK
@@ -144,6 +237,20 @@ erDiagram
         decimal honorarios
         char moneda FK
         varchar estado_confirmacion
+    }
+    evento_bandas_invitadas {
+        varchar evento_id PK,FK
+        smallint_unsigned orden PK
+        varchar nombre
+    }
+    evento_setlist {
+        varchar evento_id PK,FK
+        varchar item_id PK
+        smallint_unsigned orden
+        varchar titulo
+        int_unsigned duracion_seg
+        varchar tempo
+        text notas_transicion
     }
     proveedores {
         varchar id PK
@@ -168,8 +275,54 @@ erDiagram
         varchar estudio
         varchar productor
     }
-    schema_meta {
-        int id PK
+    proyecto_canciones {
+        varchar proyecto_id PK,FK
+        varchar cancion_id PK
+        smallint_unsigned orden
+        varchar titulo
+        int_unsigned duracion_seg
+        varchar compositor
+        varchar estado
+        tinyint_unsigned progreso
+        text notas
+    }
+    proyecto_costos {
+        varchar proyecto_id PK,FK
+        varchar costo_id PK
+        smallint_unsigned orden
+        varchar concepto
+        varchar categoria
+        decimal monto
+        text notas
+    }
+    proyecto_etapas {
+        varchar proyecto_id PK,FK
+        varchar etapa_id PK
+        smallint_unsigned orden
+        varchar nombre
+        varchar estado
+        date fecha_inicio
+        date fecha_fin
+        text notas
+    }
+    proyecto_instrumentos {
+        varchar proyecto_id PK,FK
+        varchar etapa_id PK,FK
+        varchar instrumento_id PK
+        smallint_unsigned orden
+        varchar nombre
+        varchar estado
+        varchar musico
+    }
+    proyecto_pagos {
+        varchar proyecto_id PK,FK
+        varchar pago_id PK
+        smallint_unsigned orden
+        varchar concepto
+        decimal monto
+        date fecha_vencimiento
+        varchar estado
+        text notas
     }
     tours {
         varchar id PK
@@ -200,12 +353,34 @@ erDiagram
         smallint score_negociacion
         smallint score_produccion
         smallint score_hospitalidad
+        varchar sitio_web
+        varchar telefono
+        int num_resenas
+        varchar place_id
+        varchar tipo_establecimiento
+        varchar instagram
+        varchar facebook
+        varchar tiktok
+        varchar whatsapp
+        varchar correo
+        varchar youtube
+        varchar twitter
+    }
+    venue_bandas_locales {
+        varchar venue_id PK,FK
+        smallint_unsigned orden PK
+        varchar nombre
     }
     venue_contactos {
         varchar venue_id PK,FK
         varchar contacto_id PK,FK
         smallint_unsigned rol_id PK,FK
         tinyint es_principal
+    }
+    venue_horarios {
+        varchar venue_id PK,FK
+        smallint_unsigned orden PK
+        varchar descripcion
     }
     venue_proveedores {
         varchar venue_id PK,FK
@@ -230,11 +405,13 @@ Versión gráfica: `docs/diagrama-er.png` / `.svg` (se regenera con `python3 scr
 | `RESTRICT` en contratos, eventos y artistas; `CASCADE` solo en dependientes sin sentido propio | Protege el historial contractual y financiero | Pruebas §12 |
 | Columna `version` y bloqueo optimista | Evita que una persona pise el cambio de otra sobre el mismo registro | Pruebas §14 |
 | Fechas de auditoría `DATETIME(3)` (UTC) | Permiten aritmética y validación del motor | Migración 002 |
-| Columnas antiguas conservadas (marcadas OBSOLETO) hasta la Fase 4 | Permite revertir sin perder datos (patrón expandir–migrar–contraer) | Pruebas §4 |
+| Estructuras antiguas conservadas durante las Fases 2–3 y **retiradas en la Fase 4** tras una verificación previa (aborta sin cambios si algo no se migró) | Patrón expandir–migrar–contraer: permitió revertir sin perder datos hasta comprobar el reemplazo | Pruebas §4 y §21 |
+| Grupos repetidos (redes, idiomas, integrantes, pipeline, hitos, horarios, setlist, canciones, costos, pagos…) en tablas hijas con `orden` | 1FN; se pueden sumar y filtrar en SQL (p. ej. `SUM(monto)` de costos) | Pruebas §17 |
+| Contratos con partes y objeto en tablas `contrato_*` (N:M) | Un contrato puede tener varios artistas/venues/proveedores/eventos/giras; se elimina la redundancia `evento_id → artista/venue/gira` | Pruebas §17–§18 |
 
 ## 4. Formas normales: estado real
 
-«✓» cumple con evidencia; «excepción» = no cumple y está justificado; «pendiente» = se corrige en Fase 3.
+«✓» cumple con evidencia; «excepción» = no cumple y está justificado; Tras la Fase 3 no queda ninguna tabla «pendiente».
 
 | Tabla(s) | 1FN | 2FN | 3FN | BCNF | Nota |
 |---|---|---|---|---|---|
@@ -242,11 +419,11 @@ Versión gráfica: `docs/diagrama-er.png` / `.svg` (se regenera con `python3 scr
 | `venue_contactos`, `artista_contactos`, `proveedor_contactos`, `venue_proveedores` | ✓ | ✓ | ✓ | ✓ | Tablas puente con atributos que dependen de la llave completa |
 | `artista_generos`, `tour_artistas`, `evento_artistas` | ✓ | ✓ | ✓ | ✓ | |
 | `cat_*` | ✓ | ✓ | ✓ | ✓ | |
-| `artistas` | excepción | ✓ | excepción | — | `extra` JSON (bio, redes, pipeline, historial, integrantes): contenido de perfil que no se consulta ni relaciona; **promover a tabla en cuanto se filtre por él**. `ciudad → estado → pais`: dirección postal como valor (sin catálogo gobernado) |
-| `venues` | excepción | ✓ | excepción | — | `extra` JSON (horarios, redes, bandas locales); misma excepción geográfica; `codigo_postal → ciudad` |
-| `eventos` | pendiente | ✓ | excepción | — | `utilidad` es derivada pero **no puede desajustarse** (CHECK); `extra` con setlist/bandas invitadas (Fase 3) |
-| `contratos` | ✓ | ✓ | pendiente | pendiente | `evento_id` determina artista/venue/gira (redundancia transitiva): pasa a tablas de partes en Fase 3 |
-| `proyectos_grabacion` | pendiente | ✓ | ✓ | ✓ | canciones, costos, pagos y etapas en JSON: Fase 3 |
+| `artistas` y sus tablas hijas (`artista_redes/idiomas/integrantes/pipeline/hitos`) | ✓ | ✓ | excepción | — | Sin JSON `extra`. Excepción 3FN: `ciudad → estado → pais` (dirección postal como valor, sin catálogo gobernado) |
+| `venues`, `venue_horarios`, `venue_bandas_locales` | ✓ | ✓ | excepción | — | Misma excepción geográfica; `codigo_postal → ciudad` |
+| `eventos`, `evento_setlist`, `evento_bandas_invitadas` | ✓ | ✓ | excepción | — | `utilidad` es derivada pero **no puede desajustarse** (CHECK) |
+| `contratos`, `contrato_artistas/venues/proveedores/eventos/tours` | ✓ | ✓ | ✓ | ✓ | Partes y objeto en tablas puente con llave compuesta |
+| `proyectos_grabacion`, `proyecto_canciones/costos/pagos/etapas/instrumentos` | ✓ | ✓ | ✓ | ✓ | Costos y pagos sumables en SQL |
 | `proveedores`, `tours` | ✓ | ✓ | ✓ | ✓ | |
 
 **Qué prueban (y qué no) las pruebas automatizadas:** verifican las **restricciones** que materializan las dependencias (unicidad, llaves, CHECK) y la ausencia de anomalías concretas. La demostración formal de 3FN/BCNF es un análisis de dependencias funcionales (documentado por tabla en `DATA_DICTIONARY.md`), no algo que una prueba pueda demostrar por sí sola.
@@ -262,8 +439,9 @@ Versión gráfica: `docs/diagrama-er.png` / `.svg` (se regenera con `python3 scr
 | `*_contactos → cat_roles_contacto`, `artista_generos → cat_generos` | RESTRICT | No se borran catálogos en uso |
 | `eventos → venues` | RESTRICT | Protege el historial financiero |
 | `eventos → tours` | SET NULL | Un evento puede existir sin gira |
-| `contratos → artistas/venues/tours/eventos` | RESTRICT | **El historial contractual no se pierde** (antes era SET NULL silencioso) |
-| `proyectos_grabacion → artistas` | SET NULL | Pendiente de revisión en Fase 3 |
+| `contrato_artistas/venues/proveedores/eventos/tours → entidad` | RESTRICT (y CASCADE desde el contrato) | **El historial contractual no se pierde** (antes era SET NULL silencioso) |
+| `proyectos_grabacion → artistas` | SET NULL | Sin cambio (decisión conservadora; revisar si se quiere RESTRICT) |
+| `proyecto_*`, `artista_*` (hijas), `venue_*` (hijas), `evento_*` (hijas) | CASCADE | Dependientes sin sentido propio |
 
 Reglas entre tablas que el motor no puede expresar con FK (se validan en PHP **dentro de la transacción**): los artistas de un evento deben pertenecer a su gira; no se puede quitar de una gira a un artista que tiene eventos en ella.
 
@@ -289,8 +467,10 @@ Toda FK tiene índice (prueba automática); no hay índices redundantes (prueba 
 - No existe pantalla para crear giras: `tour_artistas` está listo y probado a nivel de datos/API, pero la interfaz aún no ofrece giras compartidas.
 
 ## 9. Pendiente
-**Fase 3:** contratos con partes (`contrato_artistas/venues/proveedores/eventos`), `evento_setlist`, `proyecto_canciones/costos/pagos/etapas`, horarios y bandas locales de venues, redes e integrantes de artistas.
-**Fase 4 (contracción, solo con tu autorización y respaldo):** eliminar columnas/tablas OBSOLETO (`contactos_legacy`, `eventos.artista_id`, `artistas.genero/manager/booking_agent`, `venues.contacto_principal_id`, `proveedores.contacto/telefono/correo`, `tours.artista_id`).
+- Sin pantalla para crear giras (la interfaz aún no ofrece giras compartidas; `tour_artistas` está listo y probado a nivel de datos/API).
+- La carga sigue trayendo todo el conjunto (límite práctico ~20–25 mil eventos): paginar cuando el volumen lo exija.
+- Verificar la versión del motor de Hostinger (CHECK) y la configuración de durabilidad (no verificable desde aquí).
+- Excepciones de 3FN aceptadas: dirección postal (`ciudad → estado → pais`) y `utilidad` derivada protegida por CHECK.
 
 ## 10. Operación
 

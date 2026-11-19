@@ -1,5 +1,15 @@
 # FLAMO CRM — Registro de cambios de la base de datos
 
+## v5 · Fase 4 — Contracción  (migración 005)
+**Eliminado** (tras verificar que el reemplazo está completo; si no, aborta sin cambiar nada): `artistas.genero/manager/booking_agent/extra`, `venues.contacto_principal_id/extra`, `proveedores.contacto/telefono/correo`, `tours.artista_id`, `eventos.artista_id/extra`, `contratos.artista_id/venue_id/tour_id/evento_id`, `proyectos_grabacion.extra`, y las tablas `contactos_legacy`, `collections`, `schema_meta`.
+**Rollback:** `down()` recrea las estructuras (vacías); al seguir revirtiendo (004, 003) se reconstruyen desde las tablas nuevas, incluso los datos creados después de contraer (verificado en pruebas §21).
+**Orden:** la importación del formato JSON más antiguo se ejecuta *antes* de contraer.
+
+## v4 · Fase 3 — Grupos repetidos y contratos  (migración 004)
+**Añadido:** `artista_redes/idiomas/integrantes/pipeline/hitos`, `venue_horarios/bandas_locales`, `evento_setlist/bandas_invitadas`, `proyecto_canciones/costos/pagos/etapas/instrumentos`, `contrato_artistas/venues/proveedores/eventos/tours`; columnas para bio, sello, ficha de venue y feedback del evento.
+**Cambiado:** los contratos admiten varias partes; duraciones a segundos (sumables); costos y pagos se suman en SQL. Interfaz: selección múltiple de artistas/venues en contratos; se dejaron de inventar integrantes/fechas por defecto.
+**Migración de datos:** verificada con datos de prueba ricos (conteos en `schema_migrations.notas`) y reversible.
+
 ## v3 · Fase 2 — Núcleo relacional  (migración 003)
 **Añadido**
 - `cat_generos` + `artista_generos`: géneros atómicos (1 principal por artista, sin duplicados).
@@ -26,5 +36,5 @@ Esquema original (10 tablas) y marcador de versión. En bases ya existentes solo
 ## Infraestructura
 - Ejecutor de migraciones con candado, tabla `schema_migrations`, CLI (`scripts/db/migrate.php`) y endpoint de administración.
 - Errores del servidor con mensajes en español y el nombre del campo/registro.
-- Pruebas automatizadas: 154 comprobaciones de base de datos + prueba de interfaz de extremo a extremo.
+- Pruebas automatizadas: 265 comprobaciones de base de datos + prueba de interfaz de extremo a extremo.
 - Documentación generada desde la base real (`generate-docs.php`).

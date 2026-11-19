@@ -33,14 +33,66 @@ CREATE TABLE `artista_generos` (
   CONSTRAINT `chk_ag_principal` CHECK (`es_principal` is null or `es_principal` = 1),
   CONSTRAINT `chk_ag_orden` CHECK (`orden` >= 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_hitos` (
+  `artista_id` varchar(40) NOT NULL,
+  `hito_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `fecha` date DEFAULT NULL,
+  `titulo` varchar(255) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `tipo` varchar(20) NOT NULL,
+  PRIMARY KEY (`artista_id`,`hito_id`),
+  KEY `idx_ah_fecha` (`artista_id`,`fecha`),
+  CONSTRAINT `fk_ah_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_ah_tipo` CHECK (`tipo` in ('milestone','release','signing','tour','achievement'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_idiomas` (
+  `artista_id` varchar(40) NOT NULL,
+  `idioma` varchar(60) NOT NULL,
+  `orden` tinyint(3) unsigned NOT NULL,
+  PRIMARY KEY (`artista_id`,`idioma`),
+  CONSTRAINT `fk_ai_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_integrantes` (
+  `artista_id` varchar(40) NOT NULL,
+  `integrante_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  `rol` varchar(100) NOT NULL DEFAULT 'Músico',
+  `fecha_inicio` date DEFAULT NULL,
+  `fecha_fin` date DEFAULT NULL,
+  `lugar_inicio` varchar(255) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`artista_id`,`integrante_id`),
+  CONSTRAINT `fk_aint_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_aint_fechas` CHECK (`fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_pipeline` (
+  `artista_id` varchar(40) NOT NULL,
+  `item_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  `categoria` varchar(30) NOT NULL,
+  `completado` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`artista_id`,`item_id`),
+  CONSTRAINT `fk_ap_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_ap_categoria` CHECK (`categoria` in ('Branding','Distribución','Presencia','Booking & Management'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `artista_redes` (
+  `artista_id` varchar(40) NOT NULL,
+  `plataforma` varchar(20) NOT NULL,
+  `enlace` varchar(500) NOT NULL DEFAULT '',
+  `conectado` tinyint(1) NOT NULL DEFAULT 0,
+  `usuario_conectado` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`artista_id`,`plataforma`),
+  CONSTRAINT `fk_ar_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_ar_plataforma` CHECK (`plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads','whatsapp','website'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `artistas` (
   `id` varchar(40) NOT NULL,
   `nombre_artistico` varchar(255) NOT NULL,
   `nombre_legal` varchar(255) DEFAULT NULL,
-  `genero` varchar(150) DEFAULT NULL,
   `etapa_id` tinyint(4) NOT NULL DEFAULT 1,
-  `manager` varchar(255) DEFAULT NULL,
-  `booking_agent` varchar(255) DEFAULT NULL,
   `isrc_default` varchar(40) DEFAULT NULL,
   `iswc_default` varchar(40) DEFAULT NULL,
   `sociedad_gestion` varchar(80) DEFAULT NULL,
@@ -49,15 +101,27 @@ CREATE TABLE `artistas` (
   `estado` varchar(150) DEFAULT NULL,
   `pais` varchar(150) DEFAULT NULL,
   `foto` text DEFAULT NULL,
-  `extra` longtext DEFAULT NULL,
   `version` int(11) NOT NULL DEFAULT 1,
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `updated_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `deleted_at` datetime(3) DEFAULT NULL,
+  `bio` text DEFAULT NULL,
+  `fecha_inicio` date DEFAULT NULL,
+  `sello` varchar(255) DEFAULT NULL,
+  `editorial` varchar(255) DEFAULT NULL,
+  `distribuidora` varchar(255) DEFAULT NULL,
+  `foto_zoom` decimal(6,2) DEFAULT NULL,
+  `foto_rotacion` decimal(6,2) DEFAULT NULL,
+  `foto_contraste` decimal(6,2) DEFAULT NULL,
+  `foto_brillo` decimal(6,2) DEFAULT NULL,
+  `foto_grises` decimal(6,2) DEFAULT NULL,
+  `foto_sepia` decimal(6,2) DEFAULT NULL,
+  `foto_desenfoque` decimal(6,2) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `etapa_id` (`etapa_id`),
   KEY `idx_artistas_nombre` (`nombre_artistico`),
-  CONSTRAINT `artistas_ibfk_1` FOREIGN KEY (`etapa_id`) REFERENCES `cat_etapas_desarrollo` (`id`)
+  CONSTRAINT `artistas_ibfk_1` FOREIGN KEY (`etapa_id`) REFERENCES `cat_etapas_desarrollo` (`id`),
+  CONSTRAINT `chk_artistas_foto` CHECK (`foto_zoom` is null or `foto_zoom` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `cat_etapas_desarrollo` (
   `id` tinyint(4) NOT NULL,
@@ -119,25 +183,49 @@ CREATE TABLE `contactos` (
   PRIMARY KEY (`id`),
   KEY `idx_contactos_nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE TABLE `contactos_legacy` (
-  `id` varchar(40) NOT NULL,
+CREATE TABLE `contrato_artistas` (
+  `contrato_id` varchar(40) NOT NULL,
+  `artista_id` varchar(40) NOT NULL,
+  PRIMARY KEY (`contrato_id`,`artista_id`),
+  KEY `idx_cartistas_artista` (`artista_id`),
+  CONSTRAINT `fk_cartistas_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`),
+  CONSTRAINT `fk_cartistas_contrato` FOREIGN KEY (`contrato_id`) REFERENCES `contratos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `contrato_eventos` (
+  `contrato_id` varchar(40) NOT NULL,
+  `evento_id` varchar(40) NOT NULL,
+  PRIMARY KEY (`contrato_id`,`evento_id`),
+  KEY `idx_ceventos_evento` (`evento_id`),
+  CONSTRAINT `fk_ceventos_contrato` FOREIGN KEY (`contrato_id`) REFERENCES `contratos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ceventos_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `contrato_proveedores` (
+  `contrato_id` varchar(40) NOT NULL,
+  `proveedor_id` varchar(40) NOT NULL,
+  PRIMARY KEY (`contrato_id`,`proveedor_id`),
+  KEY `idx_cproveedores_proveedor` (`proveedor_id`),
+  CONSTRAINT `fk_cproveedores_contrato` FOREIGN KEY (`contrato_id`) REFERENCES `contratos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cproveedores_proveedor` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `contrato_tours` (
+  `contrato_id` varchar(40) NOT NULL,
+  `tour_id` varchar(40) NOT NULL,
+  PRIMARY KEY (`contrato_id`,`tour_id`),
+  KEY `idx_ctours_tour` (`tour_id`),
+  CONSTRAINT `fk_ctours_contrato` FOREIGN KEY (`contrato_id`) REFERENCES `contratos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ctours_tour` FOREIGN KEY (`tour_id`) REFERENCES `tours` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `contrato_venues` (
+  `contrato_id` varchar(40) NOT NULL,
   `venue_id` varchar(40) NOT NULL,
-  `nombre` varchar(255) NOT NULL,
-  `correo` varchar(255) DEFAULT NULL,
-  `telefono` varchar(60) DEFAULT NULL,
-  `rol` varchar(150) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_contactos_venue` (`venue_id`),
-  KEY `idx_contactos_correo` (`correo`),
-  CONSTRAINT `contactos_legacy_ibfk_1` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE CASCADE
+  PRIMARY KEY (`contrato_id`,`venue_id`),
+  KEY `idx_cvenues_venue` (`venue_id`),
+  CONSTRAINT `fk_cvenues_contrato` FOREIGN KEY (`contrato_id`) REFERENCES `contratos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cvenues_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `contratos` (
   `id` varchar(40) NOT NULL,
   `titulo` varchar(255) NOT NULL,
-  `artista_id` varchar(40) DEFAULT NULL,
-  `venue_id` varchar(40) DEFAULT NULL,
-  `tour_id` varchar(40) DEFAULT NULL,
-  `evento_id` varchar(40) DEFAULT NULL,
   `tipo` varchar(60) DEFAULT NULL,
   `estado` varchar(30) DEFAULT NULL,
   `nombre_archivo` varchar(255) DEFAULT NULL,
@@ -146,14 +234,6 @@ CREATE TABLE `contratos` (
   `fecha_subida` datetime(3) DEFAULT NULL,
   `tamano_bytes` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_contratos_artista` (`artista_id`),
-  KEY `idx_contratos_evento` (`evento_id`),
-  KEY `fk_contratos_venue` (`venue_id`),
-  KEY `fk_contratos_tour` (`tour_id`),
-  CONSTRAINT `fk_contratos_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`),
-  CONSTRAINT `fk_contratos_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id`),
-  CONSTRAINT `fk_contratos_tour` FOREIGN KEY (`tour_id`) REFERENCES `tours` (`id`),
-  CONSTRAINT `fk_contratos_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`),
   CONSTRAINT `chk_contratos_estado` CHECK (`estado` in ('Draft','Pending','Signed','Rejected','Active')),
   CONSTRAINT `chk_contratos_tipo` CHECK (`tipo` in ('Management','Booking','Performance','Co-production','NDA','Foro/Arrendamiento','Other')),
   CONSTRAINT `chk_contratos_tamano` CHECK (`tamano_bytes` is null or `tamano_bytes` >= 0)
@@ -186,10 +266,29 @@ CREATE TABLE `evento_artistas` (
   CONSTRAINT `chk_ea_orden` CHECK (`orden_presentacion` >= 1),
   CONSTRAINT `chk_ea_honorarios` CHECK (`honorarios` is null or `honorarios` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `evento_bandas_invitadas` (
+  `evento_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  PRIMARY KEY (`evento_id`,`orden`),
+  CONSTRAINT `fk_ebi_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `evento_setlist` (
+  `evento_id` varchar(40) NOT NULL,
+  `item_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `titulo` varchar(255) NOT NULL,
+  `duracion_seg` int(10) unsigned DEFAULT NULL,
+  `tempo` varchar(10) DEFAULT NULL,
+  `notas_transicion` text DEFAULT NULL,
+  PRIMARY KEY (`evento_id`,`item_id`),
+  KEY `idx_es_orden` (`evento_id`,`orden`),
+  CONSTRAINT `fk_es_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_es_tempo` CHECK (`tempo` is null or `tempo` in ('Lento','Medio','Rápido'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `eventos` (
   `id` varchar(40) NOT NULL,
   `nombre` varchar(255) NOT NULL,
-  `artista_id` varchar(40) DEFAULT NULL,
   `venue_id` varchar(40) NOT NULL,
   `tour_id` varchar(40) DEFAULT NULL,
   `fecha` date DEFAULT NULL,
@@ -200,22 +299,24 @@ CREATE TABLE `eventos` (
   `ingreso_total` decimal(12,2) DEFAULT 0.00,
   `gastos_totales` decimal(12,2) DEFAULT 0.00,
   `utilidad` decimal(12,2) DEFAULT 0.00,
-  `extra` longtext DEFAULT NULL,
   `version` int(11) NOT NULL DEFAULT 1,
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `updated_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `deleted_at` datetime(3) DEFAULT NULL,
+  `feedback_artista` text DEFAULT NULL,
+  `reaccion_publico` text DEFAULT NULL,
+  `valoracion_ritmo` tinyint(4) DEFAULT NULL,
+  `notas_optimizacion` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_eventos_venue` (`venue_id`),
   KEY `idx_eventos_tour` (`tour_id`),
   KEY `idx_eventos_fecha` (`fecha`),
-  KEY `idx_eventos_artista_fecha` (`artista_id`,`fecha`),
-  CONSTRAINT `eventos_ibfk_1` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`),
   CONSTRAINT `eventos_ibfk_2` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`),
   CONSTRAINT `eventos_ibfk_3` FOREIGN KEY (`tour_id`) REFERENCES `tours` (`id`) ON DELETE SET NULL,
   CONSTRAINT `chk_eventos_estado` CHECK (`estado` in ('Draft','Confirmed','Completed','Cancelled')),
   CONSTRAINT `chk_eventos_cantidades` CHECK (`capacidad` >= 0 and `asistencia` >= 0 and `precio_boleto` >= 0 and `ingreso_total` >= 0 and `gastos_totales` >= 0),
-  CONSTRAINT `chk_eventos_utilidad` CHECK (`utilidad` = `ingreso_total` - `gastos_totales`)
+  CONSTRAINT `chk_eventos_utilidad` CHECK (`utilidad` = `ingreso_total` - `gastos_totales`),
+  CONSTRAINT `chk_eventos_ritmo` CHECK (`valoracion_ritmo` is null or `valoracion_ritmo` between 1 and 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `proveedor_contactos` (
   `proveedor_id` varchar(40) NOT NULL,
@@ -235,9 +336,6 @@ CREATE TABLE `proveedores` (
   `id` varchar(40) NOT NULL,
   `nombre` varchar(255) NOT NULL,
   `categoria` varchar(80) DEFAULT NULL,
-  `contacto` varchar(255) DEFAULT NULL,
-  `telefono` varchar(60) DEFAULT NULL,
-  `correo` varchar(255) DEFAULT NULL,
   `rating` decimal(3,1) DEFAULT 0.0,
   `costo_por_show` decimal(12,2) DEFAULT 0.00,
   `notas` text DEFAULT NULL,
@@ -247,6 +345,76 @@ CREATE TABLE `proveedores` (
   CONSTRAINT `chk_proveedores_categoria` CHECK (`categoria` in ('Sonido','Ingeniero de Audio','Iluminación','Catering','Backline','Escenografía','Seguridad','Personal de Apoyo','Otros')),
   CONSTRAINT `chk_proveedores_valores` CHECK (`rating` between 0 and 5 and `costo_por_show` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `proyecto_canciones` (
+  `proyecto_id` varchar(40) NOT NULL,
+  `cancion_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `titulo` varchar(255) NOT NULL,
+  `duracion_seg` int(10) unsigned DEFAULT NULL,
+  `compositor` varchar(255) DEFAULT NULL,
+  `estado` varchar(30) NOT NULL,
+  `progreso` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `notas` text DEFAULT NULL,
+  PRIMARY KEY (`proyecto_id`,`cancion_id`),
+  CONSTRAINT `fk_pc_proyecto` FOREIGN KEY (`proyecto_id`) REFERENCES `proyectos_grabacion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_pc_estado` CHECK (`estado` in ('Composición','Demo','Grabación de Instrumentos','Grabación de Voces','Mezcla','Masterizado','Listo')),
+  CONSTRAINT `chk_pc_progreso` CHECK (`progreso` between 0 and 100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `proyecto_costos` (
+  `proyecto_id` varchar(40) NOT NULL,
+  `costo_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `concepto` varchar(255) NOT NULL,
+  `categoria` varchar(30) NOT NULL,
+  `monto` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `notas` text DEFAULT NULL,
+  PRIMARY KEY (`proyecto_id`,`costo_id`),
+  CONSTRAINT `fk_pco_proyecto` FOREIGN KEY (`proyecto_id`) REFERENCES `proyectos_grabacion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_pco_categoria` CHECK (`categoria` in ('Estudio/Grabación','Músicos de Sesión','Mezcla','Masterización','Arreglos/Producción','Otros')),
+  CONSTRAINT `chk_pco_monto` CHECK (`monto` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `proyecto_etapas` (
+  `proyecto_id` varchar(40) NOT NULL,
+  `etapa_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `nombre` varchar(20) NOT NULL,
+  `estado` varchar(15) NOT NULL DEFAULT 'Pendiente',
+  `fecha_inicio` date DEFAULT NULL,
+  `fecha_fin` date DEFAULT NULL,
+  `notas` text DEFAULT NULL,
+  PRIMARY KEY (`proyecto_id`,`etapa_id`),
+  CONSTRAINT `fk_pe_proyecto` FOREIGN KEY (`proyecto_id`) REFERENCES `proyectos_grabacion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_pe_nombre` CHECK (`nombre` in ('Pre-producción','Grabación','Revisión','Mezcla','Masterización','Listo')),
+  CONSTRAINT `chk_pe_estado` CHECK (`estado` in ('Pendiente','En Progreso','Completado')),
+  CONSTRAINT `chk_pe_fechas` CHECK (`fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `proyecto_instrumentos` (
+  `proyecto_id` varchar(40) NOT NULL,
+  `etapa_id` varchar(40) NOT NULL,
+  `instrumento_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  `estado` varchar(10) NOT NULL DEFAULT 'Pendiente',
+  `musico` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`proyecto_id`,`etapa_id`,`instrumento_id`),
+  CONSTRAINT `fk_pi_etapa` FOREIGN KEY (`proyecto_id`, `etapa_id`) REFERENCES `proyecto_etapas` (`proyecto_id`, `etapa_id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_pi_estado` CHECK (`estado` in ('Pendiente','Grabando','Listo'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `proyecto_pagos` (
+  `proyecto_id` varchar(40) NOT NULL,
+  `pago_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `concepto` varchar(255) NOT NULL,
+  `monto` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `fecha_vencimiento` date DEFAULT NULL,
+  `estado` varchar(12) NOT NULL DEFAULT 'Pendiente',
+  `notas` text DEFAULT NULL,
+  PRIMARY KEY (`proyecto_id`,`pago_id`),
+  KEY `idx_pp_vencimiento` (`fecha_vencimiento`),
+  CONSTRAINT `fk_pp_proyecto` FOREIGN KEY (`proyecto_id`) REFERENCES `proyectos_grabacion` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_pp_estado` CHECK (`estado` in ('Pendiente','Pagado')),
+  CONSTRAINT `chk_pp_monto` CHECK (`monto` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `proyectos_grabacion` (
   `id` varchar(40) NOT NULL,
   `titulo` varchar(255) NOT NULL,
@@ -255,19 +423,12 @@ CREATE TABLE `proyectos_grabacion` (
   `fecha_lanzamiento` date DEFAULT NULL,
   `estudio` varchar(255) DEFAULT NULL,
   `productor` varchar(255) DEFAULT NULL,
-  `extra` longtext DEFAULT NULL,
   `version` int(11) NOT NULL DEFAULT 1,
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   PRIMARY KEY (`id`),
   KEY `idx_proyectos_artista` (`artista_id`),
-  CONSTRAINT `proyectos_grabacion_ibfk_1` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_proyectos_artista` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`),
   CONSTRAINT `chk_proyectos_estado` CHECK (`estado` in ('Planificación','Pre-producción','Grabando','Mezcla','Masterización','Completado'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE TABLE `schema_meta` (
-  `id` int(11) NOT NULL,
-  `version` int(11) NOT NULL,
-  `updated_at` varchar(32) NOT NULL,
-  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `schema_migrations` (
   `version` int(11) NOT NULL,
@@ -290,7 +451,6 @@ CREATE TABLE `tour_artistas` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `tours` (
   `id` varchar(40) NOT NULL,
-  `artista_id` varchar(40) DEFAULT NULL,
   `nombre` varchar(255) NOT NULL,
   `fecha_inicio` date DEFAULT NULL,
   `fecha_fin` date DEFAULT NULL,
@@ -300,10 +460,15 @@ CREATE TABLE `tours` (
   `updated_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `deleted_at` datetime(3) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_tours_artista` (`artista_id`),
-  CONSTRAINT `tours_ibfk_1` FOREIGN KEY (`artista_id`) REFERENCES `artistas` (`id`),
   CONSTRAINT `chk_tours_status` CHECK (`status` in ('Planning','Active','Completed','Cancelled')),
   CONSTRAINT `chk_tours_fechas` CHECK (`fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `venue_bandas_locales` (
+  `venue_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  PRIMARY KEY (`venue_id`,`orden`),
+  CONSTRAINT `fk_vb_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `venue_contactos` (
   `venue_id` varchar(40) NOT NULL,
@@ -318,6 +483,13 @@ CREATE TABLE `venue_contactos` (
   CONSTRAINT `fk_venue_contactos_entidad` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_venue_contactos_rol` FOREIGN KEY (`rol_id`) REFERENCES `cat_roles_contacto` (`id`),
   CONSTRAINT `chk_venue_contactos_principal` CHECK (`es_principal` is null or `es_principal` = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `venue_horarios` (
+  `venue_id` varchar(40) NOT NULL,
+  `orden` smallint(5) unsigned NOT NULL,
+  `descripcion` varchar(255) NOT NULL,
+  PRIMARY KEY (`venue_id`,`orden`),
+  CONSTRAINT `fk_vh_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `venue_proveedores` (
   `venue_id` varchar(40) NOT NULL,
@@ -344,17 +516,25 @@ CREATE TABLE `venues` (
   `score_negociacion` smallint(6) DEFAULT 0,
   `score_produccion` smallint(6) DEFAULT 0,
   `score_hospitalidad` smallint(6) DEFAULT 0,
-  `contacto_principal_id` varchar(40) DEFAULT NULL,
-  `extra` longtext DEFAULT NULL,
   `version` int(11) NOT NULL DEFAULT 1,
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `updated_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `deleted_at` datetime(3) DEFAULT NULL,
+  `sitio_web` varchar(500) DEFAULT NULL,
+  `telefono` varchar(60) DEFAULT NULL,
+  `num_resenas` int(11) NOT NULL DEFAULT 0,
+  `place_id` varchar(120) DEFAULT NULL,
+  `tipo_establecimiento` varchar(120) DEFAULT NULL,
+  `instagram` varchar(255) DEFAULT NULL,
+  `facebook` varchar(255) DEFAULT NULL,
+  `tiktok` varchar(255) DEFAULT NULL,
+  `whatsapp` varchar(255) DEFAULT NULL,
+  `correo` varchar(255) DEFAULT NULL,
+  `youtube` varchar(255) DEFAULT NULL,
+  `twitter` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_venues_nombre` (`nombre`),
   KEY `idx_venues_ciudad` (`ciudad`),
-  KEY `idx_venues_contacto_principal` (`contacto_principal_id`),
-  CONSTRAINT `fk_venues_principal_contact` FOREIGN KEY (`contacto_principal_id`) REFERENCES `contactos_legacy` (`id`) ON DELETE SET NULL,
   CONSTRAINT `chk_venues_scores` CHECK (`score_rentabilidad` between 0 and 100 and `score_respuesta` between 0 and 100 and `score_puntualidad_pago` between 0 and 100 and `score_negociacion` between 0 and 100 and `score_produccion` between 0 and 100 and `score_hospitalidad` between 0 and 100),
   CONSTRAINT `chk_venues_rating` CHECK (`rating` between 0 and 5),
   CONSTRAINT `chk_venues_coord` CHECK ((`latitud` is null or `latitud` between -90 and 90) and (`longitud` is null or `longitud` between -180 and 180))
@@ -366,4 +546,4 @@ CREATE TABLE `venues` (
 INSERT INTO cat_etapas_desarrollo (id, nombre) VALUES (1, 'Desarrollo'), (2, 'Aficionado'), (3, 'Emergente'), (4, 'Media carrera'), (5, 'Consolidado'), (6, 'Consagrado'), (7, 'Internacional');
 INSERT INTO cat_roles_contacto (nombre) VALUES ('Manager'), ('Booking'), ('Promotor'), ('Técnico'), ('Hospitalidad'), ('Producción'), ('Administración'), ('Contacto comercial'), ('Contacto');
 INSERT INTO cat_monedas (codigo, nombre) VALUES ('MXN', 'Peso mexicano'), ('USD', 'Dólar estadounidense'), ('EUR', 'Euro');
-INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), '');
+INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), '');

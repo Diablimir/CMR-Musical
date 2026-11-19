@@ -6,35 +6,53 @@
 
 ## Índice
 
-- [`artistas`](#artistas) — Entidad principal: perfil del artista o agrupación. Los datos anidados que aún no se consultan por separado (bio, redes, pipeline, historial, integrantes) van en `extra` (JSON).
+- [`artistas`](#artistas) — Entidad principal: perfil del artista o agrupación. Bio, sello y ajustes de foto son columnas; redes, idiomas, integrantes, pipeline e hitos viven en tablas hijas (Fase 3).
 - [`artista_contactos`](#artista_contactos) — Vínculo contacto ↔ artista con rol (Manager, Booking…). Sustituye a los textos `manager` y `booking_agent`.
 - [`artista_generos`](#artista_generos) — Géneros de un artista (N:M). Un género es el principal; el resto, secundarios.
+- [`artista_hitos`](#artista_hitos) — Hitos y logros en la trayectoria de un artista.
+- [`artista_idiomas`](#artista_idiomas) — Idiomas en que canta o trabaja un artista (sin duplicados por mayúsculas).
+- [`artista_integrantes`](#artista_integrantes) — Integrantes de una agrupación, con rol, fechas de ingreso/salida y si siguen activos (historial).
+- [`artista_pipeline`](#artista_pipeline) — Pasos del plan de carrera de un artista (checklist por categoría).
+- [`artista_redes`](#artista_redes) — Redes sociales de un artista: una fila por plataforma, con enlace y estado de conexión.
 - [`cat_etapas_desarrollo`](#cat_etapas_desarrollo) — Catálogo cerrado de etapas de carrera de un artista (Desarrollo … Internacional).
 - [`cat_generos`](#cat_generos) — Catálogo abierto de géneros musicales. Evita guardar listas de géneros separadas por comas.
 - [`cat_monedas`](#cat_monedas) — Catálogo de monedas (ISO 4217) para honorarios.
 - [`cat_roles_contacto`](#cat_roles_contacto) — Catálogo abierto de roles que una persona puede tener en una entidad (Manager, Booking, Promotor…). Unifica «Booking» y «booking».
 - [`contactos`](#contactos) — Persona (o empresa) independiente de cualquier entidad. Sus medios de contacto y vínculos viven en tablas propias.
-- [`contactos_legacy`](#contactos_legacy) — Solo en bases actualizadas desde v1: copia de la tabla de contactos anterior, conservada hasta la Fase 4 para poder revertir.
 - [`contacto_correos`](#contacto_correos) — Correos electrónicos de un contacto (uno principal).
 - [`contacto_telefonos`](#contacto_telefonos) — Teléfonos de un contacto (uno principal).
 - [`contratos`](#contratos) — Contratos con su archivo y estado. Las relaciones son RESTRICT: no se pierde el historial contractual por borrados en cascada.
+- [`contrato_artistas`](#contrato_artistas) — Artistas que son parte de un contrato (N:M). Los contratos se conservan aunque el artista se archive.
+- [`contrato_eventos`](#contrato_eventos) — Eventos a los que se refiere un contrato (N:M).
+- [`contrato_proveedores`](#contrato_proveedores) — Proveedores que son parte de un contrato (N:M).
+- [`contrato_tours`](#contrato_tours) — Giras a las que se refiere un contrato (N:M). La gira de un evento no se duplica: se deduce de contrato_eventos.
+- [`contrato_venues`](#contrato_venues) — Venues que son parte de un contrato (N:M).
 - [`eventos`](#eventos) — Shows y conciertos. El ingreso se captura (puede diferir de asistencia × precio); la utilidad se calcula y un CHECK impide que se desajuste. Los artistas están en evento_artistas.
 - [`evento_artistas`](#evento_artistas) — Alineación del evento: qué artistas participan, con rol, orden, horario, honorarios y confirmación. Un artista puede presentarse más de una vez (distinto orden).
+- [`evento_bandas_invitadas`](#evento_bandas_invitadas) — Bandas invitadas o teloneras de un evento (texto libre; las que son artistas del CRM van en evento_artistas).
+- [`evento_setlist`](#evento_setlist) — Repertorio de un evento: canciones en orden, con duración en segundos (sumable) y notas de transición.
 - [`proveedores`](#proveedores) — Proveedores técnicos y de servicios (sonido, iluminación, catering…).
 - [`proveedor_contactos`](#proveedor_contactos) — Vínculo contacto ↔ proveedor con rol. Sustituye a las columnas contacto/telefono/correo del proveedor.
-- [`proyectos_grabacion`](#proyectos_grabacion) — Proyectos de grabación de un artista. Canciones, costos, pagos y etapas van en `extra` (pendiente de Fase 3).
+- [`proyectos_grabacion`](#proyectos_grabacion) — Proyectos de grabación de un artista. Canciones, costos, pagos, etapas e instrumentos viven en tablas hijas (Fase 3): costos y pagos se pueden sumar en SQL.
+- [`proyecto_canciones`](#proyecto_canciones) — Canciones de un proyecto de grabación, con duración, compositor, estado y avance.
+- [`proyecto_costos`](#proyecto_costos) — Costos del proyecto (concepto, categoría, monto ≥ 0). Se suman con SUM(monto).
+- [`proyecto_etapas`](#proyecto_etapas) — Etapas de producción del proyecto (pre-producción, grabación, mezcla…).
+- [`proyecto_instrumentos`](#proyecto_instrumentos) — Instrumentos y músicos asignados a una etapa del proyecto.
+- [`proyecto_pagos`](#proyecto_pagos) — Pagos del proyecto con fecha de vencimiento y estado (Pendiente/Pagado…).
 - [`schema_migrations`](#schema_migrations) — Registro de migraciones aplicadas (versión, nombre, fecha, checksum y notas).
 - [`tours`](#tours) — Giras con fechas y estatus. Los artistas participantes están en tour_artistas (una gira puede ser compartida).
 - [`tour_artistas`](#tour_artistas) — Artistas de una gira (N:M); uno es el principal.
-- [`venues`](#venues) — Recintos, foros, teatros y bares, con coordenadas, calificación y puntajes. `extra` guarda datos de ficha aún no consultables por separado (horarios, redes, bandas locales).
+- [`venues`](#venues) — Recintos, foros, teatros y bares, con coordenadas, calificación y puntajes. Sitio web, reseñas y demás datos de ficha son columnas; horarios y bandas locales viven en tablas hijas (Fase 3).
+- [`venue_bandas_locales`](#venue_bandas_locales) — Bandas locales asociadas a un venue.
 - [`venue_contactos`](#venue_contactos) — Vínculo contacto ↔ venue con su rol; marca al contacto principal del venue. Reemplaza `venues.contacto_principal_id` y elimina la dependencia circular.
+- [`venue_horarios`](#venue_horarios) — Horarios de operación del venue (una línea por renglón de texto).
 - [`venue_proveedores`](#venue_proveedores) — Relación N:M entre venues y proveedores.
 
 ---
 
 ## artistas
 
-**Propósito:** Entidad principal: perfil del artista o agrupación. Los datos anidados que aún no se consultan por separado (bio, redes, pipeline, historial, integrantes) van en `extra` (JSON).
+**Propósito:** Entidad principal: perfil del artista o agrupación. Bio, sello y ajustes de foto son columnas; redes, idiomas, integrantes, pipeline e hitos viven en tablas hijas (Fase 3).
 
 **Cardinalidad:** 1 artista — N géneros, contactos, giras, eventos, proyectos, contratos
 
@@ -45,10 +63,7 @@
 | `id` | `varchar(40)` | NN |  | PK | Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»). |
 | `nombre_artistico` | `varchar(255)` | NN |  |  | Nombre artístico. |
 | `nombre_legal` | `varchar(255)` | sí | `NULL` |  | Nombre legal o razón social. |
-| `genero` | `varchar(150)` | sí | `NULL` |  | OBSOLETO (v1): género como texto. Sustituido por artista_generos. |
 | `etapa_id` | `tinyint(4)` | NN | `1` | FK | Etapa de carrera (catálogo). |
-| `manager` | `varchar(255)` | sí | `NULL` |  | OBSOLETO (v1): texto. Sustituido por artista_contactos (rol Manager). |
-| `booking_agent` | `varchar(255)` | sí | `NULL` |  | OBSOLETO (v1): texto. Sustituido por artista_contactos (rol Booking). |
 | `isrc_default` | `varchar(40)` | sí | `NULL` |  | Código ISRC por defecto. |
 | `iswc_default` | `varchar(40)` | sí | `NULL` |  | Código ISWC por defecto. |
 | `sociedad_gestion` | `varchar(80)` | sí | `NULL` |  | Sociedad de gestión (SACM, ASCAP, BMI…). |
@@ -57,15 +72,30 @@
 | `estado` | `varchar(150)` | sí | `NULL` |  | Estado o provincia. |
 | `pais` | `varchar(150)` | sí | `NULL` |  | País. |
 | `foto` | `text` | sí | `NULL` |  | URL de la foto de perfil. |
-| `extra` | `longtext` | sí | `NULL` |  | Documento JSON con campos anidados que aún no se consultan ni relacionan por separado. |
 | `version` | `int(11)` | NN | `1` |  | Número de versión del registro: base del bloqueo optimista (sube en cada guardado). |
 | `created_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de creación (UTC, milisegundos). |
 | `updated_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de la última modificación (UTC). |
 | `deleted_at` | `datetime(3)` | sí | `NULL` |  | Borrado lógico: NULL = activo; con fecha = archivado (se conserva el historial). |
+| `bio` | `text` | sí | `NULL` |  |  |
+| `fecha_inicio` | `date` | sí | `NULL` |  |  |
+| `sello` | `varchar(255)` | sí | `NULL` |  |  |
+| `editorial` | `varchar(255)` | sí | `NULL` |  |  |
+| `distribuidora` | `varchar(255)` | sí | `NULL` |  |  |
+| `foto_zoom` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `foto_rotacion` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `foto_contraste` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `foto_brillo` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `foto_grises` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `foto_sepia` | `decimal(6,2)` | sí | `NULL` |  |  |
+| `foto_desenfoque` | `decimal(6,2)` | sí | `NULL` |  |  |
 
 **Llaves foráneas:**
 
 - `etapa_id` → `cat_etapas_desarrollo(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+
+**Restricciones CHECK:**
+
+- `chk_artistas_foto`: ``foto_zoom` is null or `foto_zoom` > 0`
 
 **Índices:** `etapa_id` (etapa_id); `idx_artistas_nombre` (nombre_artistico)
 
@@ -88,9 +118,9 @@
 
 **Llaves foráneas:**
 
-- `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Unicidad:**
 
@@ -134,6 +164,139 @@
 - `chk_ag_principal`: ``es_principal` is null or `es_principal` = 1`
 
 **Índices:** `idx_artista_generos_genero` (genero_id)
+
+---
+
+## artista_hitos
+
+**Propósito:** Hitos y logros en la trayectoria de un artista.
+
+**Cardinalidad:** N hitos — 1 artista
+
+**Dependencias funcionales:** (artista_id, hito_id) → fecha, título, descripción, tipo.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `hito_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `fecha` | `date` | sí | `NULL` |  |  |
+| `titulo` | `varchar(255)` | NN |  |  |  |
+| `descripcion` | `text` | sí | `NULL` |  |  |
+| `tipo` | `varchar(20)` | NN |  |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_ah_tipo`: ``tipo` in ('milestone','release','signing','tour','achievement')`
+
+**Índices:** `idx_ah_fecha` (artista_id,fecha)
+
+---
+
+## artista_idiomas
+
+**Propósito:** Idiomas en que canta o trabaja un artista (sin duplicados por mayúsculas).
+
+**Cardinalidad:** N idiomas — 1 artista
+
+**Dependencias funcionales:** (artista_id, idioma) clave compuesta; orden conserva el orden de captura.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `idioma` | `varchar(60)` | NN |  | PK |  |
+| `orden` | `tinyint(3) unsigned` | NN |  |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+---
+
+## artista_integrantes
+
+**Propósito:** Integrantes de una agrupación, con rol, fechas de ingreso/salida y si siguen activos (historial).
+
+**Cardinalidad:** N integrantes — 1 artista
+
+**Dependencias funcionales:** (artista_id, integrante_id) → nombre, rol, fechas, activo. Los «miembros actuales» se derivan de aquí, no se guardan aparte.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `integrante_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `nombre` | `varchar(255)` | NN |  |  | Nombre. |
+| `rol` | `varchar(100)` | NN | `Músico` |  |  |
+| `fecha_inicio` | `date` | sí | `NULL` |  |  |
+| `fecha_fin` | `date` | sí | `NULL` |  |  |
+| `lugar_inicio` | `varchar(255)` | sí | `NULL` |  |  |
+| `activo` | `tinyint(1)` | NN | `1` |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_aint_fechas`: ``fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio``
+
+---
+
+## artista_pipeline
+
+**Propósito:** Pasos del plan de carrera de un artista (checklist por categoría).
+
+**Cardinalidad:** N pasos — 1 artista
+
+**Dependencias funcionales:** (artista_id, item_id) → nombre, categoría, completado.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `item_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `nombre` | `varchar(255)` | NN |  |  | Nombre. |
+| `categoria` | `varchar(30)` | NN |  |  |  |
+| `completado` | `tinyint(1)` | NN | `0` |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_ap_categoria`: ``categoria` in ('Branding','Distribución','Presencia','Booking & Management')`
+
+---
+
+## artista_redes
+
+**Propósito:** Redes sociales de un artista: una fila por plataforma, con enlace y estado de conexión.
+
+**Cardinalidad:** N redes — 1 artista
+
+**Dependencias funcionales:** (artista_id, plataforma) → enlace, conectado, usuario_conectado. Plataforma en dominio cerrado por CHECK.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+| `plataforma` | `varchar(20)` | NN |  | PK |  |
+| `enlace` | `varchar(500)` | NN | `` |  |  |
+| `conectado` | `tinyint(1)` | NN | `0` |  |  |
+| `usuario_conectado` | `varchar(100)` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_ar_plataforma`: ``plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads','whatsapp','website')`
 
 ---
 
@@ -301,18 +464,14 @@
 
 **Propósito:** Contratos con su archivo y estado. Las relaciones son RESTRICT: no se pierde el historial contractual por borrados en cascada.
 
-**Cardinalidad:** N contratos — 0..1 artista, venue, gira y evento
+**Cardinalidad:** N contratos — M artistas, venues, proveedores, eventos y giras (tablas contrato_*)
 
-**Dependencias funcionales:** id → todas las columnas. Pendiente de Fase 3: evento_id determina artista/venue/gira (redundancia transitiva) → se pasará a tablas de partes.
+**Dependencias funcionales:** id → todas las columnas. Las partes (artistas, venues, proveedores) y el objeto (eventos, giras) viven en tablas contrato_* (Fase 3); se eliminó la redundancia transitiva evento_id → artista/venue/gira.
 
 | Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
 |---|---|---|---|---|---|
 | `id` | `varchar(40)` | NN |  | PK | Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»). |
 | `titulo` | `varchar(255)` | NN |  |  | Título del contrato. |
-| `artista_id` | `varchar(40)` | sí | `NULL` | FK | Artista. |
-| `venue_id` | `varchar(40)` | sí | `NULL` | FK | Venue. |
-| `tour_id` | `varchar(40)` | sí | `NULL` | FK | Gira. |
-| `evento_id` | `varchar(40)` | sí | `NULL` | FK | Evento. |
 | `tipo` | `varchar(60)` | sí | `NULL` |  | Tipo (dominio cerrado por CHECK). |
 | `estado` | `varchar(30)` | sí | `NULL` |  | Estado: Draft, Pending, Signed, Rejected, Active. |
 | `nombre_archivo` | `varchar(255)` | sí | `NULL` |  | Nombre del archivo adjunto. |
@@ -321,20 +480,121 @@
 | `fecha_subida` | `datetime(3)` | sí | `NULL` |  | Fecha y hora de carga. |
 | `tamano_bytes` | `bigint(20)` | sí | `NULL` |  | Tamaño del archivo en bytes. |
 
-**Llaves foráneas:**
-
-- `tour_id` → `tours(id)` · al borrar el padre: **RESTRICT** (protege el historial)
-- `evento_id` → `eventos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
-- `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
-- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
-
 **Restricciones CHECK:**
 
 - `chk_contratos_estado`: ``estado` in ('Draft','Pending','Signed','Rejected','Active')`
 - `chk_contratos_tamano`: ``tamano_bytes` is null or `tamano_bytes` >= 0`
 - `chk_contratos_tipo`: ``tipo` in ('Management','Booking','Performance','Co-production','NDA','Foro/Arrendamiento','Other')`
 
-**Índices:** `fk_contratos_tour` (tour_id); `fk_contratos_venue` (venue_id); `idx_contratos_artista` (artista_id); `idx_contratos_evento` (evento_id)
+---
+
+## contrato_artistas
+
+**Propósito:** Artistas que son parte de un contrato (N:M). Los contratos se conservan aunque el artista se archive.
+
+**Cardinalidad:** N contratos — M artistas
+
+**Dependencias funcionales:** (contrato_id, artista_id) clave compuesta, sin atributos dependientes parciales. Borrar un artista con contratos está bloqueado (RESTRICT).
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `contrato_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `artista_id` | `varchar(40)` | NN |  | PK, FK | Artista. |
+
+**Llaves foráneas:**
+
+- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Índices:** `idx_cartistas_artista` (artista_id)
+
+---
+
+## contrato_eventos
+
+**Propósito:** Eventos a los que se refiere un contrato (N:M).
+
+**Cardinalidad:** N contratos — M eventos
+
+**Dependencias funcionales:** (contrato_id, evento_id) clave compuesta.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `contrato_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `evento_id` | `varchar(40)` | NN |  | PK, FK | Evento. |
+
+**Llaves foráneas:**
+
+- `evento_id` → `eventos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Índices:** `idx_ceventos_evento` (evento_id)
+
+---
+
+## contrato_proveedores
+
+**Propósito:** Proveedores que son parte de un contrato (N:M).
+
+**Cardinalidad:** N contratos — M proveedores
+
+**Dependencias funcionales:** (contrato_id, proveedor_id) clave compuesta.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `contrato_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `proveedor_id` | `varchar(40)` | NN |  | PK, FK | Proveedor. |
+
+**Llaves foráneas:**
+
+- `proveedor_id` → `proveedores(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Índices:** `idx_cproveedores_proveedor` (proveedor_id)
+
+---
+
+## contrato_tours
+
+**Propósito:** Giras a las que se refiere un contrato (N:M). La gira de un evento no se duplica: se deduce de contrato_eventos.
+
+**Cardinalidad:** N contratos — M giras
+
+**Dependencias funcionales:** (contrato_id, tour_id) clave compuesta.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `contrato_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `tour_id` | `varchar(40)` | NN |  | PK, FK | Gira. |
+
+**Llaves foráneas:**
+
+- `tour_id` → `tours(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Índices:** `idx_ctours_tour` (tour_id)
+
+---
+
+## contrato_venues
+
+**Propósito:** Venues que son parte de un contrato (N:M).
+
+**Cardinalidad:** N contratos — M venues
+
+**Dependencias funcionales:** (contrato_id, venue_id) clave compuesta.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `contrato_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `venue_id` | `varchar(40)` | NN |  | PK, FK | Venue. |
+
+**Llaves foráneas:**
+
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+
+**Índices:** `idx_cvenues_venue` (venue_id)
 
 ---
 
@@ -344,13 +604,12 @@
 
 **Cardinalidad:** 1 evento — N artistas (evento_artistas), N contratos; N:1 venue, N:1 gira (opcional)
 
-**Dependencias funcionales:** id → todas las columnas. utilidad = ingreso_total − gastos_totales (verificada por CHECK). `extra` guarda setlist, bandas invitadas y feedback (pendiente de Fase 3).
+**Dependencias funcionales:** id → todas las columnas. utilidad = ingreso_total − gastos_totales (verificada por CHECK). Setlist y bandas invitadas viven en tablas hijas; el feedback son columnas (Fase 3).
 
 | Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
 |---|---|---|---|---|---|
 | `id` | `varchar(40)` | NN |  | PK | Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»). |
 | `nombre` | `varchar(255)` | NN |  |  | Nombre comercial del evento. |
-| `artista_id` | `varchar(40)` | sí | `NULL` | FK | OBSOLETO (v1): artista del evento. Sustituido por evento_artistas. |
 | `venue_id` | `varchar(40)` | NN |  | FK | Recinto donde se realiza. |
 | `tour_id` | `varchar(40)` | sí | `NULL` | FK | Gira. |
 | `fecha` | `date` | sí | `NULL` |  | Fecha del evento. |
@@ -361,25 +620,28 @@
 | `ingreso_total` | `decimal(12,2)` | sí | `0.00` |  | Ingreso real capturado (puede diferir de asistencia × precio). |
 | `gastos_totales` | `decimal(12,2)` | sí | `0.00` |  | Gastos de producción, rider y viáticos. |
 | `utilidad` | `decimal(12,2)` | sí | `0.00` |  | Utilidad = ingreso_total − gastos_totales (la fuerza un CHECK). |
-| `extra` | `longtext` | sí | `NULL` |  | Documento JSON con campos anidados que aún no se consultan ni relacionan por separado. |
 | `version` | `int(11)` | NN | `1` |  | Número de versión del registro: base del bloqueo optimista (sube en cada guardado). |
 | `created_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de creación (UTC, milisegundos). |
 | `updated_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de la última modificación (UTC). |
 | `deleted_at` | `datetime(3)` | sí | `NULL` |  | Borrado lógico: NULL = activo; con fecha = archivado (se conserva el historial). |
+| `feedback_artista` | `text` | sí | `NULL` |  |  |
+| `reaccion_publico` | `text` | sí | `NULL` |  |  |
+| `valoracion_ritmo` | `tinyint(4)` | sí | `NULL` |  |  |
+| `notas_optimizacion` | `text` | sí | `NULL` |  |  |
 
 **Llaves foráneas:**
 
 - `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
-- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `tour_id` → `tours(id)` · al borrar el padre: **SET NULL**
 
 **Restricciones CHECK:**
 
 - `chk_eventos_cantidades`: ``capacidad` >= 0 and `asistencia` >= 0 and `precio_boleto` >= 0 and `ingreso_total` >= 0 and `gastos_totales` >= 0`
 - `chk_eventos_estado`: ``estado` in ('Draft','Confirmed','Completed','Cancelled')`
+- `chk_eventos_ritmo`: ``valoracion_ritmo` is null or `valoracion_ritmo` between 1 and 5`
 - `chk_eventos_utilidad`: ``utilidad` = `ingreso_total` - `gastos_totales``
 
-**Índices:** `idx_eventos_artista_fecha` (artista_id,fecha); `idx_eventos_fecha` (fecha); `idx_eventos_tour` (tour_id); `idx_eventos_venue` (venue_id)
+**Índices:** `idx_eventos_fecha` (fecha); `idx_eventos_tour` (tour_id); `idx_eventos_venue` (venue_id)
 
 ---
 
@@ -409,9 +671,9 @@
 
 **Llaves foráneas:**
 
+- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `moneda` → `cat_monedas(codigo)` · al borrar el padre: **RESTRICT** (protege el historial)
-- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -430,6 +692,56 @@
 
 ---
 
+## evento_bandas_invitadas
+
+**Propósito:** Bandas invitadas o teloneras de un evento (texto libre; las que son artistas del CRM van en evento_artistas).
+
+**Cardinalidad:** N bandas — 1 evento
+
+**Dependencias funcionales:** (evento_id, orden) → nombre.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `evento_id` | `varchar(40)` | NN |  | PK, FK | Evento. |
+| `orden` | `smallint(5) unsigned` | NN |  | PK |  |
+| `nombre` | `varchar(255)` | NN |  |  | Nombre. |
+
+**Llaves foráneas:**
+
+- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+---
+
+## evento_setlist
+
+**Propósito:** Repertorio de un evento: canciones en orden, con duración en segundos (sumable) y notas de transición.
+
+**Cardinalidad:** N canciones — 1 evento
+
+**Dependencias funcionales:** (evento_id, item_id) → título, duracion_seg, tempo, notas_transicion.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `evento_id` | `varchar(40)` | NN |  | PK, FK | Evento. |
+| `item_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `titulo` | `varchar(255)` | NN |  |  |  |
+| `duracion_seg` | `int(10) unsigned` | sí | `NULL` |  |  |
+| `tempo` | `varchar(10)` | sí | `NULL` |  |  |
+| `notas_transicion` | `text` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_es_tempo`: ``tempo` is null or `tempo` in ('Lento','Medio','Rápido')`
+
+**Índices:** `idx_es_orden` (evento_id,orden)
+
+---
+
 ## proveedores
 
 **Propósito:** Proveedores técnicos y de servicios (sonido, iluminación, catering…).
@@ -443,9 +755,6 @@
 | `id` | `varchar(40)` | NN |  | PK | Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»). |
 | `nombre` | `varchar(255)` | NN |  |  | Nombre. |
 | `categoria` | `varchar(80)` | sí | `NULL` |  | Categoría (dominio cerrado por CHECK). |
-| `contacto` | `varchar(255)` | sí | `NULL` |  | OBSOLETO (v1): nombre del contacto. Sustituido por proveedor_contactos. |
-| `telefono` | `varchar(60)` | sí | `NULL` |  | OBSOLETO (v1). |
-| `correo` | `varchar(255)` | sí | `NULL` |  | OBSOLETO (v1). |
 | `rating` | `decimal(3,1)` | sí | `0.0` |  | Calificación 0–5. |
 | `costo_por_show` | `decimal(12,2)` | sí | `0.00` |  | Costo base por show (MXN). |
 | `notas` | `text` | sí | `NULL` |  | Notas internas. |
@@ -494,7 +803,7 @@
 
 ## proyectos_grabacion
 
-**Propósito:** Proyectos de grabación de un artista. Canciones, costos, pagos y etapas van en `extra` (pendiente de Fase 3).
+**Propósito:** Proyectos de grabación de un artista. Canciones, costos, pagos, etapas e instrumentos viven en tablas hijas (Fase 3): costos y pagos se pueden sumar en SQL.
 
 **Cardinalidad:** 1 artista — N proyectos
 
@@ -509,19 +818,170 @@
 | `fecha_lanzamiento` | `date` | sí | `NULL` |  | Fecha de lanzamiento prevista. |
 | `estudio` | `varchar(255)` | sí | `NULL` |  | Estudio. |
 | `productor` | `varchar(255)` | sí | `NULL` |  | Productor. |
-| `extra` | `longtext` | sí | `NULL` |  | Documento JSON con campos anidados que aún no se consultan ni relacionan por separado. |
 | `version` | `int(11)` | NN | `1` |  | Número de versión del registro: base del bloqueo optimista (sube en cada guardado). |
 | `created_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de creación (UTC, milisegundos). |
 
 **Llaves foráneas:**
 
-- `artista_id` → `artistas(id)` · al borrar el padre: **SET NULL**
+- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Restricciones CHECK:**
 
 - `chk_proyectos_estado`: ``estado` in ('Planificación','Pre-producción','Grabando','Mezcla','Masterización','Completado')`
 
 **Índices:** `idx_proyectos_artista` (artista_id)
+
+---
+
+## proyecto_canciones
+
+**Propósito:** Canciones de un proyecto de grabación, con duración, compositor, estado y avance.
+
+**Cardinalidad:** N canciones — 1 proyecto
+
+**Dependencias funcionales:** (proyecto_id, cancion_id) → título, duracion_seg, compositor, estado, progreso (0–100 por CHECK).
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `proyecto_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `cancion_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `titulo` | `varchar(255)` | NN |  |  |  |
+| `duracion_seg` | `int(10) unsigned` | sí | `NULL` |  |  |
+| `compositor` | `varchar(255)` | sí | `NULL` |  |  |
+| `estado` | `varchar(30)` | NN |  |  |  |
+| `progreso` | `tinyint(3) unsigned` | NN | `0` |  |  |
+| `notas` | `text` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `proyecto_id` → `proyectos_grabacion(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_pc_estado`: ``estado` in ('Composición','Demo','Grabación de Instrumentos','Grabación de Voces','Mezcla','Masterizado','Listo')`
+- `chk_pc_progreso`: ``progreso` between 0 and 100`
+
+---
+
+## proyecto_costos
+
+**Propósito:** Costos del proyecto (concepto, categoría, monto ≥ 0). Se suman con SUM(monto).
+
+**Cardinalidad:** N costos — 1 proyecto
+
+**Dependencias funcionales:** (proyecto_id, costo_id) → concepto, categoría, monto, notas.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `proyecto_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `costo_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `concepto` | `varchar(255)` | NN |  |  |  |
+| `categoria` | `varchar(30)` | NN |  |  |  |
+| `monto` | `decimal(12,2)` | NN | `0.00` |  |  |
+| `notas` | `text` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `proyecto_id` → `proyectos_grabacion(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_pco_categoria`: ``categoria` in ('Estudio/Grabación','Músicos de Sesión','Mezcla','Masterización','Arreglos/Producción','Otros')`
+- `chk_pco_monto`: ``monto` >= 0`
+
+---
+
+## proyecto_etapas
+
+**Propósito:** Etapas de producción del proyecto (pre-producción, grabación, mezcla…).
+
+**Cardinalidad:** N etapas — 1 proyecto
+
+**Dependencias funcionales:** (proyecto_id, etapa_id) → nombre, estado, fechas, notas.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `proyecto_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `etapa_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `nombre` | `varchar(20)` | NN |  |  | Nombre. |
+| `estado` | `varchar(15)` | NN | `Pendiente` |  |  |
+| `fecha_inicio` | `date` | sí | `NULL` |  |  |
+| `fecha_fin` | `date` | sí | `NULL` |  |  |
+| `notas` | `text` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `proyecto_id` → `proyectos_grabacion(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_pe_estado`: ``estado` in ('Pendiente','En Progreso','Completado')`
+- `chk_pe_fechas`: ``fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio``
+- `chk_pe_nombre`: ``nombre` in ('Pre-producción','Grabación','Revisión','Mezcla','Masterización','Listo')`
+
+---
+
+## proyecto_instrumentos
+
+**Propósito:** Instrumentos y músicos asignados a una etapa del proyecto.
+
+**Cardinalidad:** N instrumentos — 1 etapa
+
+**Dependencias funcionales:** (proyecto_id, etapa_id, instrumento_id) → nombre, estado, músico.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `proyecto_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `etapa_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `instrumento_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `nombre` | `varchar(255)` | NN |  |  | Nombre. |
+| `estado` | `varchar(10)` | NN | `Pendiente` |  |  |
+| `musico` | `varchar(255)` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `proyecto_id` → `proyecto_etapas(proyecto_id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `etapa_id` → `proyecto_etapas(etapa_id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_pi_estado`: ``estado` in ('Pendiente','Grabando','Listo')`
+
+---
+
+## proyecto_pagos
+
+**Propósito:** Pagos del proyecto con fecha de vencimiento y estado (Pendiente/Pagado…).
+
+**Cardinalidad:** N pagos — 1 proyecto
+
+**Dependencias funcionales:** (proyecto_id, pago_id) → concepto, monto, fecha_vencimiento, estado.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `proyecto_id` | `varchar(40)` | NN |  | PK, FK |  |
+| `pago_id` | `varchar(40)` | NN |  | PK |  |
+| `orden` | `smallint(5) unsigned` | NN |  |  |  |
+| `concepto` | `varchar(255)` | NN |  |  |  |
+| `monto` | `decimal(12,2)` | NN | `0.00` |  |  |
+| `fecha_vencimiento` | `date` | sí | `NULL` |  |  |
+| `estado` | `varchar(12)` | NN | `Pendiente` |  |  |
+| `notas` | `text` | sí | `NULL` |  |  |
+
+**Llaves foráneas:**
+
+- `proyecto_id` → `proyectos_grabacion(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+**Restricciones CHECK:**
+
+- `chk_pp_estado`: ``estado` in ('Pendiente','Pagado')`
+- `chk_pp_monto`: ``monto` >= 0`
+
+**Índices:** `idx_pp_vencimiento` (fecha_vencimiento)
 
 ---
 
@@ -554,7 +1014,6 @@
 | Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
 |---|---|---|---|---|---|
 | `id` | `varchar(40)` | NN |  | PK | Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»). |
-| `artista_id` | `varchar(40)` | sí | `NULL` | FK | OBSOLETO (v1): artista de la gira. Sustituido por tour_artistas. |
 | `nombre` | `varchar(255)` | NN |  |  | Nombre. |
 | `fecha_inicio` | `date` | sí | `NULL` |  | Fecha de inicio. |
 | `fecha_fin` | `date` | sí | `NULL` |  | Fecha de fin (≥ inicio). |
@@ -564,16 +1023,10 @@
 | `updated_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de la última modificación (UTC). |
 | `deleted_at` | `datetime(3)` | sí | `NULL` |  | Borrado lógico: NULL = activo; con fecha = archivado (se conserva el historial). |
 
-**Llaves foráneas:**
-
-- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
-
 **Restricciones CHECK:**
 
 - `chk_tours_fechas`: ``fecha_inicio` is null or `fecha_fin` is null or `fecha_fin` >= `fecha_inicio``
 - `chk_tours_status`: ``status` in ('Planning','Active','Completed','Cancelled')`
-
-**Índices:** `idx_tours_artista` (artista_id)
 
 ---
 
@@ -610,7 +1063,7 @@
 
 ## venues
 
-**Propósito:** Recintos, foros, teatros y bares, con coordenadas, calificación y puntajes. `extra` guarda datos de ficha aún no consultables por separado (horarios, redes, bandas locales).
+**Propósito:** Recintos, foros, teatros y bares, con coordenadas, calificación y puntajes. Sitio web, reseñas y demás datos de ficha son columnas; horarios y bandas locales viven en tablas hijas (Fase 3).
 
 **Cardinalidad:** 1 venue — N contactos, eventos, contratos; N:M proveedores
 
@@ -634,16 +1087,22 @@
 | `score_negociacion` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de negociación. |
 | `score_produccion` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de producción. |
 | `score_hospitalidad` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de hospitalidad. |
-| `contacto_principal_id` | `varchar(40)` | sí | `NULL` | FK | OBSOLETO (v1): contacto principal. Sustituido por venue_contactos.es_principal. |
-| `extra` | `longtext` | sí | `NULL` |  | Documento JSON con campos anidados que aún no se consultan ni relacionan por separado. |
 | `version` | `int(11)` | NN | `1` |  | Número de versión del registro: base del bloqueo optimista (sube en cada guardado). |
 | `created_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de creación (UTC, milisegundos). |
 | `updated_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de la última modificación (UTC). |
 | `deleted_at` | `datetime(3)` | sí | `NULL` |  | Borrado lógico: NULL = activo; con fecha = archivado (se conserva el historial). |
-
-**Llaves foráneas:**
-
-- `contacto_principal_id` → `contactos_legacy(id)` · al borrar el padre: **SET NULL**
+| `sitio_web` | `varchar(500)` | sí | `NULL` |  |  |
+| `telefono` | `varchar(60)` | sí | `NULL` |  |  |
+| `num_resenas` | `int(11)` | NN | `0` |  |  |
+| `place_id` | `varchar(120)` | sí | `NULL` |  |  |
+| `tipo_establecimiento` | `varchar(120)` | sí | `NULL` |  |  |
+| `instagram` | `varchar(255)` | sí | `NULL` |  |  |
+| `facebook` | `varchar(255)` | sí | `NULL` |  |  |
+| `tiktok` | `varchar(255)` | sí | `NULL` |  |  |
+| `whatsapp` | `varchar(255)` | sí | `NULL` |  |  |
+| `correo` | `varchar(255)` | sí | `NULL` |  |  |
+| `youtube` | `varchar(255)` | sí | `NULL` |  |  |
+| `twitter` | `varchar(255)` | sí | `NULL` |  |  |
 
 **Restricciones CHECK:**
 
@@ -651,7 +1110,27 @@
 - `chk_venues_rating`: ``rating` between 0 and 5`
 - `chk_venues_scores`: ``score_rentabilidad` between 0 and 100 and `score_respuesta` between 0 and 100 and `score_puntualidad_pago` between 0 and 100 and `score_negociacion` between 0 and 100 and `score_produccion` between 0 and 100 and `score_hospitalidad` between 0 and 100`
 
-**Índices:** `idx_venues_ciudad` (ciudad); `idx_venues_contacto_principal` (contacto_principal_id); `idx_venues_nombre` (nombre)
+**Índices:** `idx_venues_ciudad` (ciudad); `idx_venues_nombre` (nombre)
+
+---
+
+## venue_bandas_locales
+
+**Propósito:** Bandas locales asociadas a un venue.
+
+**Cardinalidad:** N bandas — 1 venue
+
+**Dependencias funcionales:** (venue_id, orden) → nombre.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `venue_id` | `varchar(40)` | NN |  | PK, FK | Venue. |
+| `orden` | `smallint(5) unsigned` | NN |  | PK |  |
+| `nombre` | `varchar(255)` | NN |  |  | Nombre. |
+
+**Llaves foráneas:**
+
+- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 ---
 
@@ -688,6 +1167,26 @@
 
 ---
 
+## venue_horarios
+
+**Propósito:** Horarios de operación del venue (una línea por renglón de texto).
+
+**Cardinalidad:** N horarios — 1 venue
+
+**Dependencias funcionales:** (venue_id, orden) → descripción.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `venue_id` | `varchar(40)` | NN |  | PK, FK | Venue. |
+| `orden` | `smallint(5) unsigned` | NN |  | PK |  |
+| `descripcion` | `varchar(255)` | NN |  |  |  |
+
+**Llaves foráneas:**
+
+- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+
+---
+
 ## venue_proveedores
 
 **Propósito:** Relación N:M entre venues y proveedores.
@@ -703,8 +1202,8 @@
 
 **Llaves foráneas:**
 
-- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `proveedor_id` → `proveedores(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `proveedor_id` (proveedor_id)
 

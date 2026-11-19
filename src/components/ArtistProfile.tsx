@@ -96,9 +96,8 @@ export default function ArtistProfile({
         id: `m-${idx}-${artist.id}`,
         name,
         role,
-        startDate: artist.startDate || '2025-01-01',
-        active: true,
-        venueName: 'Auditorio Nacional (Inicio)'
+        startDate: artist.startDate || '',
+        active: true
       };
     });
   };

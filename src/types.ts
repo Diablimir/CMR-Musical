@@ -333,6 +333,12 @@ export interface Contract {
   venueId?: string;
   tourId?: string;
   eventId?: string;
+  // Partes (artistas, venues, proveedores) y objeto (eventos, giras) del contrato. Los campos de arriba son el primero de cada lista.
+  artistIds?: string[];
+  venueIds?: string[];
+  providerIds?: string[];
+  eventIds?: string[];
+  tourIds?: string[];
   fileName: string;
   fileSize: string;
   status: 'Draft' | 'Pending' | 'Signed' | 'Rejected' | 'Active';

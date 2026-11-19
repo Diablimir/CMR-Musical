@@ -140,8 +140,11 @@ function ensure_schema(PDO $pdo): void {
     try {
         if ((int)$pdo->query('SELECT MAX(version) FROM schema_migrations')->fetchColumn() >= $latest) { $done = true; return; }
     } catch (Throwable $e) { /* aún no existe schema_migrations */ }
-    migrate_up($pdo);
+    // La importación del formato JSON más antiguo debe ocurrir ANTES de la contracción (migración 005),
+    // que elimina esas tablas. Por eso se sube primero hasta la 4, se importa y luego se continúa.
+    migrate_up($pdo, 4);
     require_once __DIR__ . '/entities.php';
     migrate_legacy_collections($pdo);
+    migrate_up($pdo);
     $done = true;
 }
