@@ -1,8 +1,10 @@
 <?php
 // Servidor de Meta SIMULADO para pruebas locales:  php -S 127.0.0.1:8001 tests/db/fake-graph.php
 // Imita el diálogo OAuth, el intercambio de tokens y los endpoints de Graph que usa meta_lib.php (con datos de ejemplo).
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); $q = $_GET;
+$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); $q = $_REQUEST;
 header('Content-Type: application/json');
+// Bitácora de lo que recibe (método, URL completa con query y nombres de los campos del cuerpo) para que las pruebas comprueben que ningún secreto viaja en la URL.
+@file_put_contents('/tmp/graph-requests.log', $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'] . ' body=[' . implode(',', array_keys($_POST)) . ']' . "\n", FILE_APPEND);
 $err = fn(string $m, int $c) => print(json_encode(['error' => ['message' => $m, 'code' => $c]]));
 if ($path === '/dialog/oauth') {   // «el usuario autoriza»: vuelve al redirect_uri con un code
     if (($q['client_id'] ?? '') !== 'app123') { http_response_code(400); $err('App desconocida', 101); return; }

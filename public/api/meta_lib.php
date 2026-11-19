@@ -22,16 +22,14 @@ function meta_cfg(string $k, ?string $default = null): ?string {
 function meta_missing(): array {
     $m = [];
     foreach (['meta_app_id', 'meta_app_secret'] as $k) if (meta_cfg($k) === null) $m[] = $k;
+    if (meta_cfg('meta_redirect_uri') === null) $m[] = 'meta_redirect_uri';
     if (strlen((string)meta_cfg('token_key')) < 16) $m[] = 'token_key (mínimo 16 caracteres)';
     return $m;
 }
 function meta_configured(): bool { return meta_missing() === []; }
 function meta_graph(): string { return rtrim(meta_cfg('meta_graph_url', META_DEFAULT_GRAPH), '/'); }
-function meta_redirect_uri(): string {
-    $c = meta_cfg('meta_redirect_uri'); if ($c !== null) return $c;
-    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-    return ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/api/meta_callback.php';
-}
+/** URI de retorno de OAuth: se define SIEMPRE en config.php (debe coincidir con la registrada en la app de Meta; no se deduce de la cabecera Host, que controla el cliente). */
+function meta_redirect_uri(): string { return (string)meta_cfg('meta_redirect_uri', ''); }
 
 // ───────── Cifrado del token ─────────
 function meta_encrypt(string $plain, string $key): string {
@@ -61,6 +59,16 @@ function meta_get(string $path, array $params = [], ?string $token = null): arra
     return $j;
 }
 
+/** POST de formulario hacia Graph (el secreto de la app y los tokens viajan en el cuerpo, no en la URL). */
+function meta_post(string $path, array $params): array {
+    [$code, $raw] = http_request(meta_graph() . '/' . ltrim($path, '/'), 'POST', http_build_query($params), ['Content-Type: application/x-www-form-urlencoded'], 40);
+    if ($code === 0) throw new MetaError('No se pudo contactar a Meta.');
+    $j = json_decode($raw, true);
+    if (!is_array($j)) throw new MetaError("Meta respondió algo inesperado ($code).");
+    if (isset($j['error'])) throw new MetaError((string)($j['error']['message'] ?? 'Error de Meta'), (int)($j['error']['code'] ?? 0));
+    return $j;
+}
+
 function meta_auth_url(string $state): string {
     $base = meta_cfg('meta_dialog_url', META_DEFAULT_DIALOG);
     return $base . '?' . http_build_query(['client_id' => meta_cfg('meta_app_id'), 'redirect_uri' => meta_redirect_uri(), 'state' => $state, 'scope' => META_SCOPES, 'response_type' => 'code']);
@@ -68,9 +76,9 @@ function meta_auth_url(string $state): string {
 
 /** code → token de usuario de larga duración (≈60 días). @return array{token:string,expires:?string} */
 function meta_exchange_code(string $code): array {
-    $short = meta_get('oauth/access_token', ['client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'redirect_uri' => meta_redirect_uri(), 'code' => $code]);
+    $short = meta_post('oauth/access_token', ['client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'redirect_uri' => meta_redirect_uri(), 'code' => $code]);
     if (empty($short['access_token'])) throw new MetaError('Meta no entregó un token de acceso.');
-    $long = meta_get('oauth/access_token', ['grant_type' => 'fb_exchange_token', 'client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'fb_exchange_token' => $short['access_token']]);
+    $long = meta_post('oauth/access_token', ['grant_type' => 'fb_exchange_token', 'client_id' => meta_cfg('meta_app_id'), 'client_secret' => meta_cfg('meta_app_secret'), 'fb_exchange_token' => $short['access_token']]);
     $tok = (string)($long['access_token'] ?? $short['access_token']);
     $exp = isset($long['expires_in']) && is_numeric($long['expires_in']) ? gmdate('Y-m-d H:i:s', time() + (int)$long['expires_in']) . '.000' : null;
     return ['token' => $tok, 'expires' => $exp];
@@ -147,9 +155,13 @@ function meta_store_reach(PDO $pdo, string $aid, array $series): int {
 }
 /** Reemplaza la foto demográfica de esa fecha y dimensión. */
 function meta_store_demographics(PDO $pdo, string $aid, string $date, string $dim, array $rows): int {
-    $pdo->prepare("DELETE FROM artista_demografia WHERE artista_id = ? AND plataforma = 'instagram' AND fecha = ? AND dimension = ?")->execute([$aid, $date, $dim]);
-    $st = $pdo->prepare("INSERT INTO artista_demografia (artista_id, plataforma, fecha, dimension, clave, valor) VALUES (?, 'instagram', ?, ?, ?, ?)");
-    $n = 0; foreach ($rows as $k => $v) { $st->execute([$aid, $date, $dim, mb_substr((string)$k, 0, 100), $v]); $n++; }
+    $own = !$pdo->inTransaction(); if ($own) $pdo->beginTransaction();   // todo o nada: nunca queda una foto a medias
+    try {
+        $pdo->prepare("DELETE FROM artista_demografia WHERE artista_id = ? AND plataforma = 'instagram' AND fecha = ? AND dimension = ?")->execute([$aid, $date, $dim]);
+        $st = $pdo->prepare("INSERT INTO artista_demografia (artista_id, plataforma, fecha, dimension, clave, valor) VALUES (?, 'instagram', ?, ?, ?, ?)");
+        $n = 0; foreach ($rows as $k => $v) { $st->execute([$aid, $date, $dim, mb_substr((string)$k, 0, 100), $v]); $n++; }
+        if ($own) $pdo->commit();
+    } catch (Throwable $e) { if ($own && $pdo->inTransaction()) $pdo->rollBack(); throw $e; }
     return $n;
 }
 function meta_store_posts(PDO $pdo, string $aid, array $posts): int {

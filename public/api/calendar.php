@@ -16,7 +16,8 @@ function evt_description(array $e): string {
         . "\n- Estado: " . ($e['status'] ?? 'Confirmado');
 }
 function valid_date(mixed $d): bool {
-    return is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}/', $d) === 1;
+    if (!is_string($d) || preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/', $d, $m) !== 1) return false;
+    return checkdate((int)$m[2], (int)$m[3], (int)$m[1]);
 }
 function ics_escape(string $s): string {
     return str_replace(["\\", ";", ",", "\r\n", "\n", "\r"], ["\\\\", "\;", "\\,", "\\n", "\\n", "\\n"], $s);

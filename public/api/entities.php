@@ -574,8 +574,10 @@ function must_in(string $key, array $obj, string $label, mixed $v, array $allowe
 }
 /** id de elemento hijo: se conserva el de la interfaz; si falta o se repite, se genera. */
 function child_id(array &$seen, mixed $id, string $prefix, int $i): string {
-    $id = is_string($id) && $id !== '' ? mb_substr($id, 0, 40) : $prefix . '-' . ($i + 1);
-    while (isset($seen[$id])) $id = mb_substr($id, 0, 34) . '-' . $i . count($seen);
+    $base = is_string($id) && $id !== '' ? mb_substr($id, 0, 40) : $prefix . '-' . ($i + 1);
+    $id = $base; $n = 0;
+    // Siempre termina: cada intento usa un sufijo distinto (-posición-n) y $seen es finito.
+    while (isset($seen[$id])) { $n++; $suf = '-' . $i . '-' . $n; $id = mb_substr($base, 0, 40 - strlen($suf)) . $suf; }
     return $seen[$id] = $id;
 }
 function replace_rows(PDO $pdo, string $table, string $keyCol, string $id, array $rows): void {

@@ -15,9 +15,12 @@ header('Content-Type: text/html; charset=utf-8');
 $u = current_user();
 if (!$u) back('error', 'Tu sesión expiró. Inicia sesión y vuelve a conectar la cuenta.');
 start_session();
-$ctx = $_SESSION['meta_oauth'] ?? null; unset($_SESSION['meta_oauth']);   // un solo uso
+$ctx = $_SESSION['meta_oauth'] ?? null;
 $state = (string)($_GET['state'] ?? '');
-if (!is_array($ctx) || $state === '' || !hash_equals((string)$ctx['state'], $state) || time() - (int)$ctx['at'] > 900) back('error', 'La autorización no es válida o venció. Inténtalo de nuevo.');
+// Un «state» inválido NO borra la conexión pendiente (así una visita ajena no puede cancelarla); solo uno válido se consume (un solo uso).
+if (!is_array($ctx) || $state === '' || !hash_equals((string)$ctx['state'], $state)) back('error', 'La autorización no es válida. Inténtalo de nuevo.');
+unset($_SESSION['meta_oauth']);
+if (time() - (int)$ctx['at'] > 900) back('error', 'La autorización venció. Inténtalo de nuevo.');
 $aid = (string)$ctx['artist'];
 if (isset($_GET['error'])) back('error', 'No se autorizó la conexión: ' . mb_substr((string)($_GET['error_description'] ?? $_GET['error']), 0, 160), $aid);
 $code = (string)($_GET['code'] ?? '');

@@ -39,6 +39,7 @@ try {
     meta_artist_or_404($pdo, $aid);
 
     if ($action === 'start') {
+        rate_limit('metastart:' . $user['id'], 20, 600);
         if (!meta_configured()) respond(['error' => 'Falta configurar la app de Meta en el servidor: ' . implode(', ', meta_missing()) . ' (ver HOSTINGER.md).', 'code' => 'meta_not_configured'], 409);
         start_session();
         $state = bin2hex(random_bytes(16));
@@ -46,6 +47,7 @@ try {
         respond(['url' => meta_auth_url($state)]);
     }
     if ($action === 'sync') {
+        rate_limit('meta:' . $user['id'], 12, 600);
         if (!meta_configured()) respond(['error' => 'Falta configurar la app de Meta en el servidor.', 'code' => 'meta_not_configured'], 409);
         set_time_limit(200);
         $r = meta_sync_artist($pdo, $aid);

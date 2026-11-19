@@ -18,6 +18,7 @@ return [
     // token_key: texto largo y aleatorio (mín. 16 caracteres) con el que se cifran los tokens. No lo cambies después o habrá que reconectar las cuentas.
     'meta_app_id' => '',
     'meta_app_secret' => '',
+    'meta_redirect_uri' => '',   // exactamente: https://TU_DOMINIO/api/meta_callback.php (la misma que registraste en Meta)
     'token_key' => '',
 
     // Solo para api/install.php (se usa una vez; luego borra install.php)

@@ -1,5 +1,8 @@
 # FLAMO CRM — Registro de cambios de la base de datos
 
+## v9 · Índice de intentos  (migración 009)
+**Añadido:** índices `(ident, ts)` y `(ts)` en `login_attempts`, la tabla que cuenta los intentos de acceso y el uso de integraciones costosas (límites de uso). Sin ellos, bajo un ataque la cuenta por `ident` recorrería toda la tabla. Si la tabla no existe (instalación solo por migraciones) no hace nada. **Rollback:** quita los dos índices.
+
 ## v8 · Conexión oficial con Instagram  (migración 008)
 **Añadido:** `artista_conexiones` (cuenta conectada por OAuth; token **cifrado** con AES-256-GCM, nunca enviado al navegador), `artista_alcance` (alcance diario), `artista_demografia` (edad, género, ciudad, país por fecha) y `artista_publicaciones` (me gusta, comentarios, alcance, guardados, compartidos, interacciones). La fuente `meta` es válida en `artista_metricas_redes`.
 **Rollback:** `down()` elimina las 4 tablas y deja las capturas con fuente `meta` marcadas como `manual` (no se pierden, pierden su origen). Los tokens guardados se pierden: habría que volver a conectar.

@@ -25,7 +25,7 @@ $count = fn(string $sql, array $a = []) => (int)t_scalar($pdo, $sql, $a);
 t_section('1. Migraciones: instalación nueva');
 $fresh();
 $applied = migrate_up($pdo);
-t_eq($applied, [1, 2, 3, 4, 5, 6, 7, 8], 'se aplican las 8 migraciones en orden');
+t_eq($applied, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'se aplican las 9 migraciones en orden');
 foreach (['artistas','venues','contactos','contacto_correos','contacto_telefonos','venue_contactos','artista_contactos','proveedor_contactos','evento_artistas','tour_artistas','artista_generos','cat_generos','cat_roles_contacto','cat_monedas','eventos','tours','contratos','proveedores','proyectos_grabacion','venue_proveedores','cat_etapas_desarrollo','schema_migrations'] as $tb) t_ok(db_table_exists($pdo, $tb), "existe la tabla $tb");
 t_eq(migrate_up($pdo), [], 'volver a migrar no hace nada (idempotente)');
 t_eq($count('SELECT COUNT(*) FROM cat_etapas_desarrollo'), 7, 'catálogo de etapas sembrado');
@@ -423,9 +423,9 @@ $sync(['events' => ['deletes' => ['evt-1']]]);
 t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE nota_id='n-1' AND evento_id IS NULL"), 1, 'al borrar el evento la nota se conserva (SET NULL)');
 $sync(['venues' => ['deletes' => ['ven-1']]]);
 t_eq($count('SELECT COUNT(*) FROM venue_notas'), 0, 'al borrar el venue se borran sus notas (CASCADE)');
-t_eq(migrate_down($pdo, 5), [8, 7, 6], 'rollback de la 008, 007 y 006 (en orden inverso)');
+t_eq(migrate_down($pdo, 5), [9, 8, 7, 6], 'rollback de la 009, 008, 007 y 006 (en orden inverso)');
 t_ok(!db_table_exists($pdo, 'venue_notas') && db_table_exists($pdo, 'venues'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [6, 7, 8], 'y se pueden volver a aplicar');
+t_eq(migrate_up($pdo), [6, 7, 8, 9], 'y se pueden volver a aplicar');
 
 t_section('20d. Historial de redes y acciones (migración 007)');
 $fresh(); migrate_up($pdo); catalog_cache_clear();
@@ -486,9 +486,9 @@ t_eq([$rf['skipped'], array_keys($rf['errors'])], [['instagram'], ['tiktok']], '
 t_eq(array_keys(social_refresh_artist($pdo, 'art-3', true)['errors']), ['instagram', 'tiktok'], 'con «forzar» sí se vuelve a consultar');
 $sync(['artists' => ['deletes' => ['art-1', 'art-3']]]);
 t_eq($count('SELECT COUNT(*) FROM artista_metricas_redes') + $count('SELECT COUNT(*) FROM artista_acciones'), 0, 'al borrar el artista se borra su historial y sus acciones (CASCADE)');
-t_eq(migrate_down($pdo, 6), [8, 7], 'rollback de la 008 y la 007 elimina solo sus tablas');
+t_eq(migrate_down($pdo, 6), [9, 8, 7], 'rollback de la 009, 008 y 007 elimina solo sus tablas');
 t_ok(!db_table_exists($pdo, 'artista_metricas_redes') && !db_table_exists($pdo, 'artista_acciones') && db_table_exists($pdo, 'venue_notas'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [7, 8], 'y se puede volver a aplicar');
+t_eq(migrate_up($pdo), [7, 8, 9], 'y se puede volver a aplicar');
 
 // ═══ Conexión oficial con Instagram (migración 008) ═══
 t_section('20e. Cuenta oficial de Instagram: cifrado, lectores y guardado (migración 008)');
@@ -541,10 +541,39 @@ $sync(['artists' => ['deletes' => ['art-1']]]);
 t_eq($count('SELECT COUNT(*) FROM artista_conexiones') + $count('SELECT COUNT(*) FROM artista_alcance') + $count('SELECT COUNT(*) FROM artista_demografia') + $count('SELECT COUNT(*) FROM artista_publicaciones'), 0, 'al borrar el artista se borra todo lo oficial (CASCADE)');
 $fresh(); migrate_up($pdo); catalog_cache_clear(); $sync($up('artists', $art('art-1', 'Uno')));
 social_save_snapshot($pdo, 'art-1', 'instagram', '2026-11-10', ['seguidores' => 2500], 'meta');
-t_eq(migrate_down($pdo, 7), [8], 'rollback de la 008');
+t_eq(migrate_down($pdo, 7), [9, 8], 'rollback de la 009 y la 008');
 t_ok(!db_table_exists($pdo, 'artista_conexiones') && db_table_exists($pdo, 'artista_metricas_redes'), 'quita las 4 tablas y deja las capturas');
 t_eq((string)t_scalar($pdo, "SELECT fuente FROM artista_metricas_redes WHERE artista_id='art-1'"), 'manual', 'las capturas «meta» se conservan marcadas como «manual»');
-t_eq(migrate_up($pdo), [8], 'y se puede volver a aplicar');
+t_eq(migrate_up($pdo), [8, 9], 'y se puede volver a aplicar');
+
+// ═══ Seguridad: identificadores de hijos repetidos (hallazgo de auditoría: bucle infinito) ═══
+t_section('20f. Seguridad: child_id() siempre termina');
+set_time_limit(10);
+$B = str_repeat('a', 34); $seen = [];
+$ids = [];
+foreach ([$B . '-0', 'otro', $B . '-33', $B . '-0', $B . '-0', $B . '-0-3-1', str_repeat('z', 80), str_repeat('z', 80)] as $i => $raw) $ids[] = child_id($seen, $raw, 'x', $i);
+t_eq(count(array_unique($ids)), count($ids), 'una secuencia de ids repetidos y «prediseñados» termina y todos quedan únicos');
+t_ok(max(array_map('strlen', $ids)) <= 40, 'ningún id supera 40 caracteres');
+$seen = []; $a = child_id($seen, '', 'p', 0); $b2 = child_id($seen, '', 'p', 1);
+t_eq([$a, $b2], ['p-1', 'p-2'], 'sin id, se numeran con el prefijo (comportamiento anterior intacto)');
+set_time_limit(0);
+
+// ═══ Escalabilidad: índice de login_attempts (migración 009) ═══
+t_section('20g. Índice de login_attempts (migración 009)');
+$fresh(); migrate_up($pdo, 8);
+t_eq(migrate_up($pdo), [9], 'sin tabla login_attempts (instalación solo por migraciones) la 009 no falla');
+$pdo->exec('CREATE TABLE login_attempts (ident VARCHAR(190) NOT NULL, ts INT NOT NULL)');
+migrate_down($pdo, 8);
+t_ok(!db_index_exists($pdo, 'login_attempts', 'idx_la_ident_ts'), 'antes: sin índice');
+t_eq(migrate_up($pdo), [9], 'se aplica');
+t_ok(db_index_exists($pdo, 'login_attempts', 'idx_la_ident_ts') && db_index_exists($pdo, 'login_attempts', 'idx_la_ts'), 'crea los dos índices');
+$ins = $pdo->prepare('INSERT INTO login_attempts (ident, ts) VALUES (?, ?)');
+$pdo->beginTransaction(); for ($i = 0; $i < 5000; $i++) $ins->execute(['rl:u' . ($i % 50), time()]); $pdo->commit();
+$pdo->query('ANALYZE TABLE login_attempts')->fetchAll();
+$pl = $pdo->query("EXPLAIN SELECT COUNT(*) FROM login_attempts WHERE ident = 'rl:u7'")->fetch();
+t_ok(str_contains((string)($pl['key'] ?? ''), 'idx_la_ident_ts'), 'la cuenta por ident usa el índice (sin escanear toda la tabla)', json_encode($pl));
+t_eq(migrate_down($pdo, 8), [9], 'rollback quita los índices'); t_ok(!db_index_exists($pdo, 'login_attempts', 'idx_la_ident_ts'), 'y no deja rastro');
+migrate_up($pdo); $pdo->exec('DROP TABLE login_attempts');
 
 // ═══════════════════════════════════════════════════════════
 t_section('21. Fase 4: contracción (retirar lo obsoleto) con verificación previa y rollback');

@@ -1,6 +1,6 @@
-# FLAMO CRM — Arquitectura de la base de datos (esquema v8)
+# FLAMO CRM — Arquitectura de la base de datos (esquema v9)
 
-> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–008; 47 tablas; 356 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
+> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–009; 47 tablas; 366 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
 > Documentos relacionados: `DATABASE_AUDIT.md` (hallazgos y evidencia previa), `DATABASE_REFACTOR_PLAN.md` (plan por fases),
 > `DATA_DICTIONARY.md` (tablas y columnas), `schema.sql` (DDL), `CHANGELOG_DB.md` (registro de cambios).
 
@@ -564,4 +564,4 @@ o, como Super Admin: `POST /api/migrate.php?action=down&to=1&confirm=yes`. Despu
 Pérdidas posibles al revertir (documentadas): contactos sin venue, correos/teléfonos adicionales, vínculos a más de un venue y la alineación completa (solo se conserva el artista principal).
 
 **Regenerar documentación y SQL:** `php scripts/db/generate-docs.php` (base de pruebas) y `python3 scripts/make-er-diagram.py`.
-**Pruebas:** `php tests/db/run.php` (356 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).
+**Pruebas:** `php tests/db/run.php` (366 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).

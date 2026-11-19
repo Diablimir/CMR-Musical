@@ -42,8 +42,16 @@ function db(): PDO {
     return $pdo;
 }
 
+// Caducidad de sesión: 2 h sin actividad y 12 h en total.
+const SESSION_IDLE = 7200;
+const SESSION_ABSOLUTE = 43200;
+// Roles válidos (el servidor rechaza cualquier otro texto).
+const ALLOWED_ROLES = ['Super Admin', 'Administrador', 'Director de Booking', 'Director de Finanzas', 'Gestor de Contenido', 'Abogado Legal CRM'];
+
 function start_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
+    ini_set('session.use_strict_mode', '1');   // no acepta identificadores de sesión inventados por el cliente
+    ini_set('session.use_only_cookies', '1');
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
     session_set_cookie_params([
         'lifetime' => 0,
@@ -56,7 +64,13 @@ function start_session(): void {
     session_start();
 }
 
+/** Rechaza (413) cuerpos más grandes que $max bytes ANTES de leerlos en memoria. */
+function limit_body(int $max): void {
+    if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > $max) respond(['error' => 'La solicitud es demasiado grande.'], 413);
+}
+
 function body(): array {
+    limit_body(2 * 1024 * 1024);
     $raw = file_get_contents('php://input');
     if ($raw === false || $raw === '') return [];
     $data = json_decode($raw, true);
@@ -72,12 +86,21 @@ function require_csrf_header(): void {
     }
 }
 
+/** Huella de la contraseña guardada en la sesión: si se cambia la contraseña, las sesiones anteriores dejan de valer. */
+function pw_stamp(string $hash): string { return substr(hash('sha256', $hash), 0, 20); }
+
 function current_user(): ?array {
     start_session();
     if (empty($_SESSION['uid'])) return null;
-    $st = db()->prepare('SELECT id, username, name, role, created_at FROM users WHERE id = ?');
+    $now = time();
+    if ($now - (int)($_SESSION['t0'] ?? 0) > SESSION_ABSOLUTE || $now - (int)($_SESSION['seen'] ?? 0) > SESSION_IDLE) { $_SESSION = []; session_destroy(); return null; }
+    $st = db()->prepare('SELECT id, username, name, role, created_at, password_hash FROM users WHERE id = ?');
     $st->execute([$_SESSION['uid']]);
-    return $st->fetch() ?: null;
+    $u = $st->fetch();
+    if (!$u || !hash_equals((string)($_SESSION['pw'] ?? ''), pw_stamp((string)$u['password_hash']))) { $_SESSION = []; session_destroy(); return null; }
+    $_SESSION['seen'] = $now;
+    unset($u['password_hash']);
+    return $u;
 }
 
 function require_login(): array {
@@ -123,4 +146,20 @@ function http_request(string $url, string $method = 'GET', ?string $body = null,
 function apify_token(): string {
     $t = trim((string)(config()['apify_token'] ?? ''));
     return strlen($t) > 5 ? $t : '';
+}
+
+/** IP del cliente (primer salto de X-Forwarded-For si es válido; detrás de la red de entrega del hosting REMOTE_ADDR cambia). */
+function client_ip(): string {
+    $xff = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
+    if ($xff !== '' && filter_var($xff, FILTER_VALIDATE_IP)) return $xff;
+    return (string)($_SERVER['REMOTE_ADDR'] ?? '0');
+}
+
+/** Límite de uso para acciones costosas (Apify, Meta, mapas, subidas): máx. $max llamadas por $window s (≤ 900) por clave. Responde 429 si se excede. */
+function rate_limit(string $key, int $max, int $window = 600): void {
+    $pdo = db(); $now = time(); $ident = 'rl:' . substr($key, 0, 150);
+    $pdo->prepare('DELETE FROM login_attempts WHERE ident = ? AND ts < ?')->execute([$ident, $now - $window]);
+    $c = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ident = ?'); $c->execute([$ident]);
+    if ((int)$c->fetchColumn() >= $max) respond(['error' => 'Demasiadas solicitudes seguidas. Espera unos minutos e inténtalo de nuevo.', 'code' => 'rate_limited'], 429);
+    $pdo->prepare('INSERT INTO login_attempts (ident, ts) VALUES (?, ?)')->execute([$ident, $now]);
 }

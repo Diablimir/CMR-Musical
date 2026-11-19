@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
 import Avatar from './Avatar';
-import { computeGlobalScore, SCORE_METRICS, heatColor } from '../lib/venueScoreRubric';
+import { computeGlobalScore, SCORE_METRICS, HEAT_BANDS } from '../lib/venueScoreRubric';
 import VenueNotes from './VenueNotes';
 import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour, VenueNote } from '../types';
 
@@ -419,7 +419,7 @@ export default function HomeDashboard({
               <span>Mapa Geográfico de Booking</span>
             </span>
             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-              <span className="w-10 h-2 rounded-full" style={{ background: `linear-gradient(to right, ${[0, 25, 50, 75, 100].map(heatColor).join(',')})` }} />
+              <span className="flex items-center gap-1">{HEAT_BANDS.map((b) => <span key={b.key} className="w-2.5 h-2.5 rounded-full" style={{ background: b.color }} />)}</span>
               Mapa de calor: tamaño y color según el Flamo Score
             </div>
           </div>
@@ -451,9 +451,13 @@ export default function HomeDashboard({
               {/* Leyenda del mapa de calor */}
               <div className="absolute bottom-2 left-2 z-[1000] bg-white/90 backdrop-blur-xs border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm pointer-events-none" data-testid="heat-legend">
                 <span className="text-[8px] uppercase font-bold text-slate-500 tracking-wider block mb-1">Flamo Score</span>
-                <div className="h-1.5 w-28 rounded-full" style={{ background: `linear-gradient(to right, ${[0, 25, 50, 75, 100].map(heatColor).join(',')})` }} />
-                <div className="flex justify-between text-[8px] font-mono text-slate-500 mt-0.5"><span>0</span><span>50</span><span>100</span></div>
-                <span className="text-[8px] text-slate-400 block mt-0.5">Más grande y más rojo = mejor</span>
+                <ul className="space-y-0.5">
+                  {[...HEAT_BANDS].reverse().map((b) => (
+                    <li key={b.key} className="flex items-center gap-1.5 text-[9px] text-slate-600"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.color }} /><strong>{b.label}</strong> {b.range}</li>
+                  ))}
+                  <li className="flex items-center gap-1.5 text-[9px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full shrink-0 bg-slate-400" />Sin evaluar</li>
+                </ul>
+                <span className="text-[8px] text-slate-400 block mt-1">Más grande = mejor score</span>
               </div>
             </div>
 

@@ -1,24 +1,32 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
-require_login();
+$me = require_login();
 set_time_limit(120);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') respond(['error' => 'Método no permitido.'], 405);
 
 $raw = trim((string)(body()['query'] ?? ''));
+rate_limit('places:' . $me['id'], 25, 600);
 if ($raw === '') respond(['error' => 'Se requiere una URL de Google Maps o un término de búsqueda.'], 400);
 if (strlen($raw) > 2000) respond(['error' => 'Consulta demasiado larga.'], 400);
 
 // Solo se siguen enlaces de Google (evita usar el servidor para llamar a sitios arbitrarios).
 function is_google_host(string $url): bool {
     $p = parse_url($url);
-    if (!$p || !in_array(strtolower($p['scheme'] ?? ''), ['http', 'https'], true) || empty($p['host'])) return false;
+    // Solo HTTPS en el puerto 443 (evita usar el servidor para sondear puertos o servicios internos).
+    if (!$p || strtolower($p['scheme'] ?? '') !== 'https' || empty($p['host']) || (isset($p['port']) && (int)$p['port'] !== 443) || isset($p['user']) || isset($p['pass'])) return false;
     $h = strtolower($p['host']);
+    $ok = false;
     foreach (['google.com', 'google.com.mx', 'goo.gl', 'maps.app.goo.gl', 'g.co'] as $d) {
-        if ($h === $d || str_ends_with($h, '.' . $d)) return true;
+        if ($h === $d || str_ends_with($h, '.' . $d)) { $ok = true; break; }
     }
-    return false;
+    if (!$ok) return false;
+    // La IP a la que resuelve el nombre debe ser pública (nada de redes privadas, loopback o reservadas).
+    $ips = gethostbynamel($h) ?: [];
+    if (!$ips) return false;
+    foreach ($ips as $ip) if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return false;
+    return true;
 }
 
 $target = $raw;
