@@ -799,7 +799,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Clear All Data Button */}
+                {/* Clear All Data Button (solo Super Admin) */}
+                {isAdmin && (
                 <div className="bg-red-50/60 border border-red-200/80 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
                   <div className="space-y-0.5">
                     <span className="text-[11px] font-bold text-red-700 block">Vaciar Datos</span>
@@ -816,6 +817,7 @@ export default function App() {
                     <span>Vaciar</span>
                   </button>
                 </div>
+                )}
 
               </div>
 
