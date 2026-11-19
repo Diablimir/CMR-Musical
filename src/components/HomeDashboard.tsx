@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
 import Avatar from './Avatar';
-import { computeGlobalScore, SCORE_METRICS, heatGradient } from '../lib/venueScoreRubric';
+import { computeGlobalScore, SCORE_METRICS, heatGradient, heatColor } from '../lib/venueScoreRubric';
 import VenueNotes from './VenueNotes';
 import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour, VenueNote } from '../types';
 
@@ -448,15 +448,20 @@ export default function HomeDashboard({
                 onSelectVenue={(id) => setSelectedVenueId(id)}
                 heat
               />
-              {/* Leyenda del mapa de calor */}
-              <div className="absolute bottom-2 left-2 z-[400] bg-white/95 border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm pointer-events-none" data-testid="heat-legend">
-                <span className="text-[8px] uppercase font-bold text-slate-500 tracking-wider block mb-1">Flamo Score</span>
-                <div className="h-2 w-28 rounded-full border border-slate-200" style={{ background: heatGradient() }} />
-                <div className="flex justify-between text-[9px] font-mono text-slate-600 mt-0.5 w-28"><span>0 rojo</span><span>50</span><span>100 verde</span></div>
-                <span className="flex items-center gap-1 text-[9px] text-slate-500 mt-0.5"><span className="w-2 h-2 rounded-full bg-slate-400" />Sin evaluar · más grande = mejor</span>
-              </div>
             </div>
 
+
+            {/* Leyenda del mapa de calor: fuera del mapa, así nunca tapa marcadores, controles ni el crédito */}
+            <div className="flex flex-col items-center gap-1 text-slate-300 mb-2" style={{ fontSize: 13, lineHeight: 1.35 }} data-testid="heat-legend" aria-label="Escala del Flamo Score: 0 rojo, 50 amarillo, 100 verde">
+              <div className="flex items-center gap-2">
+                <span className="font-bold uppercase tracking-wide text-slate-200" style={{ fontSize: 13 }}>Flamo Score</span>
+                <span className="h-2 rounded-full" style={{ background: heatGradient(), width: 96 }} />
+              </div>
+              <div className="flex items-center gap-4 font-mono">
+                {[0, 50, 100].map((n) => <span key={n} className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: heatColor(n) }} />{n}</span>)}
+              </div>
+              <span className="text-slate-300">Más grande = mejor score</span>
+            </div>
 
             {/* Scale/Disclaimer */}
             <div className="text-[8px] font-mono text-slate-500 text-center">
