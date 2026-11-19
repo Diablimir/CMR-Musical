@@ -620,7 +620,7 @@ export default function App() {
       </header>
 
       {/* Floating Bottom Navigation Dock - Desktop only (Hidden on Mobile) */}
-      <nav className="hidden md:flex fixed bottom-5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-silver-haze p-2 rounded-2xl shadow-2xl z-40 items-center justify-between gap-1.5 w-[92%] max-w-5xl">
+      <nav className="hidden md:flex fixed bottom-5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-silver-haze p-2 rounded-2xl shadow-2xl z-40 items-center justify-between gap-1 xl:gap-1.5 w-[96%] max-w-[1280px] overflow-x-auto">
         {[
           { id: 'inicio', label: 'Inicio', icon: LayoutDashboard },
           { id: 'venues', label: 'Venues', icon: Building2 },
@@ -639,7 +639,8 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveWorkspace(tab.id as any)}
-              className={`md:px-3.5 md:py-2 px-2 py-1.5 flex flex-row items-center justify-center gap-2 rounded-xl transition-all cursor-pointer group ${
+              title={tab.label} aria-label={tab.label}
+              className={`md:px-2.5 xl:px-3.5 md:py-2 px-2 py-1.5 flex flex-row items-center justify-center gap-2 rounded-xl transition-all cursor-pointer group shrink-0 ${
                 isActive
                   ? 'bg-celestial-canvas text-white shadow-sm font-bold border border-celestial-canvas/30'
                   : 'text-slate-500 hover:text-slate-850 hover:bg-slate-50'
@@ -648,7 +649,7 @@ export default function App() {
               <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
                 isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'
               }`} />
-              <span className="text-xs font-semibold tracking-tight truncate block">
+              <span className={`text-xs font-semibold tracking-tight whitespace-nowrap ${isActive ? 'block' : 'hidden xl:block'}`}>
                 {tab.label}
               </span>
               {tab.badge > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-tomato-curry text-white text-[11px] font-bold flex items-center justify-center" data-testid={`badge-${tab.id}`}>{tab.badge}</span>}
