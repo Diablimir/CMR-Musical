@@ -12,7 +12,7 @@ const ok = [], bad = []; const check = (n, c, d = '') => (c ? ok : bad).push(n +
   check('ya no existe «Vaciar Datos»', !home.includes('Vaciar'));
   check('ya no existe el «Modo Dev» ni la pestaña «Esquema & DB»', !home.includes('Modo Dev') && !home.includes('Esquema'));
   await p.getByRole('button', { name: /^\s*Venues/ }).first().click(); await p.waitForTimeout(800);
-  await p.getByText('Teatro Metr').first().click(); await p.waitForTimeout(800);
+  await p.locator('text=Teatro Metr >> visible=true').first().click(); await p.waitForTimeout(800);
   await p.getByRole('button', { name: /Modalidades/ }).first().click(); await p.waitForTimeout(500);
   const rentBtn = (pct) => p.locator('div:has(> div > div > span:text-matches("^Rentabilidad"))').getByRole('button', { name: new RegExp('^' + pct + '%') }).first();
   await p.getByRole('button', { name: /^60%/ }).first().click(); await p.waitForTimeout(900);

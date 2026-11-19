@@ -1,4 +1,5 @@
 import ArtistFicha from './ArtistFicha';
+import Avatar from './Avatar';
 import SocialMetrics from './SocialMetrics';
 import { integrations } from '../lib/api';
 import PhotoPicker from './PhotoPicker';
@@ -256,9 +257,10 @@ export default function ArtistProfile({
             className="group relative w-16 h-16 rounded-full overflow-hidden border border-slate-200 shadow-sm cursor-pointer shrink-0"
             title="Haga clic para cambiar o editar la fotografía del artista"
           >
-            <img
+            <Avatar
               src={artist.photo}
-              alt={artist.artisticName}
+              name={artist.artisticName}
+              textClass="text-xl"
               style={{
                 filter: `contrast(${artist.photoStyle?.contrast ?? 1}) brightness(${artist.photoStyle?.brightness ?? 1}) grayscale(${artist.photoStyle?.grayscale ?? 0}) sepia(${artist.photoStyle?.sepia ?? 0}) blur(${artist.photoStyle?.blur ?? 0}px)`,
                 transform: `rotate(${artist.photoStyle?.rotation ?? 0}deg) scale(${artist.photoStyle?.zoom ?? 1})`,
@@ -314,7 +316,7 @@ export default function ArtistProfile({
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id as any)}
-              className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 activeSubTab === tab.id ? 'bg-celestial-canvas text-white-chalk shadow-sm border border-celestial-canvas/35' : 'text-slate-500 hover:text-slate-800'
               }`}
             >

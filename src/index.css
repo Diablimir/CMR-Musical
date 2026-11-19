@@ -40,3 +40,53 @@ html[data-ux-outlines="on"] * { outline: 1px solid rgba(232, 74, 46, 0.35); outl
 .text-\[7px\], .text-\[8px\], .text-\[9px\] { font-size: 0.75rem; }    /* 12px */
 .text-\[10px\] { font-size: 0.8125rem; }                               /* 13px */
 .text-\[11px\] { font-size: 0.875rem; }                                /* 14px */
+
+/* ═══════════════ Teléfono (≤ 767 px): legibilidad y toque ═══════════════
+   Buenas prácticas aplicadas (Apple HIG, Material, WCAG 2.2):
+   · texto de lectura ≈ 16 px y nada por debajo de 13 px; interlineado ≥ 1.45
+   · campos de formulario a 16 px (evita que iOS haga zoom al tocarlos)
+   · objetivos táctiles de al menos 44 × 44 px
+   · etiquetas en mayúsculas con menos espaciado entre letras (se leen mejor)
+   · contenido nunca tapado por la barra inferior (incluye el área segura del iPhone)
+   Todo en rem: sigue escalando con «Tamaño de texto» del panel Interfaz. */
+@media (max-width: 767px) {
+  body { line-height: 1.5; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+  .text-\[7px\], .text-\[8px\], .text-\[9px\] { font-size: 0.8125rem; line-height: 1.35; }   /* 13 px */
+  .text-\[10px\] { font-size: 0.875rem; line-height: 1.4; }                                 /* 14 px */
+  .text-\[11px\] { font-size: 0.9375rem; line-height: 1.45; }                               /* 15 px */
+  .text-xs { font-size: 0.9375rem; line-height: 1.45; }                                     /* 15 px */
+  .text-sm { font-size: 1rem; line-height: 1.5; }                                           /* 16 px */
+  .text-base { font-size: 1.0625rem; }                                                      /* 17 px */
+
+  /* mayúsculas espaciadas: menos tracking para que no se vuelvan ilegibles */
+  .tracking-widest { letter-spacing: 0.06em; }
+  .tracking-wider { letter-spacing: 0.04em; }
+
+  /* formularios: 16 px y altura cómoda */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select, textarea { font-size: 1rem !important; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select { min-height: 2.75rem; }
+  input[type="checkbox"], input[type="radio"] { width: 1.25rem; height: 1.25rem; }
+
+  /* objetivos táctiles */
+  button, [role="button"], a.inline-flex, a.flex { min-height: 2.5rem; }
+  button:has(> svg:only-child), a:has(> svg:only-child) { min-width: 2.75rem; min-height: 2.75rem; }
+  .leaflet-container button, .leaflet-control a { min-height: 0; min-width: 0; }
+
+  /* que nada quede debajo de la barra de navegación inferior */
+  main { padding-bottom: calc(7.5rem + env(safe-area-inset-bottom)) !important; }
+  footer { padding-bottom: calc(7rem + env(safe-area-inset-bottom)) !important; }
+  nav.fixed.bottom-4 { bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+
+  /* tablas que aún se desplazan a lo ancho: que se note y se deslice suave */
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+}
+
+/* Contraste mínimo WCAG AA (4.5:1) para el gris de texto secundario, en todas las pantallas.
+   Dentro de la capa de utilidades para que los estados hover:/focus: sigan funcionando. */
+@layer utilities {
+  .text-slate-400 { color: #64748b; }
+  .placeholder-slate-400::placeholder, input::placeholder, textarea::placeholder { color: #7b8794; }
+}

@@ -14,6 +14,7 @@ import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
 import FinancialSuite from './components/FinancialSuite';
 import { computeGlobalScore } from './lib/venueScoreRubric';
+import Avatar from './components/Avatar';
 import UxSettings from './components/UxSettings';
 import LegalSuite from './components/LegalSuite';
 import LoginScreen from './components/LoginScreen';
@@ -516,7 +517,7 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold text-cosmic-black tracking-tight uppercase">FLAMO CRM</h1>
-                <span className="text-[10px] bg-white-chalk border border-silver-haze text-slate-500 font-mono px-2 py-0.5 rounded-full font-medium">
+                <span className="hidden sm:inline text-[10px] bg-white-chalk border border-silver-haze text-slate-500 font-mono px-2 py-0.5 rounded-full font-medium">
                   v2.0 Enterprise
                 </span>
               </div>
@@ -864,7 +865,7 @@ export default function App() {
                 Pega un enlace de Google Maps o escribe el nombre y la ciudad del foro para autocompletar dirección y coordenadas reales. El rating y los puntajes se completan en la Ficha 360.
               </p>
               
-              <form onSubmit={handleMapsScrape} className="flex gap-2">
+              <form onSubmit={handleMapsScrape} className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   required
@@ -876,7 +877,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={isScraping}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer shrink-0"
                 >
                   {isScraping ? (
                     <>
@@ -984,7 +985,35 @@ export default function App() {
                   <p className="text-sm text-slate-400">No se encontraron recintos con los criterios de búsqueda o filtros.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                {/* Teléfono: una tarjeta por recinto (la tabla de 6 columnas no cabe) */}
+                <ul className="md:hidden divide-y divide-slate-100" data-testid="venue-cards">
+                  {searchedVenues.map((venue) => {
+                    const globalScore = computeGlobalScore(venue);
+                    const open = (tab: 'info' | 'modalities') => { setDrawerInitialTab(tab); setSelectedVenueId(venue.id); setIsDrawerOpen(true); };
+                    return (
+                      <li key={venue.id} className="p-4 space-y-3">
+                        <button type="button" onClick={() => open('info')} className="text-left w-full cursor-pointer">
+                          <span className="text-base font-semibold text-slate-800 block">{venue.name}</span>
+                          <span className="text-sm text-slate-500 block">{[venue.city, venue.state].filter(Boolean).join(', ')}{venue.establishmentType ? ` · ${venue.establishmentType}` : ''}</span>
+                          {venue.address && <span className="text-sm text-slate-500 block truncate">{venue.address}</span>}
+                        </button>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <button type="button" onClick={() => open('modalities')} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer" aria-label={`Flamo Score ${globalScore} de 100`}>
+                            <span className="font-mono font-bold text-indigo-600 text-sm">{globalScore}/100</span>
+                            <span className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden"><span className="block bg-indigo-500 h-full" style={{ width: `${globalScore}%` }} /></span>
+                          </button>
+                          <span className="inline-flex items-center gap-1 text-sm text-slate-600"><Star className="w-4 h-4 text-amber-500 fill-amber-500" />{venue.rating} ({venue.userRatingsCount})</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => open('info')} className="flex-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl px-3 py-2.5 text-sm font-bold cursor-pointer flex items-center justify-center gap-2"><Building2 className="w-4 h-4" />Ver ficha 360</button>
+                          <button type="button" onClick={() => handleDeleteVenue(venue.id)} className="px-3 text-slate-500 hover:text-rose-600 border border-slate-200 rounded-xl cursor-pointer" aria-label={`Eliminar ${venue.name}`}><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs font-sans">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/40 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
@@ -1075,6 +1104,7 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
           </div>
@@ -1105,11 +1135,7 @@ export default function App() {
                               : 'bg-white border-silver-haze hover:bg-silver-haze/35 text-slate-700'
                           }`}
                         >
-                          <img
-                            src={artist.photo}
-                            alt={artist.artisticName}
-                            className="w-10 h-10 rounded-full object-cover shrink-0 border border-silver-haze"
-                          />
+                          <Avatar src={artist.photo} name={artist.artisticName} className="w-10 h-10 rounded-full object-cover shrink-0 border border-silver-haze" />
                           <div className="truncate pr-8">
                             <span className={`text-xs font-semibold block truncate ${isSelected ? 'text-celestial-canvas font-bold' : 'text-slate-800'}`}>
                               {artist.artisticName}

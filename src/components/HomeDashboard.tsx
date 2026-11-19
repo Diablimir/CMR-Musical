@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, MapPin, Eye, Info, List, CalendarDays, X, Phone, Globe, Star
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
+import Avatar from './Avatar';
 import { computeGlobalScore, SCORE_METRICS, heatColor } from '../lib/venueScoreRubric';
 import VenueNotes from './VenueNotes';
 import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour, VenueNote } from '../types';
@@ -941,7 +942,7 @@ export default function HomeDashboard({
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               {artist?.photo && (
-                                <img src={artist.photo} alt={artist.artisticName} className="w-6 h-6 rounded-full object-cover border border-slate-200" />
+                                <Avatar src={artist.photo} name={artist.artisticName} textClass="text-[9px]" className="w-6 h-6 rounded-full object-cover border border-slate-200" />
                               )}
                               <span className="font-semibold text-slate-700">{artist?.artisticName || 'Desconocido'}</span>
                             </div>
@@ -1068,7 +1069,7 @@ export default function HomeDashboard({
                     return (
                       <div className="flex items-center gap-2">
                         {art?.photo && (
-                          <img src={art.photo} alt={art.artisticName} className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0" />
+                          <Avatar src={art.photo} name={art.artisticName} textClass="text-[9px]" className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0" />
                         )}
                         <span className="font-semibold text-slate-700 truncate">{art?.artisticName || 'Desconocido'}</span>
                       </div>

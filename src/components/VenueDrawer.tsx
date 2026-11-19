@@ -326,7 +326,7 @@ export default function VenueDrawer({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`py-3.5 text-xs font-medium border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap focus:outline-none cursor-pointer ${
+                    className={`shrink-0 py-3.5 text-xs font-medium border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap focus:outline-none cursor-pointer ${
                       activeTab === tab.id
                         ? 'border-celestial-canvas text-celestial-canvas font-bold'
                         : 'border-transparent text-slate-400 hover:text-slate-700'
