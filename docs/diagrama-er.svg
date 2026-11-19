@@ -10,7 +10,7 @@
 <title>ER</title>
 <polygon fill="white" stroke="transparent" points="-36,36 -36,-5006 1923,-5006 1923,36 -36,36"/>
 <text text-anchor="start" x="739" y="-4952.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="18.00">FLAMO CRM · Diagrama entidad&#45;relación</text>
-<text text-anchor="start" x="645.5" y="-4940.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#64748b">Esquema v8 · solo columnas clave · punteada = al borrar el padre queda en NULL · pata de gallo = muchos</text>
+<text text-anchor="start" x="642" y="-4940.2" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#64748b">Esquema v10 · solo columnas clave · punteada = al borrar el padre queda en NULL · pata de gallo = muchos</text>
 <!-- artistas -->
 <g id="node1" class="node">
 <title>artistas</title>
@@ -35,7 +35,7 @@
 <polygon fill="none" stroke="#cbd5e1" points="1392.5,-1598 1392.5,-1758 1602.5,-1758 1602.5,-1598 1392.5,-1598"/>
 </g>
 <!-- cat_etapas_desarrollo -->
-<g id="node15" class="node">
+<g id="node16" class="node">
 <title>cat_etapas_desarrollo</title>
 <polygon fill="white" stroke="transparent" points="1733,-1647 1733,-1709 1887,-1709 1887,-1647 1733,-1647"/>
 <polygon fill="#7c8794" stroke="transparent" points="1734,-1688 1734,-1708 1886,-1708 1886,-1688 1734,-1688"/>
@@ -189,7 +189,7 @@
 <text text-anchor="middle" x="1291.5" y="-4126.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;artista_id &#160;</text>
 </g>
 <!-- cat_roles_contacto -->
-<g id="node18" class="node">
+<g id="node19" class="node">
 <title>cat_roles_contacto</title>
 <polygon fill="white" stroke="transparent" points="1395,-4344 1395,-4406 1600,-4406 1600,-4344 1395,-4344"/>
 <polygon fill="#7c8794" stroke="transparent" points="1396.5,-4385 1396.5,-4405 1599.5,-4405 1599.5,-4385 1396.5,-4385"/>
@@ -211,7 +211,7 @@
 <text text-anchor="middle" x="1291.5" y="-4182.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;rol_id &#160;</text>
 </g>
 <!-- contactos -->
-<g id="node19" class="node">
+<g id="node20" class="node">
 <title>contactos</title>
 <polygon fill="white" stroke="transparent" points="1414.5,-4575 1414.5,-4695 1580.5,-4695 1580.5,-4575 1414.5,-4575"/>
 <polygon fill="#2f6f5e" stroke="transparent" points="1415.5,-4674 1415.5,-4694 1579.5,-4694 1579.5,-4674 1415.5,-4674"/>
@@ -305,7 +305,7 @@
 <text text-anchor="middle" x="1291.5" y="-374.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;artista_id &#160;</text>
 </g>
 <!-- cat_generos -->
-<g id="node16" class="node">
+<g id="node17" class="node">
 <title>cat_generos</title>
 <polygon fill="white" stroke="transparent" points="1385,-10 1385,-92 1610,-92 1610,-10 1385,-10"/>
 <polygon fill="#7c8794" stroke="transparent" points="1386.5,-71 1386.5,-91 1609.5,-91 1609.5,-71 1386.5,-71"/>
@@ -561,8 +561,28 @@
 <polyline fill="none" stroke="#64748b" points="1488.03,-1758.01 1487.48,-1762.47 "/>
 <text text-anchor="middle" x="1291.5" y="-2490.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;artista_id &#160;</text>
 </g>
+<!-- cambios_pendientes -->
+<g id="node15" class="node">
+<title>cambios_pendientes</title>
+<polygon fill="white" stroke="transparent" points="52,-2675 52,-2815 221,-2815 221,-2675 52,-2675"/>
+<polygon fill="#7c8794" stroke="transparent" points="53.5,-2794 53.5,-2814 220.5,-2814 220.5,-2794 53.5,-2794"/>
+<text text-anchor="start" x="74.5" y="-2802.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="white">cambios_pendientes</text>
+<text text-anchor="start" x="57.5" y="-2782.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00">PK</text>
+<text text-anchor="start" x="83.5" y="-2782.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00">id</text>
+<text text-anchor="start" x="149.5" y="-2781.5" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#6b7280">VARCHAR(40)</text>
+<text text-anchor="start" x="83.5" y="-2761.2" font-family="Helvetica,sans-Serif" font-size="11.00">coleccion</text>
+<text text-anchor="start" x="149.5" y="-2761.5" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#6b7280">VARCHAR(30)</text>
+<text text-anchor="start" x="83.5" y="-2741.2" font-family="Helvetica,sans-Serif" font-size="11.00">registro_id</text>
+<text text-anchor="start" x="149.5" y="-2741.5" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#6b7280">VARCHAR(40)</text>
+<text text-anchor="start" x="83.5" y="-2721.2" font-family="Helvetica,sans-Serif" font-size="11.00">accion</text>
+<text text-anchor="start" x="149.5" y="-2721.5" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#6b7280">VARCHAR(10)</text>
+<text text-anchor="start" x="83.5" y="-2701.2" font-family="Helvetica,sans-Serif" font-size="11.00">datos</text>
+<text text-anchor="start" x="149.5" y="-2701.5" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#6b7280">LONGTEXT</text>
+<text text-anchor="start" x="83.5" y="-2683.8" font-family="Helvetica,sans-Serif" font-style="italic" font-size="9.00" fill="#94a3b8">+ 8 columnas más</text>
+<polygon fill="none" stroke="#cbd5e1" points="52,-2675 52,-2815 221,-2815 221,-2675 52,-2675"/>
+</g>
 <!-- cat_monedas -->
-<g id="node17" class="node">
+<g id="node18" class="node">
 <title>cat_monedas</title>
 <polygon fill="white" stroke="transparent" points="989.5,-1146 989.5,-1208 1143.5,-1208 1143.5,-1146 989.5,-1146"/>
 <polygon fill="#7c8794" stroke="transparent" points="990.5,-1187 990.5,-1207 1142.5,-1207 1142.5,-1187 990.5,-1187"/>
@@ -575,7 +595,7 @@
 <polygon fill="none" stroke="#cbd5e1" points="989.5,-1146 989.5,-1208 1143.5,-1208 1143.5,-1146 989.5,-1146"/>
 </g>
 <!-- contacto_correos -->
-<g id="node20" class="node">
+<g id="node21" class="node">
 <title>contacto_correos</title>
 <polygon fill="white" stroke="transparent" points="957.5,-4811 957.5,-4933 1175.5,-4933 1175.5,-4811 957.5,-4811"/>
 <polygon fill="#2f6f5e" stroke="transparent" points="958.5,-4912 958.5,-4932 1174.5,-4932 1174.5,-4912 958.5,-4912"/>
@@ -604,7 +624,7 @@
 <text text-anchor="middle" x="1291.5" y="-4776.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contacto_id &#160;</text>
 </g>
 <!-- contacto_telefonos -->
-<g id="node21" class="node">
+<g id="node22" class="node">
 <title>contacto_telefonos</title>
 <polygon fill="white" stroke="transparent" points="957.5,-4639 957.5,-4761 1175.5,-4761 1175.5,-4639 957.5,-4639"/>
 <polygon fill="#2f6f5e" stroke="transparent" points="958.5,-4740 958.5,-4760 1174.5,-4760 1174.5,-4740 958.5,-4740"/>
@@ -633,7 +653,7 @@
 <text text-anchor="middle" x="1291.5" y="-4675.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contacto_id &#160;</text>
 </g>
 <!-- contratos -->
-<g id="node22" class="node">
+<g id="node23" class="node">
 <title>contratos</title>
 <polygon fill="white" stroke="transparent" points="1395,-3075 1395,-3215 1600,-3215 1600,-3075 1395,-3075"/>
 <polygon fill="#b7791f" stroke="transparent" points="1396.5,-3194 1396.5,-3214 1599.5,-3214 1599.5,-3194 1396.5,-3194"/>
@@ -653,7 +673,7 @@
 <polygon fill="none" stroke="#cbd5e1" points="1395,-3075 1395,-3215 1600,-3215 1600,-3075 1395,-3075"/>
 </g>
 <!-- contrato_artistas -->
-<g id="node23" class="node">
+<g id="node24" class="node">
 <title>contrato_artistas</title>
 <polygon fill="white" stroke="transparent" points="966.5,-2856 966.5,-2918 1166.5,-2918 1166.5,-2856 966.5,-2856"/>
 <polygon fill="#b7791f" stroke="transparent" points="967.5,-2897 967.5,-2917 1165.5,-2917 1165.5,-2897 967.5,-2897"/>
@@ -689,7 +709,7 @@
 <text text-anchor="middle" x="1291.5" y="-2950.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contrato_id · CASCADE &#160;</text>
 </g>
 <!-- contrato_eventos -->
-<g id="node24" class="node">
+<g id="node25" class="node">
 <title>contrato_eventos</title>
 <polygon fill="white" stroke="transparent" points="504,-3093 504,-3155 704,-3155 704,-3093 504,-3093"/>
 <polygon fill="#b7791f" stroke="transparent" points="505,-3134 505,-3154 703,-3154 703,-3134 505,-3134"/>
@@ -716,7 +736,7 @@
 <text text-anchor="middle" x="1066.5" y="-3139.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contrato_id · CASCADE &#160;</text>
 </g>
 <!-- eventos -->
-<g id="node28" class="node">
+<g id="node29" class="node">
 <title>eventos</title>
 <polygon fill="white" stroke="transparent" points="980,-3190 980,-3370 1153,-3370 1153,-3190 980,-3190"/>
 <polygon fill="#b7791f" stroke="transparent" points="981.5,-3349 981.5,-3369 1152.5,-3369 1152.5,-3349 981.5,-3349"/>
@@ -751,7 +771,7 @@
 <text text-anchor="middle" x="840.5" y="-3222.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;evento_id &#160;</text>
 </g>
 <!-- contrato_proveedores -->
-<g id="node25" class="node">
+<g id="node26" class="node">
 <title>contrato_proveedores</title>
 <polygon fill="white" stroke="transparent" points="961.5,-3664 961.5,-3726 1171.5,-3726 1171.5,-3664 961.5,-3664"/>
 <polygon fill="#b7791f" stroke="transparent" points="962.5,-3705 962.5,-3725 1170.5,-3725 1170.5,-3705 962.5,-3705"/>
@@ -778,7 +798,7 @@
 <text text-anchor="middle" x="1291.5" y="-3664.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contrato_id · CASCADE &#160;</text>
 </g>
 <!-- proveedores -->
-<g id="node32" class="node">
+<g id="node33" class="node">
 <title>proveedores</title>
 <polygon fill="white" stroke="transparent" points="1395,-3980 1395,-4120 1600,-4120 1600,-3980 1395,-3980"/>
 <polygon fill="#0a2538" stroke="transparent" points="1396.5,-4099 1396.5,-4119 1599.5,-4119 1599.5,-4099 1396.5,-4099"/>
@@ -807,7 +827,7 @@
 <text text-anchor="middle" x="1291.5" y="-3797.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;proveedor_id &#160;</text>
 </g>
 <!-- contrato_tours -->
-<g id="node26" class="node">
+<g id="node27" class="node">
 <title>contrato_tours</title>
 <polygon fill="white" stroke="transparent" points="966.5,-2968 966.5,-3030 1166.5,-3030 1166.5,-2968 966.5,-2968"/>
 <polygon fill="#b7791f" stroke="transparent" points="967.5,-3009 967.5,-3029 1165.5,-3029 1165.5,-3009 967.5,-3009"/>
@@ -834,7 +854,7 @@
 <text text-anchor="middle" x="1291.5" y="-3084.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contrato_id · CASCADE &#160;</text>
 </g>
 <!-- tours -->
-<g id="node40" class="node">
+<g id="node41" class="node">
 <title>tours</title>
 <polygon fill="white" stroke="transparent" points="1407,-2885 1407,-3025 1588,-3025 1588,-2885 1407,-2885"/>
 <polygon fill="#e84a2e" stroke="transparent" points="1408.5,-3004 1408.5,-3024 1587.5,-3024 1587.5,-3004 1408.5,-3004"/>
@@ -863,7 +883,7 @@
 <text text-anchor="middle" x="1291.5" y="-2982.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;tour_id &#160;</text>
 </g>
 <!-- contrato_venues -->
-<g id="node27" class="node">
+<g id="node28" class="node">
 <title>contrato_venues</title>
 <polygon fill="white" stroke="transparent" points="966.5,-3420 966.5,-3482 1166.5,-3482 1166.5,-3420 966.5,-3420"/>
 <polygon fill="#b7791f" stroke="transparent" points="967.5,-3461 967.5,-3481 1165.5,-3481 1165.5,-3461 967.5,-3461"/>
@@ -890,7 +910,7 @@
 <text text-anchor="middle" x="1291.5" y="-3427.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;contrato_id · CASCADE &#160;</text>
 </g>
 <!-- venues -->
-<g id="node42" class="node">
+<g id="node43" class="node">
 <title>venues</title>
 <polygon fill="white" stroke="transparent" points="1414,-3747 1414,-3887 1581,-3887 1581,-3747 1414,-3747"/>
 <polygon fill="#0a2538" stroke="transparent" points="1415.5,-3866 1415.5,-3886 1580.5,-3886 1580.5,-3866 1415.5,-3866"/>
@@ -938,7 +958,7 @@
 <text text-anchor="middle" x="1291.5" y="-3352.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;venue_id &#160;</text>
 </g>
 <!-- evento_artistas -->
-<g id="node29" class="node">
+<g id="node30" class="node">
 <title>evento_artistas</title>
 <polygon fill="white" stroke="transparent" points="468.5,-1208 468.5,-1408 739.5,-1408 739.5,-1208 468.5,-1208"/>
 <polygon fill="#b7791f" stroke="transparent" points="470,-1387 470,-1407 739,-1407 739,-1387 470,-1387"/>
@@ -994,7 +1014,7 @@
 <text text-anchor="middle" x="840.5" y="-2025.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;evento_id &#160;</text>
 </g>
 <!-- evento_bandas_invitadas -->
-<g id="node30" class="node">
+<g id="node31" class="node">
 <title>evento_bandas_invitadas</title>
 <polygon fill="white" stroke="transparent" points="483.5,-3415 483.5,-3497 724.5,-3497 724.5,-3415 483.5,-3415"/>
 <polygon fill="#b7791f" stroke="transparent" points="485,-3476 485,-3496 724,-3496 724,-3476 485,-3476"/>
@@ -1021,7 +1041,7 @@
 <text text-anchor="middle" x="840.5" y="-3385.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;evento_id &#160;</text>
 </g>
 <!-- evento_setlist -->
-<g id="node31" class="node">
+<g id="node32" class="node">
 <title>evento_setlist</title>
 <polygon fill="white" stroke="transparent" points="477,-3205 477,-3365 731,-3365 731,-3205 477,-3205"/>
 <polygon fill="#b7791f" stroke="transparent" points="478,-3344 478,-3364 730,-3364 730,-3344 478,-3344"/>
@@ -1055,7 +1075,7 @@
 <text text-anchor="middle" x="840.5" y="-3284.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;evento_id &#160;</text>
 </g>
 <!-- proveedor_contactos -->
-<g id="node33" class="node">
+<g id="node34" class="node">
 <title>proveedor_contactos</title>
 <polygon fill="white" stroke="transparent" points="936,-4487 936,-4589 1197,-4589 1197,-4487 936,-4487"/>
 <polygon fill="#0a2538" stroke="transparent" points="937.5,-4568 937.5,-4588 1196.5,-4588 1196.5,-4568 937.5,-4568"/>
@@ -1107,7 +1127,7 @@
 <text text-anchor="middle" x="1291.5" y="-4501.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;proveedor_id &#160;</text>
 </g>
 <!-- proyectos_grabacion -->
-<g id="node34" class="node">
+<g id="node35" class="node">
 <title>proyectos_grabacion</title>
 <polygon fill="white" stroke="transparent" points="956.5,-2150 956.5,-2310 1176.5,-2310 1176.5,-2150 956.5,-2150"/>
 <polygon fill="#e84a2e" stroke="transparent" points="957.5,-2289 957.5,-2309 1175.5,-2309 1175.5,-2289 957.5,-2289"/>
@@ -1140,7 +1160,7 @@
 <text text-anchor="middle" x="1291.5" y="-2084.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;artista_id &#160;</text>
 </g>
 <!-- proyecto_canciones -->
-<g id="node35" class="node">
+<g id="node36" class="node">
 <title>proyecto_canciones</title>
 <polygon fill="white" stroke="transparent" points="477,-2045 477,-2205 731,-2205 731,-2045 477,-2045"/>
 <polygon fill="#e84a2e" stroke="transparent" points="478,-2184 478,-2204 730,-2204 730,-2184 478,-2184"/>
@@ -1174,7 +1194,7 @@
 <text text-anchor="middle" x="840.5" y="-2192.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;proyecto_id · CASCADE &#160;</text>
 </g>
 <!-- proyecto_costos -->
-<g id="node36" class="node">
+<g id="node37" class="node">
 <title>proyecto_costos</title>
 <polygon fill="white" stroke="transparent" points="477.5,-1835 477.5,-1995 730.5,-1995 730.5,-1835 477.5,-1835"/>
 <polygon fill="#e84a2e" stroke="transparent" points="479,-1974 479,-1994 730,-1994 730,-1974 479,-1974"/>
@@ -1208,7 +1228,7 @@
 <text text-anchor="middle" x="840.5" y="-2112.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;proyecto_id · CASCADE &#160;</text>
 </g>
 <!-- proyecto_etapas -->
-<g id="node37" class="node">
+<g id="node38" class="node">
 <title>proyecto_etapas</title>
 <polygon fill="white" stroke="transparent" points="477.5,-2465 477.5,-2625 730.5,-2625 730.5,-2465 477.5,-2465"/>
 <polygon fill="#e84a2e" stroke="transparent" points="479,-2604 479,-2624 730,-2624 730,-2604 479,-2604"/>
@@ -1242,7 +1262,7 @@
 <text text-anchor="middle" x="840.5" y="-2418.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;proyecto_id · CASCADE &#160;</text>
 </g>
 <!-- proyecto_instrumentos -->
-<g id="node38" class="node">
+<g id="node39" class="node">
 <title>proyecto_instrumentos</title>
 <polygon fill="white" stroke="transparent" points="0,-2463 0,-2625 273,-2625 273,-2463 0,-2463"/>
 <polygon fill="#e84a2e" stroke="transparent" points="1.5,-2604 1.5,-2624 272.5,-2624 272.5,-2604 1.5,-2604"/>
@@ -1289,7 +1309,7 @@
 <text text-anchor="middle" x="367.5" y="-2525.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;etapa_id · CASCADE &#160;</text>
 </g>
 <!-- proyecto_pagos -->
-<g id="node39" class="node">
+<g id="node40" class="node">
 <title>proyecto_pagos</title>
 <polygon fill="white" stroke="transparent" points="462,-2255 462,-2415 746,-2415 746,-2255 462,-2255"/>
 <polygon fill="#e84a2e" stroke="transparent" points="463,-2394 463,-2414 745,-2414 745,-2394 463,-2394"/>
@@ -1323,7 +1343,7 @@
 <text text-anchor="middle" x="840.5" y="-2294.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;proyecto_id · CASCADE &#160;</text>
 </g>
 <!-- tour_artistas -->
-<g id="node41" class="node">
+<g id="node42" class="node">
 <title>tour_artistas</title>
 <polygon fill="white" stroke="transparent" points="969,-2724 969,-2806 1164,-2806 1164,-2724 969,-2724"/>
 <polygon fill="#e84a2e" stroke="transparent" points="970.5,-2785 970.5,-2805 1163.5,-2805 1163.5,-2785 970.5,-2785"/>
@@ -1361,7 +1381,7 @@
 <text text-anchor="middle" x="1291.5" y="-2778.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;tour_id &#160;</text>
 </g>
 <!-- venue_bandas_locales -->
-<g id="node43" class="node">
+<g id="node44" class="node">
 <title>venue_bandas_locales</title>
 <polygon fill="white" stroke="transparent" points="948.5,-3532 948.5,-3614 1184.5,-3614 1184.5,-3532 948.5,-3532"/>
 <polygon fill="#0a2538" stroke="transparent" points="949.5,-3593 949.5,-3613 1183.5,-3613 1183.5,-3593 949.5,-3593"/>
@@ -1388,7 +1408,7 @@
 <text text-anchor="middle" x="1291.5" y="-3581.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;venue_id &#160;</text>
 </g>
 <!-- venue_contactos -->
-<g id="node44" class="node">
+<g id="node45" class="node">
 <title>venue_contactos</title>
 <polygon fill="white" stroke="transparent" points="940.5,-4324 940.5,-4426 1192.5,-4426 1192.5,-4324 940.5,-4324"/>
 <polygon fill="#0a2538" stroke="transparent" points="941.5,-4405 941.5,-4425 1191.5,-4425 1191.5,-4405 941.5,-4405"/>
@@ -1440,7 +1460,7 @@
 <text text-anchor="middle" x="1291.5" y="-4338.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;venue_id &#160;</text>
 </g>
 <!-- venue_horarios -->
-<g id="node45" class="node">
+<g id="node46" class="node">
 <title>venue_horarios</title>
 <polygon fill="white" stroke="transparent" points="944.5,-3776 944.5,-3858 1188.5,-3858 1188.5,-3776 944.5,-3776"/>
 <polygon fill="#0a2538" stroke="transparent" points="945.5,-3837 945.5,-3857 1187.5,-3857 1187.5,-3837 945.5,-3837"/>
@@ -1467,7 +1487,7 @@
 <text text-anchor="middle" x="1291.5" y="-3819.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;venue_id &#160;</text>
 </g>
 <!-- venue_notas -->
-<g id="node46" class="node">
+<g id="node47" class="node">
 <title>venue_notas</title>
 <polygon fill="white" stroke="transparent" points="508.5,-3768 508.5,-3910 699.5,-3910 699.5,-3768 508.5,-3768"/>
 <polygon fill="#0a2538" stroke="transparent" points="510,-3889 510,-3909 699,-3909 699,-3889 510,-3889"/>
@@ -1511,7 +1531,7 @@
 <text text-anchor="middle" x="1066.5" y="-3891.8" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#475569"> &#160;venue_id &#160;</text>
 </g>
 <!-- venue_proveedores -->
-<g id="node47" class="node">
+<g id="node48" class="node">
 <title>venue_proveedores</title>
 <polygon fill="white" stroke="transparent" points="961.5,-4018 961.5,-4080 1171.5,-4080 1171.5,-4018 961.5,-4018"/>
 <polygon fill="#0a2538" stroke="transparent" points="962.5,-4059 962.5,-4079 1170.5,-4079 1170.5,-4059 962.5,-4059"/>

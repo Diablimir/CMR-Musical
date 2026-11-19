@@ -6,6 +6,8 @@ require __DIR__ . '/lib.php';
 require API . '/schema.php';
 require API . '/entities.php';
 require API . '/social_lib.php';
+if (!defined('APPROVER_ROLES')) define('APPROVER_ROLES', ['Super Admin']);
+require API . '/approvals_lib.php';
 if (!function_exists('apify_token')) { function apify_token(): string { return ''; } }   // sin token: la consulta falla de forma controlada
 require __DIR__ . '/seed_v1.php';
 
@@ -25,7 +27,7 @@ $count = fn(string $sql, array $a = []) => (int)t_scalar($pdo, $sql, $a);
 t_section('1. Migraciones: instalación nueva');
 $fresh();
 $applied = migrate_up($pdo);
-t_eq($applied, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'se aplican las 9 migraciones en orden');
+t_eq($applied, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 'se aplican las 10 migraciones en orden');
 foreach (['artistas','venues','contactos','contacto_correos','contacto_telefonos','venue_contactos','artista_contactos','proveedor_contactos','evento_artistas','tour_artistas','artista_generos','cat_generos','cat_roles_contacto','cat_monedas','eventos','tours','contratos','proveedores','proyectos_grabacion','venue_proveedores','cat_etapas_desarrollo','schema_migrations'] as $tb) t_ok(db_table_exists($pdo, $tb), "existe la tabla $tb");
 t_eq(migrate_up($pdo), [], 'volver a migrar no hace nada (idempotente)');
 t_eq($count('SELECT COUNT(*) FROM cat_etapas_desarrollo'), 7, 'catálogo de etapas sembrado');
@@ -423,9 +425,9 @@ $sync(['events' => ['deletes' => ['evt-1']]]);
 t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE nota_id='n-1' AND evento_id IS NULL"), 1, 'al borrar el evento la nota se conserva (SET NULL)');
 $sync(['venues' => ['deletes' => ['ven-1']]]);
 t_eq($count('SELECT COUNT(*) FROM venue_notas'), 0, 'al borrar el venue se borran sus notas (CASCADE)');
-t_eq(migrate_down($pdo, 5), [9, 8, 7, 6], 'rollback de la 009, 008, 007 y 006 (en orden inverso)');
+t_eq(migrate_down($pdo, 5), [10, 9, 8, 7, 6], 'rollback de la 010 a la 006 (en orden inverso)');
 t_ok(!db_table_exists($pdo, 'venue_notas') && db_table_exists($pdo, 'venues'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [6, 7, 8, 9], 'y se pueden volver a aplicar');
+t_eq(migrate_up($pdo), [6, 7, 8, 9, 10], 'y se pueden volver a aplicar');
 
 t_section('20d. Historial de redes y acciones (migración 007)');
 $fresh(); migrate_up($pdo); catalog_cache_clear();
@@ -486,9 +488,9 @@ t_eq([$rf['skipped'], array_keys($rf['errors'])], [['instagram'], ['tiktok']], '
 t_eq(array_keys(social_refresh_artist($pdo, 'art-3', true)['errors']), ['instagram', 'tiktok'], 'con «forzar» sí se vuelve a consultar');
 $sync(['artists' => ['deletes' => ['art-1', 'art-3']]]);
 t_eq($count('SELECT COUNT(*) FROM artista_metricas_redes') + $count('SELECT COUNT(*) FROM artista_acciones'), 0, 'al borrar el artista se borra su historial y sus acciones (CASCADE)');
-t_eq(migrate_down($pdo, 6), [9, 8, 7], 'rollback de la 009, 008 y 007 elimina solo sus tablas');
+t_eq(migrate_down($pdo, 6), [10, 9, 8, 7], 'rollback de la 010 a la 007 elimina solo sus tablas');
 t_ok(!db_table_exists($pdo, 'artista_metricas_redes') && !db_table_exists($pdo, 'artista_acciones') && db_table_exists($pdo, 'venue_notas'), 'el resto del esquema queda intacto');
-t_eq(migrate_up($pdo), [7, 8, 9], 'y se puede volver a aplicar');
+t_eq(migrate_up($pdo), [7, 8, 9, 10], 'y se puede volver a aplicar');
 
 // ═══ Conexión oficial con Instagram (migración 008) ═══
 t_section('20e. Cuenta oficial de Instagram: cifrado, lectores y guardado (migración 008)');
@@ -541,10 +543,10 @@ $sync(['artists' => ['deletes' => ['art-1']]]);
 t_eq($count('SELECT COUNT(*) FROM artista_conexiones') + $count('SELECT COUNT(*) FROM artista_alcance') + $count('SELECT COUNT(*) FROM artista_demografia') + $count('SELECT COUNT(*) FROM artista_publicaciones'), 0, 'al borrar el artista se borra todo lo oficial (CASCADE)');
 $fresh(); migrate_up($pdo); catalog_cache_clear(); $sync($up('artists', $art('art-1', 'Uno')));
 social_save_snapshot($pdo, 'art-1', 'instagram', '2026-11-10', ['seguidores' => 2500], 'meta');
-t_eq(migrate_down($pdo, 7), [9, 8], 'rollback de la 009 y la 008');
+t_eq(migrate_down($pdo, 7), [10, 9, 8], 'rollback de la 010, 009 y 008');
 t_ok(!db_table_exists($pdo, 'artista_conexiones') && db_table_exists($pdo, 'artista_metricas_redes'), 'quita las 4 tablas y deja las capturas');
 t_eq((string)t_scalar($pdo, "SELECT fuente FROM artista_metricas_redes WHERE artista_id='art-1'"), 'manual', 'las capturas «meta» se conservan marcadas como «manual»');
-t_eq(migrate_up($pdo), [8, 9], 'y se puede volver a aplicar');
+t_eq(migrate_up($pdo), [8, 9, 10], 'y se puede volver a aplicar');
 
 // ═══ Seguridad: identificadores de hijos repetidos (hallazgo de auditoría: bucle infinito) ═══
 t_section('20f. Seguridad: child_id() siempre termina');
@@ -561,11 +563,11 @@ set_time_limit(0);
 // ═══ Escalabilidad: índice de login_attempts (migración 009) ═══
 t_section('20g. Índice de login_attempts (migración 009)');
 $fresh(); migrate_up($pdo, 8);
-t_eq(migrate_up($pdo), [9], 'sin tabla login_attempts (instalación solo por migraciones) la 009 no falla');
+t_eq(migrate_up($pdo, 9), [9], 'sin tabla login_attempts (instalación solo por migraciones) la 009 no falla');
 $pdo->exec('CREATE TABLE login_attempts (ident VARCHAR(190) NOT NULL, ts INT NOT NULL)');
 migrate_down($pdo, 8);
 t_ok(!db_index_exists($pdo, 'login_attempts', 'idx_la_ident_ts'), 'antes: sin índice');
-t_eq(migrate_up($pdo), [9], 'se aplica');
+t_eq(migrate_up($pdo, 9), [9], 'se aplica');
 t_ok(db_index_exists($pdo, 'login_attempts', 'idx_la_ident_ts') && db_index_exists($pdo, 'login_attempts', 'idx_la_ts'), 'crea los dos índices');
 $ins = $pdo->prepare('INSERT INTO login_attempts (ident, ts) VALUES (?, ?)');
 $pdo->beginTransaction(); for ($i = 0; $i < 5000; $i++) $ins->execute(['rl:u' . ($i % 50), time()]); $pdo->commit();
@@ -574,6 +576,73 @@ $pl = $pdo->query("EXPLAIN SELECT COUNT(*) FROM login_attempts WHERE ident = 'rl
 t_ok(str_contains((string)($pl['key'] ?? ''), 'idx_la_ident_ts'), 'la cuenta por ident usa el índice (sin escanear toda la tabla)', json_encode($pl));
 t_eq(migrate_down($pdo, 8), [9], 'rollback quita los índices'); t_ok(!db_index_exists($pdo, 'login_attempts', 'idx_la_ident_ts'), 'y no deja rastro');
 migrate_up($pdo); $pdo->exec('DROP TABLE login_attempts');
+
+// ═══ Aprobación de cambios (migración 010) ═══
+t_section('20h. Cambios pendientes de aprobación del Super Admin (migración 010)');
+$fresh(); migrate_up($pdo); catalog_cache_clear();
+$maria = ['id' => 'u-maria', 'name' => 'María', 'role' => 'Gestor de Contenido']; $luis = ['id' => 'u-luis', 'name' => 'Luis', 'role' => 'Director de Booking']; $adm = ['id' => 'u-adm', 'name' => 'Admin', 'role' => 'Super Admin'];
+t_ok(can_approve($adm) && !can_approve($maria), 'solo el Super Admin puede aprobar');
+$r = propose_changes($pdo, $maria, ['artists' => ['upserts' => [$art('art-p', 'Propuesta', ['genre' => 'Rock'])]]]);
+t_eq($r, [['collection' => 'artists', 'id' => 'art-p', 'action' => 'crear']], 'un cambio de otro rol queda como propuesta de «crear»');
+t_eq([$count("SELECT COUNT(*) FROM artistas"), $count('SELECT COUNT(*) FROM cat_generos'), $count("SELECT COUNT(*) FROM cambios_pendientes WHERE estado='pendiente'")], [0, 0, 1], 'NO se aplica nada: ni el artista ni los catálogos que la validación en seco habría creado');
+propose_changes($pdo, $maria, ['artists' => ['upserts' => [$art('art-p', 'Propuesta v2', ['genre' => 'Rock'])]]]);
+t_eq([$count("SELECT COUNT(*) FROM cambios_pendientes WHERE estado='pendiente'"), json_decode((string)t_scalar($pdo, "SELECT datos FROM cambios_pendientes"), true)['artisticName']], [1, 'Propuesta v2'], 'una nueva propuesta del mismo registro reemplaza a la anterior (queda la última)');
+t_throws(fn() => propose_changes($pdo, $maria, ['venues' => ['deletes' => ['ven-x']]]), 'un rol sin permiso NO puede eliminar', 'Super Admin puede eliminar');
+t_throws(fn() => propose_changes($pdo, $maria, ['mesas' => ['upserts' => []]]), 'una colección desconocida se rechaza', 'Colecci');
+t_throws(fn() => propose_changes($pdo, $maria, ['artists' => ['upserts' => [$art('art-bad', 'Mala', ['stage' => 'Inexistente'])]]]), 'un valor fuera de dominio se rechaza AL PROPONER (mismas reglas que al aplicar)', 'etapa');
+t_eq($count("SELECT COUNT(*) FROM cambios_pendientes"), 1, 'y no deja rastro de la propuesta inválida');
+propose_changes($pdo, $luis, ['venues' => ['upserts' => [$ven('ven-p', 'Foro propuesto')]], 'events' => ['upserts' => [$evt('evt-p', 'art-p', 'ven-p')]]]);
+t_eq($count("SELECT COUNT(*) FROM cambios_pendientes WHERE estado='pendiente'"), 3, 'un evento puede depender de un artista y un venue que también están pendientes');
+$mine = my_changes($pdo, 'u-maria'); $theirs = my_changes($pdo, 'u-luis');
+t_eq([count($mine), count($theirs), $mine[0]['status'], isset($mine[0]['data'])], [1, 2, 'pendiente', true], 'cada quien ve solo SUS propuestas (con su contenido mientras están pendientes)');
+$lp = list_pending($pdo); t_eq([count($lp), $lp[0]['current']], [3, null], 'el Super Admin ve todas; las «crear» no tienen registro actual');
+$ids = array_column($pdo->query("SELECT id, coleccion FROM cambios_pendientes ORDER BY FIELD(coleccion,'events','venues','artists')")->fetchAll(), 'id');
+$res = approve_changes($pdo, $ids, $adm);
+t_eq(array_column($res, 'ok'), [true, true, true], 'aprobar en cualquier orden funciona: se aplican primero artistas y venues y luego el evento');
+t_eq([$count('SELECT COUNT(*) FROM artistas'), $count('SELECT COUNT(*) FROM venues'), $count('SELECT COUNT(*) FROM eventos'), $count("SELECT COUNT(*) FROM cambios_pendientes WHERE estado='aprobado'")], [1, 1, 1, 3], 'los cambios ya están aplicados y las propuestas marcadas como aprobadas');
+t_eq([(string)t_scalar($pdo, "SELECT resuelto_por FROM cambios_pendientes LIMIT 1"), count(my_changes($pdo, 'u-maria')), my_changes($pdo, 'u-maria')[0]['status']], ['Admin', 1, 'aprobado'], 'queda constancia de quién aprobó, y quien propuso ve el resultado');
+t_eq(array_column(approve_changes($pdo, $ids, $adm), 'code'), ['not_pending', 'not_pending', 'not_pending'], 'aprobar dos veces lo mismo no hace nada');
+// conflicto: el registro cambia después de la propuesta
+$vNow = (int)t_scalar($pdo, "SELECT version FROM artistas WHERE id='art-p'");
+$edit = $art('art-p', 'Edición de María', ['genre' => 'Rock']); $edit['version'] = $vNow;
+propose_changes($pdo, $maria, ['artists' => ['upserts' => [$edit]]]);
+t_eq((string)t_scalar($pdo, "SELECT accion FROM cambios_pendientes WHERE estado='pendiente'"), 'editar', 'editar un registro existente se propone como «editar»');
+$direct = $art('art-p', 'Edición directa del admin', ['genre' => 'Rock']); $direct['version'] = $vNow; $sync($up('artists', $direct));
+$pid = (string)t_scalar($pdo, "SELECT id FROM cambios_pendientes WHERE estado='pendiente'");
+t_eq(approve_changes($pdo, [$pid], $adm)[0]['code'], 'conflict', 'si el registro cambió después de la propuesta, aprobar avisa del conflicto (no pisa en silencio)');
+t_eq((string)t_scalar($pdo, "SELECT nombre_artistico FROM artistas WHERE id='art-p'"), 'Edición directa del admin', 'y no se aplicó nada');
+t_eq(approve_changes($pdo, [$pid], $adm, true)[0]['ok'], true, 'el Super Admin puede «aprobar de todos modos»');
+t_eq((string)t_scalar($pdo, "SELECT nombre_artistico FROM artistas WHERE id='art-p'"), 'Edición de María', '…y entonces sí se aplica');
+// rechazo con motivo
+$edit2 = $art('art-p', 'Cambio dudoso', ['genre' => 'Rock']); $edit2['version'] = (int)t_scalar($pdo, "SELECT version FROM artistas WHERE id='art-p'");
+propose_changes($pdo, $maria, ['artists' => ['upserts' => [$edit2]]]);
+$pid2 = (string)t_scalar($pdo, "SELECT id FROM cambios_pendientes WHERE estado='pendiente'");
+t_eq(reject_changes($pdo, [$pid2], $adm, 'Ese nombre no es el correcto'), 1, 'rechazar una propuesta');
+t_eq((string)t_scalar($pdo, "SELECT nombre_artistico FROM artistas WHERE id='art-p'"), 'Edición de María', 'lo rechazado no se aplica');
+$rej = array_values(array_filter(my_changes($pdo, 'u-maria'), fn($c) => $c['status'] === 'rechazado'))[0];
+t_eq([$rej['reason'], $rej['resolvedBy'], isset($rej['data'])], ['Ese nombre no es el correcto', 'Admin', false], 'quien propuso ve el motivo del rechazo');
+t_eq(reject_changes($pdo, [$pid2], $adm, 'otra vez'), 0, 'rechazar lo ya resuelto no hace nada');
+// el registro fue eliminado después de la propuesta de edición
+$sync($up('venues', $ven('ven-del', 'Foro a borrar'))); $ev = $ven('ven-del', 'Foro editado'); $ev['version'] = 1;
+propose_changes($pdo, $luis, ['venues' => ['upserts' => [$ev]]]);
+$sync(['venues' => ['deletes' => ['ven-del']]]);
+$pid3 = (string)t_scalar($pdo, "SELECT id FROM cambios_pendientes WHERE registro_id='ven-del'");
+t_eq(approve_changes($pdo, [$pid3], $adm)[0]['code'], 'gone', 'una edición sobre un registro ya eliminado NO lo resucita');
+t_eq($count("SELECT COUNT(*) FROM venues WHERE id='ven-del'"), 0, 'el registro sigue eliminado');
+// retirar mis propuestas
+propose_changes($pdo, $maria, ['artists' => ['upserts' => [$art('art-w', 'Para retirar')]]]);
+$wid = (string)t_scalar($pdo, "SELECT id FROM cambios_pendientes WHERE registro_id='art-w'");
+t_eq(withdraw_changes($pdo, [$wid], 'u-luis'), 0, 'nadie puede retirar las propuestas de otra persona');
+t_eq(withdraw_changes($pdo, [$wid], 'u-maria'), 1, 'cada quien puede retirar las suyas mientras estén pendientes');
+t_eq($count("SELECT COUNT(*) FROM cambios_pendientes WHERE registro_id='art-w'"), 0, 'y desaparecen (no se aplicaron)');
+t_eq(withdraw_changes($pdo, [$pid2], 'u-maria'), 0, 'lo ya resuelto no se puede retirar');
+// límite por usuario
+$pdo->exec("INSERT INTO cambios_pendientes (id, coleccion, registro_id, accion, datos, propuesto_por, propuesto_nombre, creado_en) SELECT CONCAT('lim', n), 'venues', CONCAT('v', n), 'crear', '{}', 'u-spam', 'Spam', NOW(3) FROM (SELECT a.N + b.N*10 + c.N*100 + 1 n FROM (SELECT 0 N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) a, (SELECT 0 N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) b, (SELECT 0 N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) c) x WHERE n <= 500");
+t_throws(fn() => propose_changes($pdo, ['id' => 'u-spam', 'name' => 'Spam', 'role' => 'Gestor de Contenido'], ['venues' => ['upserts' => [$ven('ven-spam', 'x')]]]), 'con 500 propuestas pendientes, una más se rechaza (límite por usuario)', 'demasiados');
+t_throws(fn() => $pdo->exec("INSERT INTO cambios_pendientes (id, coleccion, registro_id, accion, datos, propuesto_por, propuesto_nombre, creado_en) VALUES ('x','tablas','1','crear','{}','u','U',NOW(3))"), 'la base rechaza una colección fuera del dominio');
+t_throws(fn() => $pdo->exec("INSERT INTO cambios_pendientes (id, coleccion, registro_id, accion, datos, propuesto_por, propuesto_nombre, creado_en) VALUES ('y','venues','1','crear','no es json','u','U',NOW(3))"), 'ni datos que no sean JSON válido');
+t_eq(migrate_down($pdo, 9), [10], 'rollback de la 010 elimina solo la cola'); t_ok(!db_table_exists($pdo, 'cambios_pendientes') && db_table_exists($pdo, 'artistas'), 'y los datos aprobados siguen intactos');
+t_eq(migrate_up($pdo), [10], 'y se puede volver a aplicar');
 
 // ═══════════════════════════════════════════════════════════
 t_section('21. Fase 4: contracción (retirar lo obsoleto) con verificación previa y rollback');

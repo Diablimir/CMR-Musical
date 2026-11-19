@@ -14,6 +14,7 @@ function back(string $status, string $msg, string $artist = ''): never {
 header('Content-Type: text/html; charset=utf-8');
 $u = current_user();
 if (!$u) back('error', 'Tu sesión expiró. Inicia sesión y vuelve a conectar la cuenta.');
+if (!in_array($u['role'], APPROVER_ROLES, true)) back('error', 'Solo el Super Admin puede conectar cuentas.');
 start_session();
 $ctx = $_SESSION['meta_oauth'] ?? null;
 $state = (string)($_GET['state'] ?? '');

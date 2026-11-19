@@ -32,6 +32,7 @@ try {
         respond(meta_load($pdo, $aid));
     }
     if ($method !== 'POST') respond(['error' => 'Método no permitido.'], 405);
+    if (!in_array($user['role'], APPROVER_ROLES, true)) respond(['error' => 'Solo el Super Admin puede conectar o desconectar cuentas.'], 403);
 
     $in = body();
     $aid = (string)($in['artistId'] ?? '');

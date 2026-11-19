@@ -1,6 +1,6 @@
-# FLAMO CRM — Arquitectura de la base de datos (esquema v9)
+# FLAMO CRM — Arquitectura de la base de datos (esquema v10)
 
-> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–009; 47 tablas; 366 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
+> Estado: **Fases 1 a 4 implementadas, probadas y verificadas** (migraciones 001–010; 48 tablas; 398 pruebas automatizadas). Ver §9 para lo que sigue pendiente.
 > Documentos relacionados: `DATABASE_AUDIT.md` (hallazgos y evidencia previa), `DATABASE_REFACTOR_PLAN.md` (plan por fases),
 > `DATA_DICTIONARY.md` (tablas y columnas), `schema.sql` (DDL), `CHANGELOG_DB.md` (registro de cambios).
 
@@ -210,6 +210,21 @@ erDiagram
         varchar enlace
         tinyint conectado
         varchar usuario_conectado
+    }
+    cambios_pendientes {
+        varchar id PK
+        varchar coleccion
+        varchar registro_id
+        varchar accion
+        longtext datos
+        int version_base
+        varchar propuesto_por
+        varchar propuesto_nombre
+        datetime creado_en
+        varchar estado
+        varchar resuelto_por
+        datetime resuelto_en
+        varchar motivo
     }
     cat_etapas_desarrollo {
         tinyint id PK
@@ -564,4 +579,4 @@ o, como Super Admin: `POST /api/migrate.php?action=down&to=1&confirm=yes`. Despu
 Pérdidas posibles al revertir (documentadas): contactos sin venue, correos/teléfonos adicionales, vínculos a más de un venue y la alineación completa (solo se conserva el artista principal).
 
 **Regenerar documentación y SQL:** `php scripts/db/generate-docs.php` (base de pruebas) y `python3 scripts/make-er-diagram.py`.
-**Pruebas:** `php tests/db/run.php` (366 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).
+**Pruebas:** `php tests/db/run.php` (398 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).

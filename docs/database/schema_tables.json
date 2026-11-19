@@ -729,6 +729,83 @@
         "indexes": []
     },
     {
+        "name": "cambios_pendientes",
+        "description": "Cola de aprobación: los cambios de los roles distintos de Super Admin quedan aquí como propuestas hasta que el Super Admin las aprueba (se aplican) o las rechaza (con motivo). También es la bitácora de quién propuso y quién resolvió.",
+        "columns": [
+            {
+                "name": "id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»).",
+                "key": "PK"
+            },
+            {
+                "name": "coleccion",
+                "type": "VARCHAR(30)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "registro_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "accion",
+                "type": "VARCHAR(10)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "datos",
+                "type": "LONGTEXT",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "version_base",
+                "type": "INT(11)",
+                "notes": ""
+            },
+            {
+                "name": "propuesto_por",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "propuesto_nombre",
+                "type": "VARCHAR(100)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "creado_en",
+                "type": "DATETIME(3)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "estado",
+                "type": "VARCHAR(10)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "resuelto_por",
+                "type": "VARCHAR(100)",
+                "notes": ""
+            },
+            {
+                "name": "resuelto_en",
+                "type": "DATETIME(3)",
+                "notes": ""
+            },
+            {
+                "name": "motivo",
+                "type": "VARCHAR(255)",
+                "notes": ""
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_cp_estado ON cambios_pendientes(estado,creado_en);",
+            "CREATE INDEX idx_cp_registro ON cambios_pendientes(coleccion,registro_id,estado);",
+            "CREATE INDEX idx_cp_usuario ON cambios_pendientes(propuesto_por,estado,creado_en);"
+        ]
+    },
+    {
         "name": "cat_etapas_desarrollo",
         "description": "Catálogo cerrado de etapas de carrera de un artista (Desarrollo … Internacional).",
         "columns": [

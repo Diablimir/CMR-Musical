@@ -1,5 +1,8 @@
 # FLAMO CRM — Registro de cambios de la base de datos
 
+## v10 · Cambios pendientes de aprobación  (migración 010)
+**Añadido:** `cambios_pendientes`: cola de aprobación. Quien no es Super Admin puede crear y editar, pero su cambio NO se aplica: queda como propuesta (JSON del registro + versión base) hasta que el Super Admin la aprueba (se aplica con las mismas validaciones y el mismo control de versiones) o la rechaza con motivo. Solo el Super Admin elimina. La tabla es también la bitácora (quién propuso, quién resolvió, cuándo y por qué; se conserva 180 días) y no tiene llave foránea a `users` para que el historial sobreviva si se borra la cuenta. **Rollback:** elimina la tabla (las propuestas pendientes se pierden; los datos ya aprobados no cambian).
+
 ## v9 · Índice de intentos  (migración 009)
 **Añadido:** índices `(ident, ts)` y `(ts)` en `login_attempts`, la tabla que cuenta los intentos de acceso y el uso de integraciones costosas (límites de uso). Sin ellos, bajo un ataque la cuenta por `ident` recorrería toda la tabla. Si la tabla no existe (instalación solo por migraciones) no hace nada. **Rollback:** quita los dos índices.
 

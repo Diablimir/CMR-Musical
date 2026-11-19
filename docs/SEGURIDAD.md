@@ -1,6 +1,6 @@
 # FLAMO CRM — Seguridad y escalabilidad
 
-> Auditoría del 19-nov-2026: revisión propia + auditoría independiente de solo lectura hecha por Codex (OpenAI), cada hallazgo verificado en el código o por una prueba antes de corregirlo. Las pruebas están en `tests/db/security-http.cjs` (44 comprobaciones por HTTP), `tests/db/run.php` (366 de base de datos) y `tests/db/ui-csp.cjs`.
+> Auditoría del 19-nov-2026: revisión propia + auditoría independiente de solo lectura hecha por Codex (OpenAI), cada hallazgo verificado en el código o por una prueba antes de corregirlo. Las pruebas están en `tests/db/security-http.cjs` (71 comprobaciones por HTTP), `tests/db/run.php` (398 de base de datos) y `tests/db/ui-csp.cjs`.
 
 ## Controles que ya existían y se verificaron
 | Área | Estado |
@@ -49,8 +49,16 @@
 | CSP: `img-src https:` demasiado amplio | **Corregido:** solo OpenStreetMap, Carto y Unsplash (se verificó que las fotos reales son archivos propios) |
 | 36 MP podrían agotar un worker con 128 MiB | **No aplica:** el hosting tiene `memory_limit` de 1536 MB (medido) |
 
+## Permisos y aprobación de cambios (decidido)
+- **Super Admin:** guarda de inmediato, **elimina** y **aprueba**. Es el único que gestiona usuarios, migraciones y la conexión de cuentas oficiales (Meta).
+- **Los demás roles** (Administrador, Director de Booking, Director de Finanzas, Gestor de Contenido, Abogado Legal CRM): inician sesión, consultan, **crean y editan, pero cada cambio queda pendiente** hasta que el Super Admin lo aprueba. No pueden eliminar ni ven los botones de eliminar. Ven sus propios cambios pendientes encima de los datos reales y el estado de cada uno en «Mis cambios» (pendiente / aprobado / rechazado con motivo).
+- **El servidor lo hace cumplir** (no solo la interfaz): `data.php` valida la propuesta con las mismas reglas que al aplicar y la guarda en `cambios_pendientes`; un `DELETE` de un rol sin permiso devuelve 403; solo el Super Admin puede llamar a `changes.php` para aprobar o rechazar.
+- **Conflictos:** si el registro cambió después de la propuesta, aprobar avisa del conflicto y no pisa nada; el Super Admin puede «aprobar de todos modos». Una edición sobre un registro ya eliminado no lo resucita. Si una propuesta depende de otra pendiente (p. ej. un evento de un artista nuevo), se aprueban en el orden correcto.
+- Quedan abiertas para todos los roles (son aditivas o de consulta): subir fotos, agregar acciones y capturas manuales de redes y consultar lo oficial de Meta. Eliminar esas acciones y conectar/desconectar cuentas es solo del Super Admin.
+- Límite: 500 propuestas pendientes por usuario.
+
 ## Pendiente de decisión (no se cambió sin tu confirmación)
-1. **Permisos por rol.** La interfaz muestra 6 roles (Super Admin, Administrador, Director de Booking, Director de Finanzas, Gestor de Contenido, Abogado Legal CRM), pero el servidor solo distingue «Super Admin» (usuarios y migraciones) del resto: cualquier usuario con sesión puede leer y modificar todo por la API. Es aceptable si todos son personal de confianza; si no, hay que definir quién ve y edita qué.
+1. ~~Permisos por rol~~ → resuelto arriba.
 2. **Versión obligatoria al actualizar.** Omitir `version` en una actualización evita el aviso de conflicto (compatibilidad con clientes antiguos).
 3. **Migraciones desde la web.** `ensure_schema()` y `api/migrate.php` (solo Super Admin) ejecutan DDL con el mismo usuario de base de datos que la API; en hosting compartido no se puede separar sin cambiar el despliegue.
 4. **`social_cron.php?token=`** acepta el token por URL si se define `cron_token`; en producción se usa por consola, sin token.

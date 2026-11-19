@@ -727,7 +727,7 @@ function upsert_sql(string $table, array $cols): string {
  * Todo ocurre en UNA transacción (todo o nada). Cada fila se bloquea con FOR UPDATE y se
  * compara su `version` (bloqueo optimista): si otra persona la cambió antes, se rechaza.
  */
-function apply_changes(PDO $pdo, array $changes, bool $lenient = false): array {
+function apply_changes(PDO $pdo, array $changes, bool $lenient = false, bool $dryRun = false): array {
     $defs = entity_defs();
     $stats = ['upserted' => 0, 'deleted' => 0, 'skipped' => 0, 'versions' => [], 'dirty' => []];
     $ctx = ['dirty' => [], 'principalSet' => [], 'principalWanted' => []];
@@ -789,7 +789,7 @@ function apply_changes(PDO $pdo, array $changes, bool $lenient = false): array {
             $table = $key === 'contacts' ? 'contactos' : $defs[$key]['table'];
             foreach ($del as $id) if (is_string($id) && $id !== '') { q_run($pdo, "DELETE FROM `$table` WHERE id = ?", [$id]); $stats['deleted']++; if ($key === 'contacts') $ctx['dirty']['contacts'] = true; }
         }
-        $pdo->commit();
+        if ($dryRun) $pdo->rollBack(); else $pdo->commit();   // validación en seco: se ejecuta todo y se deshace
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;

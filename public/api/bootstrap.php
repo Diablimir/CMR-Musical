@@ -48,6 +48,9 @@ const SESSION_ABSOLUTE = 43200;
 // Roles válidos (el servidor rechaza cualquier otro texto).
 const ALLOWED_ROLES = ['Super Admin', 'Administrador', 'Director de Booking', 'Director de Finanzas', 'Gestor de Contenido', 'Abogado Legal CRM'];
 
+// Roles que APRUEBAN cambios y son los únicos que pueden ELIMINAR registros y gestionar conexiones de cuentas. Los demás crean y editan, pero sus cambios quedan pendientes.
+const APPROVER_ROLES = ['Super Admin'];
+
 function start_session(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
     ini_set('session.use_strict_mode', '1');   // no acepta identificadores de sesión inventados por el cliente

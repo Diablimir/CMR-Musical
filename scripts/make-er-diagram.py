@@ -12,7 +12,7 @@ COLORS = {  # color de cabecera por grupo
     'eventos': '#B7791F', 'evento_artistas': '#B7791F', 'contratos': '#B7791F',
     'artista_redes': '#E84A2E', 'artista_idiomas': '#E84A2E', 'artista_integrantes': '#E84A2E', 'artista_pipeline': '#E84A2E', 'artista_hitos': '#E84A2E',
     'proyecto_canciones': '#E84A2E', 'proyecto_costos': '#E84A2E', 'proyecto_pagos': '#E84A2E', 'proyecto_etapas': '#E84A2E', 'proyecto_instrumentos': '#E84A2E',
-    'venue_horarios': '#0A2538', 'artista_metricas_redes': '#E84A2E', 'artista_acciones': '#E84A2E', 'artista_conexiones': '#E84A2E', 'artista_alcance': '#E84A2E', 'artista_demografia': '#E84A2E', 'artista_publicaciones': '#E84A2E', 'venue_notas': '#0A2538', 'venue_bandas_locales': '#0A2538',
+    'venue_horarios': '#0A2538', 'artista_metricas_redes': '#E84A2E', 'artista_acciones': '#E84A2E', 'artista_conexiones': '#E84A2E', 'cambios_pendientes': '#7C8794', 'artista_alcance': '#E84A2E', 'artista_demografia': '#E84A2E', 'artista_publicaciones': '#E84A2E', 'venue_notas': '#0A2538', 'venue_bandas_locales': '#0A2538',
     'evento_setlist': '#B7791F', 'evento_bandas_invitadas': '#B7791F',
     'contrato_artistas': '#B7791F', 'contrato_venues': '#B7791F', 'contrato_proveedores': '#B7791F', 'contrato_eventos': '#B7791F', 'contrato_tours': '#B7791F',
     'cat_etapas_desarrollo': '#7C8794', 'cat_generos': '#7C8794', 'cat_roles_contacto': '#7C8794', 'cat_monedas': '#7C8794',
@@ -51,7 +51,7 @@ for t in tables:
     <TR><TD COLSPAN="3" BGCOLOR="{color}"><FONT COLOR="white"><B>{t["name"]}</B></FONT></TD></TR>
     {"".join(cells)}</TABLE>>];''')
 
-lines = ['digraph ER {', '  graph [rankdir=LR, splines=true, nodesep=0.7, ranksep=1.0, pad=0.5, fontname="Helvetica", bgcolor="white", label=<<B>FLAMO CRM · Diagrama entidad-relación</B><BR/><FONT POINT-SIZE="11" COLOR="#64748B">Esquema v8 · solo columnas clave · punteada = al borrar el padre queda en NULL · pata de gallo = muchos</FONT>>, labelloc=t, fontsize=18];',
+lines = ['digraph ER {', '  graph [rankdir=LR, splines=true, nodesep=0.7, ranksep=1.0, pad=0.5, fontname="Helvetica", bgcolor="white", label=<<B>FLAMO CRM · Diagrama entidad-relación</B><BR/><FONT POINT-SIZE="11" COLOR="#64748B">Esquema v10 · solo columnas clave · punteada = al borrar el padre queda en NULL · pata de gallo = muchos</FONT>>, labelloc=t, fontsize=18];',
          '  node [shape=plain, fontname="Helvetica", fontsize=11];', '  edge [fontname="Helvetica", fontsize=9, fontcolor="#475569", color="#64748B", arrowsize=0.9];'] + rows
 for (src_t, col, dst, dcol, rule, req) in edges:
     style = 'dashed' if rule == 'SET NULL' else 'solid'

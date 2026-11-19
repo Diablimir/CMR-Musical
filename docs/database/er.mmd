@@ -196,6 +196,21 @@ erDiagram
         tinyint conectado
         varchar usuario_conectado
     }
+    cambios_pendientes {
+        varchar id PK
+        varchar coleccion
+        varchar registro_id
+        varchar accion
+        longtext datos
+        int version_base
+        varchar propuesto_por
+        varchar propuesto_nombre
+        datetime creado_en
+        varchar estado
+        varchar resuelto_por
+        datetime resuelto_en
+        varchar motivo
+    }
     cat_etapas_desarrollo {
         tinyint id PK
         varchar nombre

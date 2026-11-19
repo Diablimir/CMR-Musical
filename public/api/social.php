@@ -72,6 +72,7 @@ try {
         respond(['ok' => true] + $r + load_social($pdo, $aid));
     }
     if ($action === 'metric_delete') {
+        if (!in_array($user['role'], APPROVER_ROLES, true)) respond(['error' => 'Solo el Super Admin puede eliminar.'], 403);
         $st = $pdo->prepare('DELETE FROM artista_metricas_redes WHERE artista_id = ? AND plataforma = ? AND fecha = ?');
         $st->execute([$aid, $platform, (string)($in['date'] ?? '')]);
         respond(['ok' => true] + load_social($pdo, $aid));
@@ -92,6 +93,7 @@ try {
         respond(['ok' => true] + load_social($pdo, $aid));
     }
     if ($action === 'action_delete') {
+        if (!in_array($user['role'], APPROVER_ROLES, true)) respond(['error' => 'Solo el Super Admin puede eliminar.'], 403);
         $st = $pdo->prepare('DELETE FROM artista_acciones WHERE artista_id = ? AND accion_id = ?'); $st->execute([$aid, (string)($in['id'] ?? '')]);
         respond(['ok' => true] + load_social($pdo, $aid));
     }

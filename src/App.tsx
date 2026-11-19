@@ -2,19 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2, Users, Music, DollarSign, Award, Trash2, Search, Plus,
   Database, Star, MapPin, ExternalLink, AlertCircle, Sparkles, Filter, Check, FileText, UserCheck, LayoutDashboard,
-  Truck, Disc, Flame, Menu, X, ChevronRight, Contact2
-} from 'lucide-react';
+  Truck, Disc, Flame, Menu, X, ChevronRight, Contact2, ClipboardCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { Artist, Venue, Contact, Event, Tour, FilterState, Contract, UserAccount, Provider, RecordingProject } from './types';
 
-import { api, integrations, CollectionName, COLLECTION_NAMES } from './lib/api';
+import { api, integrations, CollectionName, COLLECTION_NAMES, changes } from './lib/api';
 import GlobalFilters from './components/GlobalFilters';
 import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
 import FinancialSuite from './components/FinancialSuite';
 import { computeGlobalScore } from './lib/venueScoreRubric';
 import Avatar from './components/Avatar';
+import ApprovalsPanel from './components/ApprovalsPanel';
 import UxSettings from './components/UxSettings';
 import LegalSuite from './components/LegalSuite';
 import LoginScreen from './components/LoginScreen';
@@ -38,6 +38,8 @@ export default function App() {
 
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);   // admin: cambios por aprobar · demás: los míos pendientes
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
   // Copia de lo último que el servidor tiene (id → JSON), para enviar solo lo que cambia
   type Snapshot = Record<CollectionName, Map<string, string>>;
   const emptySnapshot = (): Snapshot => Object.fromEntries(COLLECTION_NAMES.map((n) => [n, new Map<string, string>()])) as Snapshot;
@@ -48,7 +50,7 @@ export default function App() {
   const stateRef = useRef<Record<CollectionName, any[]>>({ venues: [], artists: [], contacts: [], tours: [], events: [], contracts: [], providers: [], recording_projects: [] });
 
   // 2. Navigation Tab State
-  const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'providers' | 'production' | 'contacts'>('inicio');
+  const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'approvals' | 'providers' | 'production' | 'contacts'>('inicio');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Authentication (sesión en el servidor) y gestión de usuarios
@@ -57,6 +59,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<string>('');
   const [currentRole, setCurrentRole] = useState<string>('');
   const isAdmin = currentRole === 'Super Admin';
+  useEffect(() => { document.documentElement.dataset.role = isAdmin ? 'admin' : 'limited'; }, [isAdmin]);
   const [users, setUsers] = useState<UserAccount[]>([]);
 
   useEffect(() => {
@@ -104,6 +107,19 @@ export default function App() {
     });
   };
 
+  const lastPending = useRef(0);
+  useEffect(() => {
+    if (!isLoggedIn || !dataLoaded) return;
+    const tick = () => changes.count().then(async (c) => {
+      setPendingCount(c.count);
+      if (!isAdmin && c.count < lastPending.current) { try { applyServerData(await fetchData()); } catch { /* se reintentará */ } }   // el Super Admin resolvió algo mío
+      lastPending.current = c.count;
+    }).catch(() => {});
+    tick();
+    const t = window.setInterval(tick, 45000);
+    return () => window.clearInterval(t);
+  }, [isLoggedIn, dataLoaded, isAdmin]);
+
   // Restaurar sesión al abrir la app
   useEffect(() => {
     api.me()
@@ -111,6 +127,24 @@ export default function App() {
       .catch(() => {})
       .finally(() => setAuthChecked(true));
   }, []);
+
+  // Datos del servidor. Quien no es Super Admin además ve, encima, SUS cambios pendientes de aprobación (para no «perder de vista» lo que acaba de editar).
+  const fetchData = async () => {
+    const d: any = { ...(await api.loadData()) };
+    if (!isAdmin) {
+      try {
+        for (const it of (await changes.mine()).items) {
+          if (it.status !== 'pendiente' || !it.data) continue;
+          const arr = [...(d[it.collection] ?? [])]; const i = arr.findIndex((x: any) => x.id === it.recordId);
+          if (i >= 0) arr[i] = { ...arr[i], ...it.data, version: arr[i].version }; else arr.push(it.data);
+          d[it.collection] = arr;
+        }
+      } catch { /* sin propuestas: se muestran solo los datos reales */ }
+    }
+    return d as Awaited<ReturnType<typeof api.loadData>>;
+  };
+
+  const refreshPending = () => { changes.count().then((c) => setPendingCount(c.count)).catch(() => {}); };
 
   const applyServerData = (d: Awaited<ReturnType<typeof api.loadData>>) => {
     snapshot.current = Object.fromEntries(COLLECTION_NAMES.map((n) => [n, snapshotOf(d[n])])) as Snapshot;
@@ -123,7 +157,7 @@ export default function App() {
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
-    Promise.all([api.loadData(), api.listUsers()])
+    Promise.all([fetchData(), api.listUsers()])
       .then(([d, u]) => {
         if (cancelled) return;
         applyServerData(d);
@@ -154,7 +188,7 @@ export default function App() {
   // El servidor puede crear contactos por su cuenta (manager, contacto de proveedor): se vuelven a leer
   const refreshContacts = async () => {
     try {
-      const d = await api.loadData();
+      const d = await fetchData();
       snapshot.current.contacts = snapshotOf(d.contacts);
       setContacts(d.contacts);
     } catch { /* se actualizará en la siguiente carga */ }
@@ -183,11 +217,12 @@ export default function App() {
         setSyncError(null);
         applyVersions(res.versions);
         if (res.dirty?.includes('contacts')) refreshContacts();
+        if (res.pending) { setInfoMsg(`${res.pending === 1 ? 'Tu cambio quedó' : res.pending + ' cambios quedaron'} pendiente${res.pending === 1 ? '' : 's'} de aprobación del Super Admin.`); window.setTimeout(() => setInfoMsg(null), 6000); refreshPending(); }
       } catch (e: any) {
         if (e.status === 401) { setIsLoggedIn(false); return; }
         if (e.status && e.status >= 400 && e.status < 500) {
           // El servidor rechazó el cambio (p. ej. un venue con eventos): se restablece lo guardado.
-          try { applyServerData(await api.loadData()); } catch { /* se reintentará */ }
+          try { applyServerData(await fetchData()); } catch { /* se reintentará */ }
           setSyncError(e.message);
           window.setTimeout(() => setSyncError(null), 9000);
           return;
@@ -291,7 +326,7 @@ export default function App() {
   };
 
   // 9. Delete Venue Permanently
-  const handleDeleteVenue = (venueId: string) => {
+  const handleDeleteVenueRaw = (venueId: string) => {
     setVenues((prev) => prev.filter((v) => v.id !== venueId));
     if (selectedVenueId === venueId) {
       setSelectedVenueId(null);
@@ -321,7 +356,7 @@ export default function App() {
     setContacts((prev) => (prev.some((c) => c.id === contact.id) ? prev.map((c) => (c.id === contact.id ? contact : c)) : [...prev, contact]));
   };
 
-  const handleDeleteContact = (contactId: string) => {
+  const handleDeleteContactRaw = (contactId: string) => {
     setContacts((prev) => prev.filter((c) => c.id !== contactId));
   };
 
@@ -331,7 +366,7 @@ export default function App() {
   };
 
   // 12b. Soft Delete Artist
-  const handleDeleteArtist = (artistId: string) => {
+  const handleDeleteArtistRaw = (artistId: string) => {
     setArtists((prev) =>
       prev.map((a) => (a.id === artistId ? { ...a, deleted_at: new Date().toISOString() } : a))
     );
@@ -350,7 +385,7 @@ export default function App() {
     setContracts((prev) => [newContract, ...prev]);
   };
 
-  const handleDeleteContract = (contractId: string) => {
+  const handleDeleteContractRaw = (contractId: string) => {
     setContracts((prev) => prev.filter((c) => c.id !== contractId));
   };
 
@@ -370,7 +405,7 @@ export default function App() {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated, updated_at: new Date().toISOString() } : e)));
   };
 
-  const handleDeleteEvent = (id: string) => {
+  const handleDeleteEventRaw = (id: string) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, deleted_at: new Date().toISOString() } : e)));
   };
 
@@ -388,7 +423,7 @@ export default function App() {
     setProviders((prev) => prev.map((p) => p.id === updated.id ? updated : p));
   };
 
-  const handleDeleteProvider = (id: string) => {
+  const handleDeleteProviderRaw = (id: string) => {
     setProviders((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -401,7 +436,7 @@ export default function App() {
     setRecordingProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
   };
 
-  const handleDeleteRecordingProject = (id: string) => {
+  const handleDeleteRecordingProjectRaw = (id: string) => {
     setRecordingProjects((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -503,6 +538,19 @@ export default function App() {
     role: 'Admin'
   };
 
+  // Solo el Super Admin elimina. Los demás roles no ven los botones de eliminar y, si algo los dispara, aquí se frena.
+  const adminOnlyDelete = <A extends unknown[]>(fn: (...a: A) => void) => (...a: A) => {
+    if (!isAdmin) { setSyncError('Solo el Super Admin puede eliminar. Pídele que lo haga.'); window.setTimeout(() => setSyncError(null), 6000); return; }
+    fn(...a);
+  };
+  const handleDeleteVenue = adminOnlyDelete(handleDeleteVenueRaw);
+  const handleDeleteContact = adminOnlyDelete(handleDeleteContactRaw);
+  const handleDeleteArtist = adminOnlyDelete(handleDeleteArtistRaw);
+  const handleDeleteContract = adminOnlyDelete(handleDeleteContractRaw);
+  const handleDeleteEvent = adminOnlyDelete(handleDeleteEventRaw);
+  const handleDeleteProvider = adminOnlyDelete(handleDeleteProviderRaw);
+  const handleDeleteRecordingProject = adminOnlyDelete(handleDeleteRecordingProjectRaw);
+
   return (
     <div className="min-h-screen bg-white-chalk text-cosmic-black flex flex-col font-sans select-none antialiased">
       {/* Top Header Workspace Control */}
@@ -582,8 +630,9 @@ export default function App() {
           { id: 'artists', label: 'Artistas', icon: Users },
           { id: 'finances', label: 'Finanzas', icon: DollarSign },
           { id: 'legal', label: 'Legal', icon: FileText },
+          { id: 'approvals', label: isAdmin ? 'Aprobaciones' : 'Mis cambios', icon: ClipboardCheck, badge: pendingCount },
           { id: 'users', label: 'Usuarios', icon: UserCheck },
-        ].filter((tab) => tab.id !== 'users' || isAdmin).map((tab) => {
+        ].filter((tab) => tab.id !== 'users' || isAdmin).map((tab: any) => {
           const Icon = tab.icon;
           const isActive = activeWorkspace === tab.id;
           return (
@@ -602,6 +651,7 @@ export default function App() {
               <span className="text-xs font-semibold tracking-tight truncate block">
                 {tab.label}
               </span>
+              {tab.badge > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-tomato-curry text-white text-[11px] font-bold flex items-center justify-center" data-testid={`badge-${tab.id}`}>{tab.badge}</span>}
             </button>
           );
         })}
@@ -722,6 +772,7 @@ export default function App() {
                       { id: 'finances', label: 'Finanzas', desc: 'Control de taquilla y cobros', icon: DollarSign },
                       { id: 'legal', label: 'Contratos / Legal', desc: 'Suite jurídica y documentos', icon: FileText },
                       { id: 'contacts', label: 'Contactos', desc: 'Directorio de personas y sus vínculos', icon: Contact2 },
+                      { id: 'approvals', label: isAdmin ? `Aprobaciones${pendingCount ? ' (' + pendingCount + ')' : ''}` : 'Mis cambios', desc: isAdmin ? 'Cambios pendientes de aprobar' : 'Estado de tus cambios enviados', icon: ClipboardCheck },
                       { id: 'users', label: 'Usuarios', desc: 'Control de acceso de personal', icon: UserCheck },
                     ].filter(tab => tab.id !== 'users' || isAdmin).map((tab) => {
                       const Icon = tab.icon;
@@ -783,6 +834,16 @@ export default function App() {
 
       {/* Main Workspace Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 pb-28 flex flex-col overflow-x-hidden">
+        {!isAdmin && isLoggedIn && (
+          <div role="status" data-testid="approval-banner" className="mb-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-2.5 text-sm flex items-center justify-between gap-3 flex-wrap">
+            <span><strong>Tus cambios no se aplican de inmediato:</strong> el Super Admin los revisa y aprueba.{pendingCount > 0 ? ` Tienes ${pendingCount} pendiente${pendingCount === 1 ? '' : 's'}.` : ''}</span>
+            <button type="button" onClick={() => setActiveWorkspace('approvals')} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold text-sm cursor-pointer shrink-0">Ver mis cambios</button>
+          </div>
+        )}
+        {infoMsg && <div role="status" data-testid="info-msg" className="mb-4 bg-sky-50 border border-sky-200 text-sky-800 rounded-xl px-4 py-2.5 text-sm font-semibold">{infoMsg}</div>}
+        {activeWorkspace === 'approvals' && (
+          <ApprovalsPanel isApprover={isAdmin} onChanged={() => { refreshPending(); void fetchData().then(applyServerData).catch(() => {}); }} />
+        )}
         
         {/* Global Filter Bar (Present in top-level dashboard contexts to update KPIs dynamically) */}
         {activeWorkspace === 'inicio' && (

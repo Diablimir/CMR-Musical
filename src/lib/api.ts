@@ -4,7 +4,7 @@ export const COLLECTION_NAMES = [
   'venues', 'artists', 'contacts', 'tours', 'events', 'contracts', 'providers', 'recording_projects',
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];
-export interface SyncResult { ok: true; versions?: Record<string, Record<string, number>>; dirty?: string[]; }
+export interface SyncResult { ok: true; versions?: Record<string, Record<string, number>>; dirty?: string[]; pending?: number; proposed?: { collection: string; id: string; action: 'crear' | 'editar' }[]; }
 export type ServerData = Record<CollectionName, any[]>;
 
 async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
@@ -67,6 +67,19 @@ export const meta = {
   start: (artistId: string) => request<{ url: string }>('/api/meta.php?action=start', { method: 'POST', body: JSON.stringify({ artistId }) }),
   sync: (artistId: string) => request<{ ok: true; avisos: string[]; data: MetaData }>('/api/meta.php?action=sync', { method: 'POST', body: JSON.stringify({ artistId }) }),
   disconnect: (artistId: string) => request<{ ok: true; data: MetaData }>('/api/meta.php?action=disconnect', { method: 'POST', body: JSON.stringify({ artistId }) }),
+};
+
+// ───────── Cambios pendientes de aprobación ─────────
+export interface PendingChange { id: string; collection: string; recordId: string; action: 'crear' | 'editar'; data: Record<string, any>; current: Record<string, any> | null; baseVersion: number | null; byId: string; byName: string; at: string }
+export interface MyChange { id: string; collection: string; recordId: string; action: 'crear' | 'editar'; status: 'pendiente' | 'aprobado' | 'rechazado'; label: string; at: string; resolvedAt: string | null; resolvedBy: string | null; reason: string | null; data?: Record<string, any> }
+export interface ApproveResult { id: string; ok: boolean; code?: string; error?: string }
+export const changes = {
+  mine: () => request<{ items: MyChange[] }>('/api/changes.php?scope=mine'),
+  pending: () => request<{ items: PendingChange[]; count: number }>('/api/changes.php?scope=pending'),
+  count: () => request<{ count: number }>('/api/changes.php?scope=count'),
+  approve: (ids: string[], force = false) => request<{ ok: true; results: ApproveResult[]; approved: number; count: number }>('/api/changes.php?action=approve', { method: 'POST', body: JSON.stringify({ ids, force }) }),
+  withdraw: (ids: string[]) => request<{ ok: true; withdrawn: number }>('/api/changes.php?action=withdraw', { method: 'POST', body: JSON.stringify({ ids }) }),
+  reject: (ids: string[], reason: string) => request<{ ok: true; rejected: number; count: number }>('/api/changes.php?action=reject', { method: 'POST', body: JSON.stringify({ ids, reason }) }),
 };
 
 export async function uploadImage(file: Blob, filename = 'foto.jpg'): Promise<string> {

@@ -100,20 +100,25 @@ export function computeGlobalScore(v: Pick<Venue, ScoreKey>): number {
 }
 
 // ───────── Mapa de calor: tamaño y color del marcador según el Flamo Score ─────────
-// Solo 3 colores (semáforo): rojo = bajo, amarillo = medio, verde = alto. Además, más grande = mejor score.
-export const HEAT_BANDS = [
-  { key: 'bajo', label: 'Bajo', range: '0–39', min: 0, color: '#DC2626' },
-  { key: 'medio', label: 'Medio', range: '40–69', min: 40, color: '#FACC15' },
-  { key: 'alto', label: 'Alto', range: '70–100', min: 70, color: '#16A34A' },
-] as const;
+// Escala continua de semáforo: 0 = rojo, 50 = amarillo, 100 = verde (los valores intermedios se mezclan). Además, más grande = mejor score.
+export const HEAT_STOPS: { at: number; rgb: [number, number, number]; label: string }[] = [
+  { at: 0, rgb: [220, 38, 38], label: 'Rojo' },
+  { at: 50, rgb: [250, 204, 21], label: 'Amarillo' },
+  { at: 100, rgb: [22, 163, 74], label: 'Verde' },
+];
 
-/** Color del marcador para un score 0–100: uno de los 3 del semáforo. */
+/** Color (rgb) para un score 0–100 sobre la escala rojo → amarillo → verde. */
 export function heatColor(score: number): string {
   const s = Math.max(0, Math.min(100, score));
-  let color: string = HEAT_BANDS[0].color;
-  for (const b of HEAT_BANDS) if (s >= b.min) color = b.color;
-  return color;
+  for (let i = 1; i < HEAT_STOPS.length; i++) {
+    const a = HEAT_STOPS[i - 1], b = HEAT_STOPS[i];
+    if (s <= b.at) { const t = (s - a.at) / (b.at - a.at); return `rgb(${a.rgb.map((c, k) => Math.round(c + (b.rgb[k] - c) * t)).join(',')})`; }
+  }
+  return `rgb(${HEAT_STOPS[HEAT_STOPS.length - 1].rgb.join(',')})`;
 }
+
+/** Degradado CSS de la escala (para las leyendas). */
+export function heatGradient(): string { return `linear-gradient(to right, ${HEAT_STOPS.map((x) => `${heatColor(x.at)} ${x.at}%`).join(', ')})`; }
 
 /** Diámetro (px) del marcador: 50 es claramente más pequeño que 100. Sin score → tamaño mínimo. */
 export function heatSize(score: number): number {

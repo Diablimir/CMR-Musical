@@ -90,3 +90,9 @@ html[data-ux-outlines="on"] * { outline: 1px solid rgba(232, 74, 46, 0.35); outl
   .text-slate-400 { color: #64748b; }
   .placeholder-slate-400::placeholder, input::placeholder, textarea::placeholder { color: #7b8794; }
 }
+
+/* Solo el Super Admin elimina o gestiona conexiones de cuentas: para los demás roles esos controles no se muestran
+   (el servidor igual lo impide: esto solo evita botones que no podrían usar). */
+html[data-role="limited"] [title*="Eliminar"],
+html[data-role="limited"] [aria-label*="Eliminar"],
+html[data-role="limited"] [data-admin-only] { display: none !important; }

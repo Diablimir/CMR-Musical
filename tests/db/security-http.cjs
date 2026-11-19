@@ -2,7 +2,7 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const B = 'http://127.0.0.1:8000';
-const ok = [], bad = []; const check = (n, c, d = '') => (c ? ok : bad).push(n + (c ? '' : ` [${d}]`));
+const RESULTS = { ok: [], bad: [] }; const ok = RESULTS.ok, bad = RESULTS.bad; const check = (n, c, d = '') => (c ? RESULTS.ok : RESULTS.bad).push(n + (c ? '' : ` [${d}]`));
 class Client {
   constructor(ip) { this.ip = ip; this.jar = {}; }
   async req(path, { method = 'GET', body, headers = {}, raw = false, csrf = true, redirect = 'manual' } = {}) {
@@ -139,6 +139,72 @@ const median = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
   const r2 = await swap.req(cb2);
   check('Meta: un flujo pendiente NO lo hereda otra cuenta que inicia sesión en el mismo navegador', (r2.headers.get('location') || '').includes('meta=error'), r2.headers.get('location'));
 
+  // ── Aprobación de cambios: todos modifican, el Super Admin aprueba y es el único que elimina ──
+  const gest = new Client('40.1.1.1'); await gest.login('sec-user', 'Nueva-Clave-456');
+  const mkArt = (id, name, extra = {}) => ({ ...art, id, artisticName: name, socialMedia: {}, ...extra });
+  const prop1 = await gest.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [mkArt('qa-prop', 'Artista Propuesto')] } } } });
+  check('un Gestor puede «guardar»: el servidor responde ok pero queda PENDIENTE (no se aplica)', prop1.status === 200 && prop1.j?.pending === 1 && prop1.j?.upserted === 0, JSON.stringify(prop1.j));
+  const dataAdmin = (await admin.req('/api/data.php')).j;
+  check('el registro propuesto NO aparece en los datos reales', !dataAdmin.artists.some(a => a.id === 'qa-prop'));
+  const mineG = (await gest.req('/api/changes.php?scope=mine')).j.items;
+  check('el Gestor ve su propuesta pendiente con su contenido', mineG.length === 1 && mineG[0].status === 'pendiente' && mineG[0].data?.artisticName === 'Artista Propuesto', JSON.stringify(mineG));
+  check('el Super Admin NO ve las propuestas de otros como suyas', (await admin.req('/api/changes.php?scope=mine')).j.items.length === 0);
+  check('un Gestor no puede ver la lista de pendientes (403)', (await gest.req('/api/changes.php?scope=pending')).status === 403);
+  check('un Gestor no puede aprobar (403)', (await gest.req('/api/changes.php?action=approve', { method: 'POST', body: { ids: [mineG[0].id] } })).status === 403);
+  check('un Gestor no puede rechazar (403)', (await gest.req('/api/changes.php?action=reject', { method: 'POST', body: { ids: [mineG[0].id] } })).status === 403);
+  const pend = (await admin.req('/api/changes.php?scope=pending')).j;
+  check('el Super Admin ve la propuesta con quién la hizo', pend.count === 1 && pend.items[0].byName.startsWith('Sec User') && pend.items[0].action === 'crear', JSON.stringify(pend.items[0]?.byName));
+  check('el contador del Super Admin dice 1', (await admin.req('/api/changes.php?scope=count')).j.count === 1);
+  const dlt = await gest.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { deletes: ['qa-sec'] } } } });
+  check('un Gestor NO puede eliminar (403)', dlt.status === 403 && /Super Admin/.test(dlt.j?.error || ''), JSON.stringify(dlt.j));
+  check('…y el registro sigue existiendo', (await admin.req('/api/data.php')).j.artists.some(a => a.id === 'qa-sec'));
+  const badProp = await gest.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [mkArt('qa-bad', 'Mala', { stage: 'Inexistente' })] } } } });
+  check('una propuesta inválida se rechaza al enviarla (422), con las mismas reglas', badProp.status === 422, String(badProp.status));
+  const apr = await admin.req('/api/changes.php?action=approve', { method: 'POST', body: { ids: [mineG[0].id] } });
+  check('el Super Admin aprueba y el cambio se aplica', apr.j?.approved === 1 && (await admin.req('/api/data.php')).j.artists.some(a => a.id === 'qa-prop' && a.artisticName === 'Artista Propuesto'), JSON.stringify(apr.j));
+  const mine2 = (await gest.req('/api/changes.php?scope=mine')).j.items;
+  check('el Gestor ve su cambio como «aprobado»', mine2[0]?.status === 'aprobado' && mine2[0].resolvedBy === 'Administrador Principal', JSON.stringify(mine2[0]));
+  // rechazo con motivo
+  const cur = (await admin.req('/api/data.php')).j.artists.find(a => a.id === 'qa-prop');
+  await gest.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [{ ...cur, artisticName: 'Nombre dudoso' }] } } } });
+  const p2 = (await admin.req('/api/changes.php?scope=pending')).j.items[0];
+  check('una edición propuesta muestra el registro ACTUAL para comparar', p2.action === 'editar' && p2.current?.artisticName === 'Artista Propuesto' && p2.data.artisticName === 'Nombre dudoso');
+  const rj = await admin.req('/api/changes.php?action=reject', { method: 'POST', body: { ids: [p2.id], reason: 'Ese no es el nombre' } });
+  check('el Super Admin rechaza con motivo', rj.j?.rejected === 1);
+  check('lo rechazado NO se aplica', (await admin.req('/api/data.php')).j.artists.find(a => a.id === 'qa-prop').artisticName === 'Artista Propuesto');
+  const m3 = (await gest.req('/api/changes.php?scope=mine')).j.items.find(i => i.status === 'rechazado');
+  check('el Gestor ve el rechazo y su motivo', m3?.reason === 'Ese no es el nombre', JSON.stringify(m3));
+  // conflicto
+  const cur2 = (await admin.req('/api/data.php')).j.artists.find(a => a.id === 'qa-prop');
+  await gest.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [{ ...cur2, artisticName: 'Propuesta de Gestor' }] } } } });
+  await admin.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [{ ...cur2, artisticName: 'Cambio directo del admin' }] } } } });
+  const p3 = (await admin.req('/api/changes.php?scope=pending')).j.items[0];
+  const cf = await admin.req('/api/changes.php?action=approve', { method: 'POST', body: { ids: [p3.id] } });
+  check('si el registro cambió después de la propuesta, se avisa del conflicto y no se pisa', cf.j?.results?.[0]?.code === 'conflict' && (await admin.req('/api/data.php')).j.artists.find(a => a.id === 'qa-prop').artisticName === 'Cambio directo del admin', JSON.stringify(cf.j));
+  const cf2 = await admin.req('/api/changes.php?action=approve', { method: 'POST', body: { ids: [p3.id], force: true } });
+  check('«aprobar de todos modos» sí lo aplica', cf2.j?.approved === 1 && (await admin.req('/api/data.php')).j.artists.find(a => a.id === 'qa-prop').artisticName === 'Propuesta de Gestor');
+  // el Super Admin guarda directo
+  const dir = await admin.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [mkArt('qa-direct', 'Directo')] } } } });
+  check('el Super Admin sigue guardando de inmediato (sin cola)', dir.j?.upserted === 1 && !dir.j?.pending, JSON.stringify(dir.j));
+  // otras acciones
+  check('un Gestor puede agregar una acción de seguimiento (aditivo)', (await gest.req('/api/social.php?action=action_save', { method: 'POST', body: { artistId: 'qa-sec', date: '2026-11-01', type: 'Otro', title: 'Nota del gestor' } })).status === 200);
+  const aid = (await gest.req('/api/social.php?artist_id=qa-sec')).j.actions[0]?.id;
+  const delG = await gest.req('/api/social.php?action=action_delete', { method: 'POST', body: { artistId: 'qa-sec', id: aid } });
+  const delA = await admin.req('/api/social.php?action=action_delete', { method: 'POST', body: { artistId: 'qa-sec', id: aid } });
+  check('…pero NO puede eliminarla (403); el Super Admin sí', delG.status === 403 && delA.status === 200, `aid=${aid} gestor=${delG.status} ${JSON.stringify(delG.j)} admin=${delA.status} ${JSON.stringify(delA.j)}`);
+  check('un Gestor NO puede conectar/desconectar la cuenta oficial (403)', (await gest.req('/api/meta.php?action=start', { method: 'POST', body: { artistId: 'qa-sec' } })).status === 403 && (await gest.req('/api/meta.php?action=disconnect', { method: 'POST', body: { artistId: 'qa-sec' } })).status === 403);
+  check('un Gestor puede consultar lo oficial (solo lectura)', (await gest.req('/api/meta.php?artist_id=qa-sec')).status === 200);
+  const png2 = execSync(`php -r '$i=imagecreatetruecolor(20,20); imagepng($i,"php://stdout");'`);
+  const fd2 = new FormData(); fd2.append('file', new Blob([png2], { type: 'image/png' }), 'a.png');
+  const upg = await fetch(B + '/api/upload.php', { method: 'POST', headers: { 'X-Requested-With': 'flamo', 'X-Forwarded-For': '40.1.1.1', Cookie: Object.entries(gest.jar).map(([k, v]) => `${k}=${v}`).join('; ') }, body: fd2 });
+  check('un Gestor puede subir una foto (el cambio del artista sigue pasando por aprobación)', upg.status === 201);
+  await gest.req('/api/data.php?action=sync', { method: 'POST', body: { changes: { artists: { upserts: [mkArt('qa-wd', 'Para retirar')] } } } });
+  const wid = (await gest.req('/api/changes.php?scope=mine')).j.items.find(i => i.recordId === 'qa-wd')?.id;
+  check('el Super Admin no puede «retirar» la propuesta de otra persona (0)', (await admin.req('/api/changes.php?action=withdraw', { method: 'POST', body: { ids: [wid] } })).j?.withdrawn === 0);
+  check('el Gestor retira su propia propuesta pendiente', (await gest.req('/api/changes.php?action=withdraw', { method: 'POST', body: { ids: [wid] } })).j?.withdrawn === 1 && !(await admin.req('/api/changes.php?scope=pending')).j.items.some(i => i.recordId === 'qa-wd'));
+  const rl = await admin.req('/api/changes.php?action=approve', { method: 'POST', body: { ids: ['no-existe'] } });
+  check('aprobar un id inexistente no falla: lo informa', rl.j?.results?.[0]?.code === 'not_pending');
+
   // ── Última protección: no se puede dejar al CRM sin Super Admin ──
   const adminId = list.find(u => u.username === 'admin').id;
   const dl = await admin.req('/api/users.php?id=' + adminId, { method: 'DELETE' });
@@ -146,5 +212,5 @@ const median = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
   const dg = await admin.req('/api/users.php?id=' + adminId, { method: 'PUT', body: { role: 'Administrador' } });
   check('ni degradar al único Super Admin', dg.status === 400, JSON.stringify(dg.j));
 
-  console.log('TOTAL ok=' + ok.length + ' bad=' + bad.length); console.log(ok.map(x => '  ✓ ' + x).join('\n')); console.log(bad.length ? 'FALLOS:\n' + bad.map(x => '  ✗ ' + x).join('\n') : 'Sin fallos'); process.exit(bad.length ? 1 : 0);
+  console.log('TOTAL ok=' + RESULTS.ok.length + ' bad=' + RESULTS.bad.length); console.log(RESULTS.ok.map(x => '  ✓ ' + x).join('\n')); console.log(RESULTS.bad.length ? 'FALLOS:\n' + RESULTS.bad.map(x => '  ✗ ' + x).join('\n') : 'Sin fallos'); process.exit(RESULTS.bad.length ? 1 : 0);
 })();

@@ -3,6 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/schema.php';
 require __DIR__ . '/entities.php';
+require __DIR__ . '/approvals_lib.php';
 
 const MAX_BYTES = 12 * 1024 * 1024;
 
@@ -25,8 +26,13 @@ if ($method === 'POST' && ($_GET['action'] ?? '') === 'sync') {
     if (!is_array($in) || !isset($in['changes']) || !is_array($in['changes'])) respond(['error' => 'Formato inválido.'], 400);
 
     try {
-        $stats = apply_changes($pdo, $in['changes']);
-        respond(['ok' => true] + $stats);
+        if (can_approve($user)) {
+            $stats = apply_changes($pdo, $in['changes']);
+            respond(['ok' => true] + $stats);
+        }
+        // Cualquier otro rol: se valida y queda como propuesta; el Super Admin la aprueba o la rechaza. No se aplica nada ni se elimina nada.
+        $proposed = propose_changes($pdo, $user, $in['changes']);
+        respond(['ok' => true, 'pending' => count($proposed), 'proposed' => $proposed, 'upserted' => 0, 'deleted' => 0, 'skipped' => 0, 'versions' => new stdClass(), 'dirty' => []]);
     } catch (SyncError $e) {
         respond(['error' => $e->getMessage(), 'code' => $e->errCode], $e->httpCode);
     } catch (PDOException $e) {

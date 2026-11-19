@@ -20,6 +20,7 @@
 - [`artista_pipeline`](#artista_pipeline) — Pasos del plan de carrera de un artista (checklist por categoría).
 - [`artista_publicaciones`](#artista_publicaciones) — Publicaciones de la cuenta oficial con sus números: me gusta, comentarios, alcance, guardados, compartidos e interacciones. Los datos que Meta no entrega quedan en NULL.
 - [`artista_redes`](#artista_redes) — Redes sociales de un artista: una fila por plataforma, con enlace y estado de conexión.
+- [`cambios_pendientes`](#cambios_pendientes) — Cola de aprobación: los cambios de los roles distintos de Super Admin quedan aquí como propuestas hasta que el Super Admin las aprueba (se aplican) o las rechaza (con motivo). También es la bitácora de quién propuso y quién resolvió.
 - [`cat_etapas_desarrollo`](#cat_etapas_desarrollo) — Catálogo cerrado de etapas de carrera de un artista (Desarrollo … Internacional).
 - [`cat_generos`](#cat_generos) — Catálogo abierto de géneros musicales. Evita guardar listas de géneros separadas por comas.
 - [`cat_monedas`](#cat_monedas) — Catálogo de monedas (ISO 4217) para honorarios.
@@ -489,6 +490,41 @@
 **Restricciones CHECK:**
 
 - `chk_ar_plataforma`: ``plataforma` in ('instagram','tiktok','facebook','youtube','spotify','appleMusic','twitter','threads','whatsapp','website')`
+
+---
+
+## cambios_pendientes
+
+**Propósito:** Cola de aprobación: los cambios de los roles distintos de Super Admin quedan aquí como propuestas hasta que el Super Admin las aprueba (se aplican) o las rechaza (con motivo). También es la bitácora de quién propuso y quién resolvió.
+
+**Cardinalidad:** N propuestas — 1 usuario (sin llave foránea: el historial sobrevive si se borra la cuenta)
+
+**Dependencias funcionales:** id → todas. datos = JSON del registro propuesto; version_base = versión que tenía al proponer (para detectar conflictos). CHECK: colección, acción y estado en dominio cerrado; datos JSON válido.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `id` | `varchar(40)` | NN |  | PK | Identificador único (texto generado por la aplicación, p. ej. «ven-1731…»). |
+| `coleccion` | `varchar(30)` | NN |  |  |  |
+| `registro_id` | `varchar(40)` | NN |  |  |  |
+| `accion` | `varchar(10)` | NN |  |  |  |
+| `datos` | `longtext` | NN |  |  |  |
+| `version_base` | `int(11)` | sí | `NULL` |  |  |
+| `propuesto_por` | `varchar(40)` | NN |  |  |  |
+| `propuesto_nombre` | `varchar(100)` | NN |  |  |  |
+| `creado_en` | `datetime(3)` | NN |  |  |  |
+| `estado` | `varchar(10)` | NN | `pendiente` |  |  |
+| `resuelto_por` | `varchar(100)` | sí | `NULL` |  |  |
+| `resuelto_en` | `datetime(3)` | sí | `NULL` |  |  |
+| `motivo` | `varchar(255)` | sí | `NULL` |  |  |
+
+**Restricciones CHECK:**
+
+- `chk_cp_accion`: ``accion` in ('crear','editar')`
+- `chk_cp_coleccion`: ``coleccion` in ('artists','venues','providers','contacts','tours','events','contracts','recording_projects')`
+- `chk_cp_datos`: `json_valid(`datos`)`
+- `chk_cp_estado`: ``estado` in ('pendiente','aprobado','rechazado')`
+
+**Índices:** `idx_cp_estado` (estado,creado_en); `idx_cp_registro` (coleccion,registro_id,estado); `idx_cp_usuario` (propuesto_por,estado,creado_en)
 
 ---
 

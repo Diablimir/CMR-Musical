@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
 import Avatar from './Avatar';
-import { computeGlobalScore, SCORE_METRICS, HEAT_BANDS } from '../lib/venueScoreRubric';
+import { computeGlobalScore, SCORE_METRICS, heatGradient } from '../lib/venueScoreRubric';
 import VenueNotes from './VenueNotes';
 import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour, VenueNote } from '../types';
 
@@ -419,8 +419,8 @@ export default function HomeDashboard({
               <span>Mapa Geográfico de Booking</span>
             </span>
             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-              <span className="flex items-center gap-1">{HEAT_BANDS.map((b) => <span key={b.key} className="w-2.5 h-2.5 rounded-full" style={{ background: b.color }} />)}</span>
-              Mapa de calor: tamaño y color según el Flamo Score
+              <span className="w-16 h-2 rounded-full border border-slate-200" style={{ background: heatGradient() }} />
+              Mapa de calor: rojo = 0 · amarillo = 50 · verde = 100
             </div>
           </div>
           <h3 className="text-sm font-bold text-cosmic-black">Ruta de Recintos Contratados</h3>
@@ -441,7 +441,7 @@ export default function HomeDashboard({
               <span>MAPA DE VENUES : OPENSTREETMAP</span>
             </div>
 
-            <div className="relative w-full flex-1 min-h-[300px] rounded-lg overflow-hidden border border-slate-800 mt-8 mb-2">
+            <div className="relative isolate z-0 w-full flex-1 min-h-[300px] rounded-lg overflow-hidden border border-slate-800 mt-8 mb-2">
               <LeafletMap
                 venues={venuesWithStatus}
                 selectedVenueId={selectedVenueId}
@@ -449,15 +449,11 @@ export default function HomeDashboard({
                 heat
               />
               {/* Leyenda del mapa de calor */}
-              <div className="absolute bottom-2 left-2 z-[1000] bg-white/90 backdrop-blur-xs border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm pointer-events-none" data-testid="heat-legend">
+              <div className="absolute bottom-2 left-2 z-[400] bg-white/95 border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm pointer-events-none" data-testid="heat-legend">
                 <span className="text-[8px] uppercase font-bold text-slate-500 tracking-wider block mb-1">Flamo Score</span>
-                <ul className="space-y-0.5">
-                  {[...HEAT_BANDS].reverse().map((b) => (
-                    <li key={b.key} className="flex items-center gap-1.5 text-[9px] text-slate-600"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.color }} /><strong>{b.label}</strong> {b.range}</li>
-                  ))}
-                  <li className="flex items-center gap-1.5 text-[9px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full shrink-0 bg-slate-400" />Sin evaluar</li>
-                </ul>
-                <span className="text-[8px] text-slate-400 block mt-1">Más grande = mejor score</span>
+                <div className="h-2 w-28 rounded-full border border-slate-200" style={{ background: heatGradient() }} />
+                <div className="flex justify-between text-[9px] font-mono text-slate-600 mt-0.5 w-28"><span>0 rojo</span><span>50</span><span>100 verde</span></div>
+                <span className="flex items-center gap-1 text-[9px] text-slate-500 mt-0.5"><span className="w-2 h-2 rounded-full bg-slate-400" />Sin evaluar · más grande = mejor</span>
               </div>
             </div>
 

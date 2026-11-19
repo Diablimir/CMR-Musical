@@ -210,6 +210,29 @@ CREATE TABLE `artistas` (
   CONSTRAINT `artistas_ibfk_1` FOREIGN KEY (`etapa_id`) REFERENCES `cat_etapas_desarrollo` (`id`),
   CONSTRAINT `chk_artistas_foto` CHECK (`foto_zoom` is null or `foto_zoom` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `cambios_pendientes` (
+  `id` varchar(40) NOT NULL,
+  `coleccion` varchar(30) NOT NULL,
+  `registro_id` varchar(40) NOT NULL,
+  `accion` varchar(10) NOT NULL,
+  `datos` longtext NOT NULL,
+  `version_base` int(11) DEFAULT NULL,
+  `propuesto_por` varchar(40) NOT NULL,
+  `propuesto_nombre` varchar(100) NOT NULL,
+  `creado_en` datetime(3) NOT NULL,
+  `estado` varchar(10) NOT NULL DEFAULT 'pendiente',
+  `resuelto_por` varchar(100) DEFAULT NULL,
+  `resuelto_en` datetime(3) DEFAULT NULL,
+  `motivo` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_cp_estado` (`estado`,`creado_en`),
+  KEY `idx_cp_registro` (`coleccion`,`registro_id`,`estado`),
+  KEY `idx_cp_usuario` (`propuesto_por`,`estado`,`creado_en`),
+  CONSTRAINT `chk_cp_coleccion` CHECK (`coleccion` in ('artists','venues','providers','contacts','tours','events','contracts','recording_projects')),
+  CONSTRAINT `chk_cp_accion` CHECK (`accion` in ('crear','editar')),
+  CONSTRAINT `chk_cp_estado` CHECK (`estado` in ('pendiente','aprobado','rechazado')),
+  CONSTRAINT `chk_cp_datos` CHECK (json_valid(`datos`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `cat_etapas_desarrollo` (
   `id` tinyint(4) NOT NULL,
   `nombre` varchar(50) NOT NULL,
@@ -647,4 +670,4 @@ CREATE TABLE `venues` (
 INSERT INTO cat_etapas_desarrollo (id, nombre) VALUES (1, 'Desarrollo'), (2, 'Aficionado'), (3, 'Emergente'), (4, 'Media carrera'), (5, 'Consolidado'), (6, 'Consagrado'), (7, 'Internacional');
 INSERT INTO cat_roles_contacto (nombre) VALUES ('Manager'), ('Booking'), ('Promotor'), ('Técnico'), ('Hospitalidad'), ('Producción'), ('Administración'), ('Contacto comercial'), ('Contacto');
 INSERT INTO cat_monedas (codigo, nombre) VALUES ('MXN', 'Peso mexicano'), ('USD', 'Dólar estadounidense'), ('EUR', 'Euro');
-INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), ''), (7, 'metricas_redes', NOW(3), ''), (8, 'meta_oficial', NOW(3), '');
+INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), ''), (7, 'metricas_redes', NOW(3), ''), (8, 'meta_oficial', NOW(3), ''), (9, 'indice_intentos', NOW(3), ''), (10, 'cambios_pendientes', NOW(3), '');
