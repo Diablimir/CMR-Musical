@@ -65,7 +65,7 @@ const newArtist = async (p, name, genre, subs, manager, booking) => {
   check('evento con 2 artistas en evento_artistas', q("SELECT COUNT(*) FROM evento_artistas ea JOIN eventos e ON e.id=ea.evento_id WHERE e.nombre='QA Festival'") === '2');
   check('roles y principal', q("SELECT GROUP_CONCAT(CONCAT(a.nombre_artistico,':',ea.rol,':',IF(ea.es_principal=1,'P','-')) ORDER BY ea.orden_presentacion SEPARATOR ',') FROM evento_artistas ea JOIN artistas a ON a.id=ea.artista_id JOIN eventos e ON e.id=ea.evento_id WHERE e.nombre='QA Festival'").includes('QA Dos:Telonero:-') );
   check('ingreso capturado (250000) y utilidad calculada', q("SELECT CONCAT(ingreso_total,'/',utilidad) FROM eventos WHERE nombre='QA Festival'") === '250000.00/150000.00', q("SELECT CONCAT(ingreso_total,'/',utilidad) FROM eventos WHERE nombre='QA Festival'"));
-  check('eventos.artista_id ya no se escribe (NULL)', q("SELECT COUNT(*) FROM eventos WHERE artista_id IS NOT NULL") === '0');
+  check('eventos ya no tiene artista_id (Fase 4): todo vive en evento_artistas', q("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='eventos' AND column_name='artista_id'") === '0');
 
   // ── integridad desde la pantalla: venue con evento
   await tab(A, 'Venues'); await A.locator('tr', { hasText: 'Metropólitan' }).first().click(); await A.waitForSelector('button[title="Eliminar Recinto"]');

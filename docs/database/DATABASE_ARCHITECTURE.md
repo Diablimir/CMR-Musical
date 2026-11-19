@@ -484,4 +484,4 @@ o, como Super Admin: `POST /api/migrate.php?action=down&to=1&confirm=yes`. Despu
 Pérdidas posibles al revertir (documentadas): contactos sin venue, correos/teléfonos adicionales, vínculos a más de un venue y la alineación completa (solo se conserva el artista principal).
 
 **Regenerar documentación y SQL:** `php scripts/db/generate-docs.php` (base de pruebas) y `python3 scripts/make-er-diagram.py`.
-**Pruebas:** `php tests/db/run.php` (154 comprobaciones) y `node tests/db/ui-relational.js` (interfaz de extremo a extremo).
+**Pruebas:** `php tests/db/run.php` (265 comprobaciones) y `node tests/db/ui-relational.cjs` (interfaz de extremo a extremo).
