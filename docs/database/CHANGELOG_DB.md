@@ -1,5 +1,10 @@
 # FLAMO CRM — Registro de cambios de la base de datos
 
+## v6 · Notas del venue  (migración 006)
+**Añadido:** `venue_notas` (venue_id, nota_id, fecha, texto, autor, evento_id): notas de seguimiento de un recinto, p. ej. cómo salió el show. CASCADE al borrar el venue; SET NULL al borrar el evento (la nota se conserva); CHECK de texto no vacío.
+**Antes de esto (sin migración):** las métricas del venue admiten `NULL` = «No aplica» (NP): no cuentan en el Flamo Score y los pesos restantes se reajustan.
+**Rollback:** `down()` elimina solo `venue_notas` (las notas escritas después de aplicarla se pierden al revertir; el resto no cambia).
+
 ## v5 · Fase 4 — Contracción  (migración 005)
 **Eliminado** (tras verificar que el reemplazo está completo; si no, aborta sin cambiar nada): `artistas.genero/manager/booking_agent/extra`, `venues.contacto_principal_id/extra`, `proveedores.contacto/telefono/correo`, `tours.artista_id`, `eventos.artista_id/extra`, `contratos.artista_id/venue_id/tour_id/evento_id`, `proyectos_grabacion.extra`, y las tablas `contactos_legacy`, `collections`, `schema_meta`.
 **Rollback:** `down()` recrea las estructuras (vacías); al seguir revirtiendo (004, 003) se reconstruyen desde las tablas nuevas, incluso los datos creados después de contraer (verificado en pruebas §21).

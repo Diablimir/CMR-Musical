@@ -830,6 +830,8 @@ export default function App() {
             onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
+            onUpdateVenue={handleUpdateVenue}
+            authorName={loggedInUserProfile.name}
           />
         )}
 

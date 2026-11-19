@@ -96,7 +96,7 @@ function entity_defs(): array {
             'state' => ['estado', 's'], 'country' => ['pais', 's'], 'photo' => ['foto', 's'],
             'bio' => ['bio', 's'], 'startDate' => ['fecha_inicio', 'd'], 'label' => ['sello', 's'], 'publisher' => ['editorial', 's'], 'distributor' => ['distribuidora', 's'],
         ] + ts3()],
-        'venues' => ['table' => 'venues', 'extra' => false, 'virtual' => ['providerIds', 'contactoPrincipalId', 'hours', 'localBands'], 'cols' => [
+        'venues' => ['table' => 'venues', 'extra' => false, 'virtual' => ['providerIds', 'contactoPrincipalId', 'hours', 'localBands', 'notes'], 'cols' => [
             'id' => ['id', 'id'], 'name' => ['nombre', 's'], 'address' => ['direccion', 's'], 'city' => ['ciudad', 's'],
             'state' => ['estado', 's'], 'country' => ['pais', 's'], 'postalCode' => ['codigo_postal', 's'],
             'lat' => ['latitud', 'f', [-90, 90]], 'lng' => ['longitud', 'f', [-180, 180]], 'rating' => ['rating', 'f', [0, 5]],
@@ -323,7 +323,12 @@ function load_all(PDO $pdo): array {
     unset($a);
     $hor = $G('SELECT venue_id k, descripcion FROM venue_horarios ORDER BY venue_id, orden');
     $ban = $G('SELECT venue_id k, nombre FROM venue_bandas_locales ORDER BY venue_id, orden');
-    foreach ($out['venues'] as &$v) { $v['hours'] = array_column($hor[$v['id']] ?? [], 'descripcion'); $v['localBands'] = array_column($ban[$v['id']] ?? [], 'nombre'); }
+    try { $vno = $G('SELECT venue_id k, nota_id, fecha, texto, autor, evento_id FROM venue_notas ORDER BY venue_id, fecha, nota_id'); }
+    catch (PDOException $e) { if ((int)($e->errorInfo[1] ?? 0) !== 1146) throw $e; $vno = []; }   // esquema anterior a la migración 006
+    foreach ($out['venues'] as &$v) {
+        $v['hours'] = array_column($hor[$v['id']] ?? [], 'descripcion'); $v['localBands'] = array_column($ban[$v['id']] ?? [], 'nombre');
+        $v['notes'] = array_map(fn($n) => array_filter(['id' => $n['nota_id'], 'date' => dt_to_iso($n['fecha']), 'text' => $n['texto'], 'author' => $n['autor'], 'eventId' => $n['evento_id']], fn($q) => $q !== null), $vno[$v['id']] ?? []);
+    }
     unset($v);
     $inv = $G('SELECT evento_id k, nombre FROM evento_bandas_invitadas ORDER BY evento_id, orden');
     $set = $G('SELECT evento_id k, item_id, titulo, duracion_seg, tempo, notas_transicion FROM evento_setlist ORDER BY evento_id, orden');
@@ -632,10 +637,24 @@ function set_artist_groups(PDO $pdo, string $id, array $obj): void {
     replace_rows($pdo, 'artista_integrantes', 'artista_id', $id, $rows);
 }
 
+function event_exists(PDO $pdo, string $id): bool { $st = $pdo->prepare('SELECT 1 FROM eventos WHERE id = ?'); $st->execute([$id]); return (bool)$st->fetchColumn(); }
+
 function set_venue_groups(PDO $pdo, string $id, array $obj): void {
     foreach ([['hours', 'venue_horarios', 'descripcion'], ['localBands', 'venue_bandas_locales', 'nombre']] as [$field, $table, $col]) {
         $rows = []; foreach (nonempty_list($obj[$field] ?? []) as $v) { $v = text_or_null($v, 255); if ($v !== null) $rows[] = ['orden' => count($rows) + 1, $col => $v]; }
         replace_rows($pdo, $table, 'venue_id', $id, $rows);
+    }
+    // Notas de seguimiento (venue_notas): si el cliente no manda `notes`, se conservan las existentes.
+    if (array_key_exists('notes', $obj)) {
+        $rows = []; $seen = [];
+        foreach (nonempty_list($obj['notes']) as $i => $n) {
+            if (!is_array($n)) continue;
+            $text = trim((string)($n['text'] ?? '')); if ($text === '') continue;
+            $evt = $n['eventId'] ?? null; $evt = (is_string($evt) && $evt !== '' && event_exists($pdo, mb_substr($evt, 0, 40))) ? mb_substr($evt, 0, 40) : null;   // evento inexistente (aún) → sin vínculo, la nota se conserva
+            $rows[] = ['nota_id' => child_id($seen, $n['id'] ?? null, 'n', $i), 'fecha' => iso_to_dt($n['date'] ?? null) ?? gmdate('Y-m-d H:i:s') . '.000',
+                'texto' => mb_substr($text, 0, 5000), 'autor' => text_or_null($n['author'] ?? null, 100), 'evento_id' => $evt];
+        }
+        replace_rows($pdo, 'venue_notas', 'venue_id', $id, $rows);
     }
 }
 

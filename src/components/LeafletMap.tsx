@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import { heatColor, heatSize } from '../lib/venueScoreRubric';
 import { Layers, MapPin, Globe } from 'lucide-react';
 
 // Monkey-patch Leaflet DomUtil methods to prevent "_leaflet_pos" errors on detached/unmounted elements
@@ -40,6 +41,7 @@ interface MapVenue {
   state?: string;
   address?: string;
   statusState?: 'completed' | 'upcoming' | 'none' | string;
+  score?: number | null;   // Flamo Score 0–100: define tamaño y color del marcador (mapa de calor)
 }
 
 interface LeafletMapProps {
@@ -49,6 +51,7 @@ interface LeafletMapProps {
   defaultCenter?: [number, number];
   defaultZoom?: number;
   singleVenueHighlight?: boolean;
+  heat?: boolean;   // true = marcadores de calor (tamaño/color por Flamo Score)
 }
 
 export default function LeafletMap({
@@ -57,7 +60,8 @@ export default function LeafletMap({
   onSelectVenue,
   defaultCenter = [23.6345, -102.5528], // Center of Mexico
   defaultZoom = 5,
-  singleVenueHighlight = false
+  singleVenueHighlight = false,
+  heat = false
 }: LeafletMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -222,25 +226,46 @@ export default function LeafletMap({
         ringClass = 'ring-orange-200';
       }
 
-      const pulseHtml = isSelected ? `
-        <span class="absolute inline-flex h-full w-full rounded-full ${colorClass} opacity-75 animate-ping"></span>
-      ` : '';
+      const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+      const hasScore = typeof v.score === 'number' && v.score > 0;
+      let customIcon: L.DivIcon;
+      if (heat && !singleVenueHighlight) {
+        // Mapa de calor: círculo difuso cuyo tamaño y color crecen con el Flamo Score; sin score = punto gris pequeño
+        const size = hasScore ? heatSize(v.score as number) : 20;
+        const col = hasScore ? heatColor(v.score as number) : 'rgb(148,163,184)';
+        const core = hasScore ? Math.max(8, Math.round(size * 0.22)) : 8;
+        const box = size + 8;
+        customIcon = L.divIcon({
+          html: `
+            <div style="position:relative;width:${box}px;height:${box}px;display:flex;align-items:center;justify-content:center;${isSelected ? 'z-index:2000;' : ''}">
+              <div style="position:absolute;inset:0;border-radius:9999px;background:radial-gradient(circle, ${col} 0%, ${col} 28%, transparent 72%);opacity:${hasScore ? 0.62 : 0.35};${isSelected ? 'animation:ping 1.4s cubic-bezier(0,0,.2,1) infinite;' : ''}"></div>
+              <div style="position:relative;width:${core}px;height:${core}px;border-radius:9999px;background:${col};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);${isSelected ? 'outline:2px solid #0A2538;' : ''}"></div>
+            </div>`,
+          className: 'custom-map-marker',
+          iconSize: [box, box],
+          iconAnchor: [box / 2, box / 2]
+        });
+      } else {
+        const pulseHtml = isSelected ? `
+          <span class="absolute inline-flex h-full w-full rounded-full ${colorClass} opacity-75 animate-ping"></span>
+        ` : '';
 
-      const scaleClass = isSelected ? 'scale-125 z-[2000]' : 'hover:scale-115 transition-transform duration-200';
+        const scaleClass = isSelected ? 'scale-125 z-[2000]' : 'hover:scale-115 transition-transform duration-200';
 
-      const customIcon = L.divIcon({
-        html: `
-          <div class="relative flex items-center justify-center w-8 h-8 ${scaleClass}">
-            ${pulseHtml}
-            <div class="relative flex items-center justify-center w-5 h-5 rounded-full ${colorClass} border-2 border-white shadow-lg ring-2 ${ringClass} ring-opacity-50">
-              <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+        customIcon = L.divIcon({
+          html: `
+            <div class="relative flex items-center justify-center w-8 h-8 ${scaleClass}">
+              ${pulseHtml}
+              <div class="relative flex items-center justify-center w-5 h-5 rounded-full ${colorClass} border-2 border-white shadow-lg ring-2 ${ringClass} ring-opacity-50">
+                <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+              </div>
             </div>
-          </div>
-        `,
-        className: 'custom-map-marker',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
+          `,
+          className: 'custom-map-marker',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+      }
 
       // Create marker
       const marker = L.marker([lat, lng], { icon: customIcon });
@@ -248,9 +273,10 @@ export default function LeafletMap({
       // Create popup
       const popupContent = `
         <div class="p-2 font-sans space-y-1 text-slate-800" style="min-width: 150px;">
-          <p class="font-bold text-xs text-slate-900 border-b border-slate-100 pb-1">${v.name}</p>
-          ${v.address ? `<p class="text-[10px] text-slate-500 leading-normal">${v.address}</p>` : ''}
-          ${v.city || v.state ? `<p class="text-[9px] font-semibold text-slate-400">${v.city || ''}${v.city && v.state ? ', ' : ''}${v.state || ''}</p>` : ''}
+          <p class="font-bold text-xs text-slate-900 border-b border-slate-100 pb-1">${esc(v.name)}</p>
+          ${v.address ? `<p class="text-[10px] text-slate-500 leading-normal">${esc(v.address)}</p>` : ''}
+          ${v.city || v.state ? `<p class="text-[9px] font-semibold text-slate-400">${esc(v.city || '')}${v.city && v.state ? ', ' : ''}${esc(v.state || '')}</p>` : ''}
+          ${typeof v.score === 'number' ? `<p class="text-[10px] font-bold text-slate-700 mt-1">Flamo Score: ${v.score > 0 ? v.score + ' / 100' : 'sin evaluar'}</p>` : ''}
           ${v.statusState === 'completed' ? `<span class="inline-block text-[8px] bg-emerald-50 text-emerald-600 border border-emerald-100 px-1 py-0.5 rounded font-bold mt-1">✓ Completado</span>` : ''}
           ${v.statusState === 'upcoming' ? `<span class="inline-block text-[8px] bg-amber-50 text-amber-600 border border-amber-100 px-1 py-0.5 rounded font-bold mt-1">★ Agendado</span>` : ''}
         </div>
@@ -296,7 +322,7 @@ export default function LeafletMap({
     return () => {
       activeTimeouts.forEach(id => clearTimeout(id));
     };
-  }, [venues, selectedVenueId, singleVenueHighlight]);
+  }, [venues, selectedVenueId, singleVenueHighlight, heat]);
 
   // Encuadra el mapa cuando cambia el conjunto de venues (alta o baja en tiempo real)
   const venueKey = venues

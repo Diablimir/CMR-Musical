@@ -46,6 +46,7 @@
 - [`venue_bandas_locales`](#venue_bandas_locales) — Bandas locales asociadas a un venue.
 - [`venue_contactos`](#venue_contactos) — Vínculo contacto ↔ venue con su rol; marca al contacto principal del venue. Reemplaza `venues.contacto_principal_id` y elimina la dependencia circular.
 - [`venue_horarios`](#venue_horarios) — Horarios de operación del venue (una línea por renglón de texto).
+- [`venue_notas`](#venue_notas) — Notas de seguimiento de un venue (p. ej. cómo salió el show una vez realizado): texto, fecha, autor y, opcionalmente, el evento al que se refiere.
 - [`venue_proveedores`](#venue_proveedores) — Relación N:M entre venues y proveedores.
 
 ---
@@ -118,9 +119,9 @@
 
 **Llaves foráneas:**
 
-- `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -151,8 +152,8 @@
 
 **Llaves foráneas:**
 
-- `genero_id` → `cat_generos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `genero_id` → `cat_generos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Unicidad:**
 
@@ -525,8 +526,8 @@
 
 **Llaves foráneas:**
 
-- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `evento_id` → `eventos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `idx_ceventos_evento` (evento_id)
 
@@ -547,8 +548,8 @@
 
 **Llaves foráneas:**
 
-- `proveedor_id` → `proveedores(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `proveedor_id` → `proveedores(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Índices:** `idx_cproveedores_proveedor` (proveedor_id)
 
@@ -591,8 +592,8 @@
 
 **Llaves foráneas:**
 
-- `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Índices:** `idx_cvenues_venue` (venue_id)
 
@@ -785,9 +786,9 @@
 
 **Llaves foráneas:**
 
-- `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `proveedor_id` → `proveedores(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Unicidad:**
 
@@ -1151,9 +1152,9 @@
 
 **Llaves foráneas:**
 
-- `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -1187,6 +1188,36 @@
 
 ---
 
+## venue_notas
+
+**Propósito:** Notas de seguimiento de un venue (p. ej. cómo salió el show una vez realizado): texto, fecha, autor y, opcionalmente, el evento al que se refiere.
+
+**Cardinalidad:** N notas — 1 venue; N notas — 0..1 evento
+
+**Dependencias funcionales:** (venue_id, nota_id) → fecha, texto, autor, evento_id. Al borrar el venue se borran sus notas (CASCADE); al borrar el evento la nota se conserva sin vínculo (SET NULL). CHECK: el texto no puede estar en blanco.
+
+| Columna | Tipo | Nulo | Por defecto | Clave | Descripción |
+|---|---|---|---|---|---|
+| `venue_id` | `varchar(40)` | NN |  | PK, FK | Venue. |
+| `nota_id` | `varchar(40)` | NN |  | PK |  |
+| `fecha` | `datetime(3)` | NN |  |  |  |
+| `texto` | `text` | NN |  |  |  |
+| `autor` | `varchar(100)` | sí | `NULL` |  |  |
+| `evento_id` | `varchar(40)` | sí | `NULL` | FK | Evento. |
+
+**Llaves foráneas:**
+
+- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `evento_id` → `eventos(id)` · al borrar el padre: **SET NULL**
+
+**Restricciones CHECK:**
+
+- `chk_vn_texto`: `char_length(trim(`texto`)) > 0`
+
+**Índices:** `idx_vn_evento` (evento_id); `idx_vn_venue_fecha` (venue_id,fecha)
+
+---
+
 ## venue_proveedores
 
 **Propósito:** Relación N:M entre venues y proveedores.
@@ -1202,8 +1233,8 @@
 
 **Llaves foráneas:**
 
-- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `proveedor_id` → `proveedores(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `proveedor_id` (proveedor_id)
 

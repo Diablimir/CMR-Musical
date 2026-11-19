@@ -23,7 +23,7 @@ $count = fn(string $sql, array $a = []) => (int)t_scalar($pdo, $sql, $a);
 t_section('1. Migraciones: instalación nueva');
 $fresh();
 $applied = migrate_up($pdo);
-t_eq($applied, [1, 2, 3, 4, 5], 'se aplican las 5 migraciones en orden');
+t_eq($applied, [1, 2, 3, 4, 5, 6], 'se aplican las 6 migraciones en orden');
 foreach (['artistas','venues','contactos','contacto_correos','contacto_telefonos','venue_contactos','artista_contactos','proveedor_contactos','evento_artistas','tour_artistas','artista_generos','cat_generos','cat_roles_contacto','cat_monedas','eventos','tours','contratos','proveedores','proyectos_grabacion','venue_proveedores','cat_etapas_desarrollo','schema_migrations'] as $tb) t_ok(db_table_exists($pdo, $tb), "existe la tabla $tb");
 t_eq(migrate_up($pdo), [], 'volver a migrar no hace nada (idempotente)');
 t_eq($count('SELECT COUNT(*) FROM cat_etapas_desarrollo'), 7, 'catálogo de etapas sembrado');
@@ -402,12 +402,35 @@ $sync($up('venues', $v2));
 t_eq($byId(load_all($pdo)['venues'], 'v-np2')['scoreRentabilidad'], 0, 'si el campo ni viene (clientes antiguos), vale 0 y NO se vuelve NP');
 t_throws(fn() => $sync($up('venues', $ven('v-np3', 'Foro 500', ['scoreRentabilidad' => 500]))), 'sigue rechazando valores fuera de 0–100', '0 y 100');
 
+t_section('20c. Notas de seguimiento del venue (migración 006)');
+$fresh(); migrate_up($pdo); catalog_cache_clear();
+$sync($up('artists', $art('art-1', 'Uno')), $up('venues', $ven('ven-1', 'Foro')), $up('events', $evt('evt-1', 'art-1', 'ven-1')));
+$n1 = ['id' => 'n-1', 'date' => '2026-05-01T20:30:00.000Z', 'text' => 'Show lleno, buen sonido.', 'author' => 'Ana', 'eventId' => 'evt-1'];
+$sync($up('venues', $ven('ven-1', 'Foro', ['notes' => [$n1, ['id' => 'n-2', 'date' => '2026-05-02T10:00:00.000Z', 'text' => 'Pagaron a tiempo.']]])));
+$rn = $byId(load_all($pdo)['venues'], 'ven-1')['notes'];
+t_eq(array_column($rn, 'id'), ['n-1', 'n-2'], 'las notas se guardan y vuelven ordenadas por fecha');
+t_eq([$rn[0]['text'], $rn[0]['author'], $rn[0]['eventId'], $rn[0]['date']], ['Show lleno, buen sonido.', 'Ana', 'evt-1', '2026-05-01T20:30:00.000Z'], 'texto, autor, evento y fecha se conservan');
+t_ok(!isset($rn[1]['author']) && !isset($rn[1]['eventId']), 'autor y evento son opcionales');
+$sync($up('venues', $ven('ven-1', 'Foro Renombrado')));   // el cliente no manda `notes`
+t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE venue_id='ven-1'"), 2, 'si el cliente no manda notas, se conservan las existentes');
+$sync($up('venues', $ven('ven-1', 'Foro', ['notes' => [$n1, ['id' => 'n-3', 'text' => '   '], ['id' => 'n-4', 'text' => 'Nota con evento inexistente', 'eventId' => 'evt-no']]])));
+t_eq(array_column($byId(load_all($pdo)['venues'], 'ven-1')['notes'], 'id'), ['n-1', 'n-4'], 'una nota vacía se descarta; una nota con evento inexistente se conserva sin vínculo');
+t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE venue_id='ven-1' AND nota_id='n-4' AND evento_id IS NULL"), 1, 'sin vínculo = NULL');
+t_throws(fn() => $pdo->exec("INSERT INTO venue_notas (venue_id, nota_id, fecha, texto) VALUES ('ven-1','n-9',NOW(3),'   ')"), 'la base rechaza una nota en blanco (CHECK)');
+$sync(['events' => ['deletes' => ['evt-1']]]);
+t_eq($count("SELECT COUNT(*) FROM venue_notas WHERE nota_id='n-1' AND evento_id IS NULL"), 1, 'al borrar el evento la nota se conserva (SET NULL)');
+$sync(['venues' => ['deletes' => ['ven-1']]]);
+t_eq($count('SELECT COUNT(*) FROM venue_notas'), 0, 'al borrar el venue se borran sus notas (CASCADE)');
+t_eq(migrate_down($pdo, 5), [6], 'rollback de la 006 elimina solo la tabla de notas');
+t_ok(!db_table_exists($pdo, 'venue_notas') && db_table_exists($pdo, 'venues'), 'el resto del esquema queda intacto');
+t_eq(migrate_up($pdo), [6], 'y se puede volver a aplicar');
+
 // ═══════════════════════════════════════════════════════════
 t_section('21. Fase 4: contracción (retirar lo obsoleto) con verificación previa y rollback');
 $fresh(); migrate_up($pdo, 1); seed_v1($pdo); migrate_up($pdo, 4);
 $before = jsonable(load_all($pdo));
 t_ok(db_col_exists($pdo, 'artistas', 'genero') && db_table_exists($pdo, 'contactos_legacy'), 'antes de contraer, lo obsoleto sigue existiendo');
-t_eq(migrate_up($pdo), [5], 'la migración 005 se aplica');
+t_eq(migrate_up($pdo, 5), [5], 'la migración 005 se aplica');
 foreach ([['artistas', 'genero'], ['artistas', 'manager'], ['artistas', 'booking_agent'], ['artistas', 'extra'], ['venues', 'contacto_principal_id'], ['venues', 'extra'], ['proveedores', 'contacto'], ['proveedores', 'telefono'], ['proveedores', 'correo'],
           ['tours', 'artista_id'], ['eventos', 'artista_id'], ['eventos', 'extra'], ['contratos', 'artista_id'], ['contratos', 'venue_id'], ['contratos', 'tour_id'], ['contratos', 'evento_id'], ['proyectos_grabacion', 'extra']] as [$t, $c])
     t_ok(!db_col_exists($pdo, $t, $c), "ya no existe $t.$c");
@@ -418,14 +441,14 @@ $nota = (string)t_scalar($pdo, 'SELECT notas FROM schema_migrations WHERE versio
 // verificación previa: aborta sin cambiar nada
 $fresh(); migrate_up($pdo, 1); seed_v1($pdo); migrate_up($pdo, 4);
 $pdo->exec("DELETE FROM evento_artistas WHERE evento_id = 'evt-2'");
-$m = t_throws(fn() => migrate_up($pdo), 'con un evento sin alineación, la contracción se niega', 'sin alineación');
+$m = t_throws(fn() => migrate_up($pdo, 5), 'con un evento sin alineación, la contracción se niega', 'sin alineación');
 t_ok(db_col_exists($pdo, 'eventos', 'artista_id') && db_col_exists($pdo, 'artistas', 'genero') && db_table_exists($pdo, 'contactos_legacy'), 'no se tocó nada al abortar');
 t_eq((int)t_scalar($pdo, 'SELECT MAX(version) FROM schema_migrations'), 4, 'la versión sigue en 4');
 $pdo->exec("INSERT INTO evento_artistas (evento_id, artista_id, es_principal, orden_presentacion) VALUES ('evt-2','art-2',1,1)");
 $pdo->exec("UPDATE artistas SET extra = '{\"campo_no_modelado\":1}' WHERE id = 'art-1'");
-t_throws(fn() => migrate_up($pdo), 'con datos sin modelar en `extra`, la contracción se niega (no pierde información)', 'extra');
+t_throws(fn() => migrate_up($pdo, 5), 'con datos sin modelar en `extra`, la contracción se niega (no pierde información)', 'extra');
 $pdo->exec("UPDATE artistas SET extra = NULL WHERE id = 'art-1'");
-t_eq(migrate_up($pdo), [5], 'corregido el problema, la contracción procede');
+t_eq(migrate_up($pdo, 5), [5], 'corregido el problema, la contracción procede');
 
 // rollback completo 5 → 1 → 5 sin perder datos
 $sync($up('artists', $art('art-n', 'Nuevo', ['genre' => 'Salsa', 'manager' => 'Manager Nuevo'])));   // dato creado ya en el esquema contraído
@@ -436,7 +459,7 @@ t_eq(jsonable(load_all($pdo)), $conN, 'y la API sigue devolviendo lo mismo (los 
 t_eq(migrate_down($pdo, 1), [4, 3, 2], 'seguir revirtiendo hasta el esquema original v1');
 t_eq((string)t_scalar($pdo, "SELECT genero FROM artistas WHERE id='art-n'") . '|' . (string)t_scalar($pdo, "SELECT manager FROM artistas WHERE id='art-n'"), 'Salsa|Manager Nuevo', 'un artista creado DESPUÉS de contraer se reconstruye en el esquema v1 (género y manager)');
 t_eq((string)t_scalar($pdo, "SELECT artista_id FROM eventos WHERE id='evt-1'"), 'art-1', 'eventos.artista_id restaurado');
-t_eq(migrate_up($pdo), [2, 3, 4, 5], 'se vuelve a subir hasta la 5');
+t_eq(migrate_up($pdo, 5), [2, 3, 4, 5], 'se vuelve a subir hasta la 5');
 t_eq(array_column(jsonable(load_all($pdo))['artists'], 'artisticName'), array_column($conN['artists'], 'artisticName'), 'los artistas siguen todos ahí tras ida y vuelta completa');
 
 t_done();

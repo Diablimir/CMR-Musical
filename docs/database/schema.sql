@@ -491,6 +491,20 @@ CREATE TABLE `venue_horarios` (
   PRIMARY KEY (`venue_id`,`orden`),
   CONSTRAINT `fk_vh_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `venue_notas` (
+  `venue_id` varchar(40) NOT NULL,
+  `nota_id` varchar(40) NOT NULL,
+  `fecha` datetime(3) NOT NULL,
+  `texto` text NOT NULL,
+  `autor` varchar(100) DEFAULT NULL,
+  `evento_id` varchar(40) DEFAULT NULL,
+  PRIMARY KEY (`venue_id`,`nota_id`),
+  KEY `idx_vn_evento` (`evento_id`),
+  KEY `idx_vn_venue_fecha` (`venue_id`,`fecha`),
+  CONSTRAINT `fk_vn_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_vn_venue` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_vn_texto` CHECK (char_length(trim(`texto`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE `venue_proveedores` (
   `venue_id` varchar(40) NOT NULL,
   `proveedor_id` varchar(40) NOT NULL,
@@ -546,4 +560,4 @@ CREATE TABLE `venues` (
 INSERT INTO cat_etapas_desarrollo (id, nombre) VALUES (1, 'Desarrollo'), (2, 'Aficionado'), (3, 'Emergente'), (4, 'Media carrera'), (5, 'Consolidado'), (6, 'Consagrado'), (7, 'Internacional');
 INSERT INTO cat_roles_contacto (nombre) VALUES ('Manager'), ('Booking'), ('Promotor'), ('Técnico'), ('Hospitalidad'), ('Producción'), ('Administración'), ('Contacto comercial'), ('Contacto');
 INSERT INTO cat_monedas (codigo, nombre) VALUES ('MXN', 'Peso mexicano'), ('USD', 'Dólar estadounidense'), ('EUR', 'Euro');
-INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), '');
+INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), '');

@@ -129,6 +129,15 @@ export interface Contact {
   links?: ContactLink[];
 }
 
+/** Nota de seguimiento de un venue (p. ej. cómo salió el show una vez realizado). */
+export interface VenueNote {
+  id: string;
+  date: string;      // ISO (UTC)
+  text: string;
+  author?: string;
+  eventId?: string;  // show al que se refiere (opcional)
+}
+
 export interface Venue {
   id: string;
   version?: number; // control de concurrencia (lo asigna el servidor)
@@ -164,6 +173,7 @@ export interface Venue {
   contactoPrincipalId?: string; // Direct field in venues as requested (eliminating es_principal trigger complexity)
   providerIds?: string[]; // Associated providers/suppliers
   localBands?: string[]; // Support/local bands linked to this venue
+  notes?: VenueNote[]; // Notas de seguimiento (tabla venue_notas)
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

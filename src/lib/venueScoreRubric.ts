@@ -98,3 +98,23 @@ export function computeGlobalScore(v: Pick<Venue, ScoreKey>): number {
   if (!totalWeight) return 0;
   return Math.round(ms.reduce((acc, m) => acc + ((v[m.key] as number) || 0) * m.weight, 0) / totalWeight);
 }
+
+// ───────── Mapa de calor: el tamaño y el color del marcador dependen del Flamo Score ─────────
+const HEAT_STOPS: [number, [number, number, number]][] = [
+  [0, [56, 189, 248]], [25, [34, 197, 94]], [50, [250, 204, 21]], [75, [249, 115, 22]], [100, [220, 38, 38]],
+];
+
+/** Color (rgb) de la escala fría→caliente para un score 0–100. */
+export function heatColor(score: number): string {
+  const s = Math.max(0, Math.min(100, score));
+  for (let i = 1; i < HEAT_STOPS.length; i++) {
+    const [b, cb] = HEAT_STOPS[i]; const [a, ca] = HEAT_STOPS[i - 1];
+    if (s <= b) { const t = (s - a) / (b - a); return `rgb(${ca.map((c, k) => Math.round(c + (cb[k] - c) * t)).join(',')})`; }
+  }
+  return 'rgb(220,38,38)';
+}
+
+/** Diámetro (px) del marcador: 50 es claramente más pequeño que 100. Sin score → tamaño mínimo. */
+export function heatSize(score: number): number {
+  return Math.round(22 + (Math.max(0, Math.min(100, score)) / 100) * 52);   // 22 px … 74 px
+}

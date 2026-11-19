@@ -54,6 +54,7 @@ const TABLES = [
     'contrato_proveedores' => ['Proveedores que son parte de un contrato (N:M).', 'N contratos — M proveedores', '(contrato_id, proveedor_id) clave compuesta.'],
     'contrato_eventos' => ['Eventos a los que se refiere un contrato (N:M).', 'N contratos — M eventos', '(contrato_id, evento_id) clave compuesta.'],
     'contrato_tours' => ['Giras a las que se refiere un contrato (N:M). La gira de un evento no se duplica: se deduce de contrato_eventos.', 'N contratos — M giras', '(contrato_id, tour_id) clave compuesta.'],
+    'venue_notas' => ['Notas de seguimiento de un venue (p. ej. cómo salió el show una vez realizado): texto, fecha, autor y, opcionalmente, el evento al que se refiere.', 'N notas — 1 venue; N notas — 0..1 evento', '(venue_id, nota_id) → fecha, texto, autor, evento_id. Al borrar el venue se borran sus notas (CASCADE); al borrar el evento la nota se conserva sin vínculo (SET NULL). CHECK: el texto no puede estar en blanco.'],
     'schema_migrations' => ['Registro de migraciones aplicadas (versión, nombre, fecha, checksum y notas).', '—', 'version → nombre, aplicada_en, checksum, notas.'],
     'users' => ['Cuentas de acceso a la aplicación (contraseña con hash).', '—', 'id → todas; username clave candidata.'],
     'login_attempts' => ['Intentos fallidos de inicio de sesión (límite anti fuerza bruta).', '—', 'Sin clave primaria; se purga a los 15 minutos.'],
@@ -117,7 +118,7 @@ $dump = preg_replace('/ AUTO_INCREMENT=\d+/', '', $dump);
 $seed = "\n-- Datos de referencia (catálogos)\nINSERT INTO cat_etapas_desarrollo (id, nombre) VALUES " . implode(', ', array_map(fn($n, $i) => '(' . ($i + 1) . ", '$n')", ETAPAS, array_keys(ETAPAS))) . ";\n"
     . "INSERT INTO cat_roles_contacto (nombre) VALUES ('Manager'), ('Booking'), ('Promotor'), ('Técnico'), ('Hospitalidad'), ('Producción'), ('Administración'), ('Contacto comercial'), ('Contacto');\n"
     . "INSERT INTO cat_monedas (codigo, nombre) VALUES ('MXN', 'Peso mexicano'), ('USD', 'Dólar estadounidense'), ('EUR', 'Euro');\n"
-    . "INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), '');\n";
+    . "INSERT INTO schema_migrations (version, nombre, aplicada_en, checksum) VALUES (1, 'baseline_v1', NOW(3), ''), (2, 'integridad_fase1', NOW(3), ''), (3, 'nucleo_relacional_fase2', NOW(3), ''), (4, 'grupos_y_contratos', NOW(3), ''), (5, 'contraccion_fase4', NOW(3), ''), (6, 'venue_notas', NOW(3), '');\n";
 $header = "-- ==========================================================================\n-- FLAMO CRM — esquema relacional (MySQL / MariaDB, InnoDB, utf8mb4)\n-- Generado por scripts/db/generate-docs.php desde una base migrada (v3). No editar a mano.\n-- Para instalar: ejecutar este archivo en una base vacía. Para actualizar una base existente\n-- usa las migraciones (public/api/migrations), que conservan los datos.\n-- ==========================================================================\n\n";
 file_put_contents(__DIR__ . '/../../docs/database/schema.sql', $header . $dump . $seed);
 

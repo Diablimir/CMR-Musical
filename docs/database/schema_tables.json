@@ -1751,6 +1751,49 @@
         "indexes": []
     },
     {
+        "name": "venue_notas",
+        "description": "Notas de seguimiento de un venue (p. ej. cómo salió el show una vez realizado): texto, fecha, autor y, opcionalmente, el evento al que se refiere.",
+        "columns": [
+            {
+                "name": "venue_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio · Llave foránea → venues(id), al borrar: CASCADE · Venue.",
+                "key": "PK"
+            },
+            {
+                "name": "nota_id",
+                "type": "VARCHAR(40)",
+                "notes": "Obligatorio",
+                "key": "PK"
+            },
+            {
+                "name": "fecha",
+                "type": "DATETIME(3)",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "texto",
+                "type": "TEXT",
+                "notes": "Obligatorio"
+            },
+            {
+                "name": "autor",
+                "type": "VARCHAR(100)",
+                "notes": ""
+            },
+            {
+                "name": "evento_id",
+                "type": "VARCHAR(40)",
+                "notes": "Llave foránea → eventos(id), al borrar: SET NULL · Evento.",
+                "key": "FK"
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_vn_evento ON venue_notas(evento_id);",
+            "CREATE INDEX idx_vn_venue_fecha ON venue_notas(venue_id,fecha);"
+        ]
+    },
+    {
         "name": "venue_proveedores",
         "description": "Relación N:M entre venues y proveedores.",
         "columns": [

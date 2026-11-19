@@ -6,8 +6,9 @@ import {
   ChevronLeft, ChevronRight, MapPin, Eye, Info, List, CalendarDays, X, Phone, Globe, Star
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
-import { computeGlobalScore } from '../lib/venueScoreRubric';
-import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour } from '../types';
+import { computeGlobalScore, SCORE_METRICS, heatColor } from '../lib/venueScoreRubric';
+import VenueNotes from './VenueNotes';
+import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour, VenueNote } from '../types';
 
 interface HomeDashboardProps {
   events: Event[];
@@ -19,6 +20,8 @@ interface HomeDashboardProps {
   onUpdateEvent: (id: string, updated: Partial<Event>) => void;
   onDeleteEvent: (id: string) => void;
   onSelectVenue?: (venueId: string) => void;
+  onUpdateVenue?: (venue: Venue) => void;
+  authorName?: string;
 }
 
 export default function HomeDashboard({
@@ -30,7 +33,9 @@ export default function HomeDashboard({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
-  onSelectVenue
+  onSelectVenue,
+  onUpdateVenue,
+  authorName
 }: HomeDashboardProps) {
   // Navigation Tab inside Historial (Calendar vs List)
   const [showView, setShowView] = useState<'calendar' | 'list'>('calendar');
@@ -158,6 +163,7 @@ export default function HomeDashboard({
     return {
       ...v,
       statusState,
+      score: computeGlobalScore(v),   // Flamo Score → tamaño/color del marcador (mapa de calor)
       eventsCount: venueEvents.length,
       completedCount: venueEvents.filter(e => e.status === 'Completed').length,
       upcomingCount: venueEvents.filter(e => e.status === 'Confirmed' || e.status === 'Draft').length,
@@ -411,15 +417,9 @@ export default function HomeDashboard({
               <MapPin className="w-3.5 h-3.5 text-tomato-curry" />
               <span>Mapa Geográfico de Booking</span>
             </span>
-            <div className="flex items-center gap-3 text-[10px] font-bold">
-              <span className="flex items-center gap-1.5 text-emerald-600">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Realizados (Verde)
-              </span>
-              <span className="flex items-center gap-1.5 text-amber-600">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                Por realizar (Amarillo)
-              </span>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
+              <span className="w-10 h-2 rounded-full" style={{ background: `linear-gradient(to right, ${[0, 25, 50, 75, 100].map(heatColor).join(',')})` }} />
+              Mapa de calor: tamaño y color según el Flamo Score
             </div>
           </div>
           <h3 className="text-sm font-bold text-cosmic-black">Ruta de Recintos Contratados</h3>
@@ -445,7 +445,15 @@ export default function HomeDashboard({
                 venues={venuesWithStatus}
                 selectedVenueId={selectedVenueId}
                 onSelectVenue={(id) => setSelectedVenueId(id)}
+                heat
               />
+              {/* Leyenda del mapa de calor */}
+              <div className="absolute bottom-2 left-2 z-[1000] bg-white/90 backdrop-blur-xs border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm pointer-events-none" data-testid="heat-legend">
+                <span className="text-[8px] uppercase font-bold text-slate-500 tracking-wider block mb-1">Flamo Score</span>
+                <div className="h-1.5 w-28 rounded-full" style={{ background: `linear-gradient(to right, ${[0, 25, 50, 75, 100].map(heatColor).join(',')})` }} />
+                <div className="flex justify-between text-[8px] font-mono text-slate-500 mt-0.5"><span>0</span><span>50</span><span>100</span></div>
+                <span className="text-[8px] text-slate-400 block mt-0.5">Más grande y más rojo = mejor</span>
+              </div>
             </div>
 
 
@@ -494,47 +502,35 @@ export default function HomeDashboard({
                     <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Métricas del Recinto</span>
                     
                     <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-600">
-                      <div className="bg-white p-2 border border-slate-150 rounded-lg">
-                        <span className="text-[8px] text-slate-400 block uppercase font-bold">Rentabilidad</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="bg-emerald-500 h-full" style={{ width: `${selectedVenueDetail.scoreRentabilidad ?? 0}%` }} />
+                      {SCORE_METRICS.map((m) => {
+                        const val = selectedVenueDetail[m.key];
+                        return (
+                          <div key={m.key} className="bg-white p-2 border border-slate-150 rounded-lg">
+                            <span className="text-[8px] text-slate-400 block uppercase font-bold">{m.label}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className={`${m.color} h-full`} style={{ width: `${val ?? 0}%` }} />
+                              </div>
+                              <span className="font-mono font-bold text-slate-700">{val === null || val === undefined ? 'NP' : `${val}%`}</span>
+                            </div>
                           </div>
-                          <span className="font-mono font-bold text-slate-700">{selectedVenueDetail.scoreRentabilidad === null ? 'NP' : `${selectedVenueDetail.scoreRentabilidad}%`}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-white p-2 border border-slate-150 rounded-lg">
-                        <span className="text-[8px] text-slate-400 block uppercase font-bold">Puntualidad Pago</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="bg-indigo-500 h-full" style={{ width: `${selectedVenueDetail.scorePuntualidadPago}%` }} />
-                          </div>
-                          <span className="font-mono font-bold text-slate-700">{selectedVenueDetail.scorePuntualidadPago}%</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-white p-2 border border-slate-150 rounded-lg">
-                        <span className="text-[8px] text-slate-400 block uppercase font-bold">Hospitalidad</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="bg-pink-500 h-full" style={{ width: `${selectedVenueDetail.scoreHospitalidad}%` }} />
-                          </div>
-                          <span className="font-mono font-bold text-slate-700">{selectedVenueDetail.scoreHospitalidad}%</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-white p-2 border border-slate-150 rounded-lg">
-                        <span className="text-[8px] text-slate-400 block uppercase font-bold">Producción/Rider</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="bg-sky-500 h-full" style={{ width: `${selectedVenueDetail.scoreProduccion}%` }} />
-                          </div>
-                          <span className="font-mono font-bold text-slate-700">{selectedVenueDetail.scoreProduccion}%</span>
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
                   </div>
+
+                  {/* Notas del recinto (debajo de las métricas): se guardan en el servidor */}
+                  {onUpdateVenue && (
+                    <VenueNotes
+                      notes={selectedVenueDetail.notes ?? []}
+                      events={allEvents.filter((e) => e.venueId === selectedVenueDetail.id && !e.deleted_at)}
+                      authorName={authorName}
+                      onChange={(notes: VenueNote[]) => {
+                        const base = venues.find((x) => x.id === selectedVenueDetail.id);
+                        if (base) onUpdateVenue({ ...base, notes, updated_at: new Date().toISOString() });
+                      }}
+                    />
+                  )}
 
                   {/* Shows booked list */}
                   <div className="mt-4">
