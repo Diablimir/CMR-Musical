@@ -13,7 +13,7 @@ import GlobalFilters from './components/GlobalFilters';
 import VenueDrawer from './components/VenueDrawer';
 import ArtistProfile from './components/ArtistProfile';
 import FinancialSuite from './components/FinancialSuite';
-import SchemaVisualizer from './components/SchemaVisualizer';
+import { computeGlobalScore } from './lib/venueScoreRubric';
 import UxSettings from './components/UxSettings';
 import LegalSuite from './components/LegalSuite';
 import LoginScreen from './components/LoginScreen';
@@ -47,7 +47,7 @@ export default function App() {
   const stateRef = useRef<Record<CollectionName, any[]>>({ venues: [], artists: [], contacts: [], tours: [], events: [], contracts: [], providers: [], recording_projects: [] });
 
   // 2. Navigation Tab State
-  const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'database' | 'providers' | 'production' | 'contacts'>('inicio');
+  const [activeWorkspace, setActiveWorkspace] = useState<'inicio' | 'venues' | 'artists' | 'finances' | 'legal' | 'users' | 'providers' | 'production' | 'contacts'>('inicio');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Authentication (sesión en el servidor) y gestión de usuarios
@@ -58,23 +58,12 @@ export default function App() {
   const isAdmin = currentRole === 'Super Admin';
   const [users, setUsers] = useState<UserAccount[]>([]);
 
-  const [developerMode, setDeveloperMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('flamo_developer_mode');
-    return saved === 'true';
-  });
-
-  const devVisible = isAdmin && developerMode;
-
-  useEffect(() => {
-    localStorage.setItem('flamo_developer_mode', developerMode ? 'true' : 'false');
-  }, [developerMode]);
-
   useEffect(() => {
     if (!isLoggedIn) return;
-    if ((activeWorkspace === 'database' && !devVisible) || (activeWorkspace === 'users' && !isAdmin)) {
+    if (activeWorkspace === 'users' && !isAdmin) {
       setActiveWorkspace('inicio');
     }
-  }, [isLoggedIn, isAdmin, devVisible, activeWorkspace]);
+  }, [isLoggedIn, isAdmin, activeWorkspace]);
 
   const refreshUsers = async () => {
     try {
@@ -519,33 +508,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* 3. THIRD: Modo Dev, Admin below it, and Cerrar Sesión to the right (Desktop only) */}
+          {/* 3. THIRD: usuario y Cerrar Sesión a la derecha (solo escritorio) */}
           <div className="hidden md:flex items-center gap-4 shrink-0 justify-end">
             
-            {/* Dev Mode & Admin stacked vertically */}
             <div className="flex flex-col items-end gap-1">
-              {/* Developer mode toggle & Clear data */}
-              {isAdmin && (
-              <div className="flex items-center gap-1.5 scale-90 origin-right">
-                <div className="flex items-center gap-2 bg-white-chalk border border-silver-haze rounded-lg px-2 py-0.5 shadow-3xs">
-                  <span className="text-[8px] uppercase font-bold text-slate-400 tracking-wider">Modo Dev</span>
-                  <button
-                    onClick={() => setDeveloperMode(!developerMode)}
-                    className={`w-7 h-4 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                      developerMode ? 'bg-tomato-curry' : 'bg-slate-300'
-                    }`}
-                    title={developerMode ? "Ocultar pestaña de Esquema & DB" : "Mostrar pestaña de Esquema & DB"}
-                  >
-                    <span
-                      className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${
-                        developerMode ? 'transform translate-x-3' : ''
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-              )}
-
               {/* User Account Details (Admin below) */}
               <div 
                 className="bg-white-chalk border border-silver-haze rounded-lg px-2 py-0.5 text-[9px] font-bold text-slate-500 flex items-center gap-1.5 scale-90 origin-right" 
@@ -600,8 +566,7 @@ export default function App() {
           { id: 'finances', label: 'Finanzas', icon: DollarSign },
           { id: 'legal', label: 'Legal', icon: FileText },
           { id: 'users', label: 'Usuarios', icon: UserCheck },
-          { id: 'database', label: 'Esquema & DB', icon: Database },
-        ].filter((tab) => (tab.id !== 'database' || devVisible) && (tab.id !== 'users' || isAdmin)).map((tab) => {
+        ].filter((tab) => tab.id !== 'users' || isAdmin).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeWorkspace === tab.id;
           return (
@@ -741,8 +706,7 @@ export default function App() {
                       { id: 'legal', label: 'Contratos / Legal', desc: 'Suite jurídica y documentos', icon: FileText },
                       { id: 'contacts', label: 'Contactos', desc: 'Directorio de personas y sus vínculos', icon: Contact2 },
                       { id: 'users', label: 'Usuarios', desc: 'Control de acceso de personal', icon: UserCheck },
-                      { id: 'database', label: 'Esquema & DB', desc: 'Estructura relacional de tablas', icon: Database, isDevOnly: true },
-                    ].filter(tab => (!tab.isDevOnly || devVisible) && (tab.id !== 'users' || isAdmin)).map((tab) => {
+                    ].filter(tab => tab.id !== 'users' || isAdmin).map((tab) => {
                       const Icon = tab.icon;
                       const isActive = activeWorkspace === tab.id;
                       return (
@@ -1017,14 +981,7 @@ export default function App() {
                     <tbody className="divide-y divide-slate-100">
                       {searchedVenues.map((venue) => {
                         // Dynamically calculate individual venue scores
-                        const globalScore = Math.round(
-                          (venue.scoreRentabilidad * 0.25) +
-                          (venue.scoreResponseTime * 0.15) +
-                          (venue.scorePuntualidadPago * 0.20) +
-                          (venue.scoreNegociacion * 0.15) +
-                          (venue.scoreProduccion * 0.15) +
-                          (venue.scoreHospitalidad * 0.10)
-                        );
+                        const globalScore = computeGlobalScore(venue);
 
                         return (
                           <tr key={venue.id} className="hover:bg-slate-50/80 text-slate-600 transition-colors">
@@ -1178,7 +1135,6 @@ export default function App() {
             <div className="lg:col-span-3">
               {currentArtist ? (
                 <ArtistProfile
-                  showDevInfo={devVisible}
                   artist={currentArtist}
                   events={events}
                   venues={venues}
@@ -1283,18 +1239,6 @@ export default function App() {
             onUpdateRecordingProject={handleUpdateRecordingProject}
             onDeleteRecordingProject={handleDeleteRecordingProject}
             onUpdateEvent={handleUpdateEvent}
-          />
-        )}
-
-        {/* WORKSPACE 5: DATABASE & NORMALIZATION */}
-        {activeWorkspace === 'database' && (
-          <SchemaVisualizer
-            events={events}
-            venues={venues}
-            artists={artists}
-            providers={providers}
-            tours={tours}
-            contracts={contracts}
           />
         )}
       </main>

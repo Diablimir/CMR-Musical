@@ -86,6 +86,15 @@ export function levelFor(metric: ScoreMetric, value: number): ScoreLevel | null 
   return found;
 }
 
+/** Métricas que sí aplican (valor distinto de null). */
+export function applicableMetrics(v: Pick<Venue, ScoreKey>): ScoreMetric[] {
+  return SCORE_METRICS.filter((m) => v[m.key] !== null && v[m.key] !== undefined);
+}
+
+/** Flamo Score 0–100. Las métricas «No aplica» (NP) no cuentan: los pesos de las restantes se reajustan a 100 %. Si ninguna aplica, 0. */
 export function computeGlobalScore(v: Pick<Venue, ScoreKey>): number {
-  return Math.round(SCORE_METRICS.reduce((acc, m) => acc + ((v[m.key] as number) || 0) * (m.weight / 100), 0));
+  const ms = applicableMetrics(v);
+  const totalWeight = ms.reduce((a, m) => a + m.weight, 0);
+  if (!totalWeight) return 0;
+  return Math.round(ms.reduce((acc, m) => acc + ((v[m.key] as number) || 0) * m.weight, 0) / totalWeight);
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ScoreRubricEditor from './ScoreRubricEditor';
-import { computeGlobalScore } from '../lib/venueScoreRubric';
+import { computeGlobalScore, applicableMetrics, SCORE_METRICS } from '../lib/venueScoreRubric';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Info, Users, Calendar, BarChart3, MessageSquare, DollarSign,
@@ -177,7 +177,7 @@ export default function VenueDrawer({
     setIsEditing(false);
   };
 
-  const handleScoreChange = (metric: keyof Venue, val: number) => {
+  const handleScoreChange = (metric: keyof Venue, val: number | null) => {
     const updated = {
       ...venue,
       [metric]: val,
@@ -1043,6 +1043,7 @@ export default function VenueDrawer({
                       <div className="bg-amber-500/15 border border-amber-500/30 text-amber-700 px-4 py-2 rounded-xl text-center shrink-0">
                         <span className="text-[9px] uppercase tracking-wider block font-semibold text-amber-800">Global Score</span>
                         <span className="text-2xl font-black font-mono">{globalScore} / 100</span>
+                        <span className="text-[9px] text-amber-800 block mt-0.5">sobre {applicableMetrics(venue).length} de {SCORE_METRICS.length} métricas</span>
                       </div>
                     </div>
 

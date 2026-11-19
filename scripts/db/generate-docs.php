@@ -1,7 +1,7 @@
 <?php
 // Genera, a partir de una base MIGRADA (la fuente de verdad), la documentación del esquema:
 //   docs/database/schema.sql, docs/database/DATA_DICTIONARY.md, docs/database/er.mmd,
-//   y src/data/schemaSql.ts (lo que muestra la pestaña «Esquema & DB»).
+//   y schema_tables.json (insumo del diagrama ER).
 // Uso:  FLAMO_TEST_DSN=... php scripts/db/generate-docs.php     (crea una base limpia, migra y documenta)
 declare(strict_types=1);
 require __DIR__ . '/../../tests/db/lib.php';
@@ -74,8 +74,8 @@ const COLS = [
     'artista_generos.es_principal' => 'Género principal del artista (1) o secundario (NULL).', 'artista_generos.orden' => 'Posición del género en la lista del artista (1 = primero).',
     'venues.nombre' => 'Nombre del recinto.', 'venues.direccion' => 'Dirección completa.', 'venues.ciudad' => 'Ciudad.', 'venues.estado' => 'Estado o provincia.', 'venues.pais' => 'País.', 'venues.codigo_postal' => 'Código postal.',
     'venues.latitud' => 'Latitud (−90 a 90).', 'venues.longitud' => 'Longitud (−180 a 180).', 'venues.rating' => 'Calificación 0–5.',
-    'venues.score_rentabilidad' => 'Puntaje 0–100 de rentabilidad.', 'venues.score_respuesta' => 'Puntaje 0–100 de tiempo de respuesta.', 'venues.score_puntualidad_pago' => 'Puntaje 0–100 de puntualidad de pago.',
-    'venues.score_negociacion' => 'Puntaje 0–100 de negociación.', 'venues.score_produccion' => 'Puntaje 0–100 de producción.', 'venues.score_hospitalidad' => 'Puntaje 0–100 de hospitalidad.',
+    'venues.score_rentabilidad' => 'Puntaje 0–100 de rentabilidad. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar.', 'venues.score_respuesta' => 'Puntaje 0–100 de tiempo de respuesta. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar.', 'venues.score_puntualidad_pago' => 'Puntaje 0–100 de puntualidad de pago. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar.',
+    'venues.score_negociacion' => 'Puntaje 0–100 de negociación. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar.', 'venues.score_produccion' => 'Puntaje 0–100 de producción. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar.', 'venues.score_hospitalidad' => 'Puntaje 0–100 de hospitalidad. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar.',
     'venues.contacto_principal_id' => 'OBSOLETO (v1): contacto principal. Sustituido por venue_contactos.es_principal.',
     'contactos.nombre' => 'Nombre (o nombre completo en registros migrados).', 'contactos.apellidos' => 'Apellidos (opcional).',
     'contacto_correos.correo' => 'Dirección de correo.', 'contacto_correos.etiqueta' => 'Etiqueta (trabajo, personal…).', 'contacto_telefonos.telefono' => 'Número de teléfono.', 'contacto_telefonos.etiqueta' => 'Etiqueta (móvil, WhatsApp, oficina…).',
@@ -175,7 +175,7 @@ foreach ($tables as $t) {
 }
 file_put_contents(__DIR__ . '/../../docs/database/DATA_DICTIONARY.md', $md);
 
-// ───────── src/data/schemaSql.ts (pestaña «Esquema & DB») ─────────
+// ───────── schema_tables.json (insumo de scripts/make-er-diagram.py) ─────────
 $out = [];
 foreach ($tables as $t) {
     if (!isset(TABLES[$t]) || in_array($t, ['contactos_legacy', 'schema_migrations', 'login_attempts', 'users'], true)) continue;
@@ -193,9 +193,5 @@ foreach ($tables as $t) {
     $idx = []; foreach ($uniques[$t] ?? [] as $u) if ($u['i'] !== 'PRIMARY') $idx[] = ((int)$u['nu'] === 0 ? 'CREATE UNIQUE INDEX ' : 'CREATE INDEX ') . "{$u['i']} ON $t(" . $u['c'] . ');';
     $out[] = ['name' => $t, 'description' => TABLES[$t][0], 'columns' => $cl, 'indexes' => $idx];
 }
-$ts = "// ARCHIVO GENERADO por scripts/db/generate-docs.php — no editar a mano.\n"
-    . "export interface SchemaTableDef { name: string; description: string; columns: { name: string; type: string; key?: 'PK' | 'FK'; notes: string }[]; indexes: string[]; }\n"
-    . 'export const SCHEMA_TABLES: SchemaTableDef[] = ' . json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . ";\n"
-    . 'export const SCHEMA_SQL = ' . json_encode($header . $dump . $seed, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ";\n";
-file_put_contents(__DIR__ . '/../../src/data/schemaSql.ts', $ts);
-echo 'OK: ' . count($out) . " tablas documentadas · schema.sql · DATA_DICTIONARY.md · er.mmd · schemaSql.ts\n";
+file_put_contents(__DIR__ . '/../../docs/database/schema_tables.json', json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n");
+echo 'OK: ' . count($out) . " tablas documentadas · schema.sql · DATA_DICTIONARY.md · er.mmd · schema_tables.json\n";

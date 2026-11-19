@@ -100,9 +100,9 @@ function entity_defs(): array {
             'id' => ['id', 'id'], 'name' => ['nombre', 's'], 'address' => ['direccion', 's'], 'city' => ['ciudad', 's'],
             'state' => ['estado', 's'], 'country' => ['pais', 's'], 'postalCode' => ['codigo_postal', 's'],
             'lat' => ['latitud', 'f', [-90, 90]], 'lng' => ['longitud', 'f', [-180, 180]], 'rating' => ['rating', 'f', [0, 5]],
-            'scoreRentabilidad' => ['score_rentabilidad', 'i', $score], 'scoreResponseTime' => ['score_respuesta', 'i', $score],
-            'scorePuntualidadPago' => ['score_puntualidad_pago', 'i', $score], 'scoreNegociacion' => ['score_negociacion', 'i', $score],
-            'scoreProduccion' => ['score_produccion', 'i', $score], 'scoreHospitalidad' => ['score_hospitalidad', 'i', $score],
+            'scoreRentabilidad' => ['score_rentabilidad', 'in', $score], 'scoreResponseTime' => ['score_respuesta', 'in', $score],
+            'scorePuntualidadPago' => ['score_puntualidad_pago', 'in', $score], 'scoreNegociacion' => ['score_negociacion', 'in', $score],
+            'scoreProduccion' => ['score_produccion', 'in', $score], 'scoreHospitalidad' => ['score_hospitalidad', 'in', $score],
             'website' => ['sitio_web', 's'], 'phone' => ['telefono', 's'], 'userRatingsCount' => ['num_resenas', 'i', [0, null]], 'placeId' => ['place_id', 's'],
             'establishmentType' => ['tipo_establecimiento', 's'], 'instagram' => ['instagram', 'sn'], 'facebook' => ['facebook', 'sn'], 'tiktok' => ['tiktok', 'sn'],
             'whatsapp' => ['whatsapp', 'sn'], 'email' => ['correo', 'sn'], 'youtube' => ['youtube', 'sn'], 'twitter' => ['twitter', 'sn'],
@@ -150,10 +150,14 @@ function to_row(string $key, array $def, array $obj): array {
                 $row[$col] = $v; break;
             case 's':  $row[$col] = $v === null ? '' : (string)(is_scalar($v) ? $v : json_encode($v)); break;
             case 'sn': $row[$col] = ($v === null || $v === '') ? null : (string)$v; break;
-            case 'i': case 'f':
+            case 'i': case 'f': case 'in':
+                if ($type === 'in') {   // entero que admite NULL (p. ej. «No aplica»); si el campo ni viene, vale 0
+                    if (!array_key_exists($field, $obj)) $v = 0;
+                    elseif ($v === null || $v === '') { $row[$col] = null; break; }
+                }
                 $num = $v === null || $v === '' ? 0 : $v;
                 if (!is_numeric($num)) fail($key, $obj, "«{$label}» debe ser un número.");
-                $num = $type === 'i' ? (int)round((float)$num) : (float)$num;
+                $num = $type !== 'f' ? (int)round((float)$num) : (float)$num;
                 if ($opt !== null) {
                     [$min, $max] = $opt;
                     if (($min !== null && $num < $min) || ($max !== null && $num > $max)) fail($key, $obj, "«{$label}» debe estar" . ($min !== null && $max !== null ? " entre $min y $max." : ($min !== null ? " en $min o más." : " en $max o menos.")));
@@ -217,6 +221,7 @@ function from_row(array $def, array $row): array {
             case 'sn': case 'fk': if ($v !== null && $v !== '') $obj[$field] = (string)$v; break;
             case 'fkreq': $obj[$field] = (string)($v ?? ''); break;
             case 'i':  $obj[$field] = (int)$v; break;
+            case 'in': $obj[$field] = $v === null ? null : (int)$v; break;
             case 'f':  $obj[$field] = (float)$v; break;
             case 'dt': $obj[$field] = dt_to_iso($v) ?? ''; break;
             case 'dtn': $obj[$field] = ($f = dt_to_iso($v)) ; if ($f === null && $field !== 'deleted_at') unset($obj[$field]); break;

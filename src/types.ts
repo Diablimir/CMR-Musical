@@ -155,12 +155,12 @@ export interface Venue {
   youtube?: string;
   twitter?: string;
   // Score metrics (0-100) calculated from parameters
-  scoreRentabilidad: number;
-  scoreResponseTime: number;
-  scorePuntualidadPago: number;
-  scoreNegociacion: number;
-  scoreProduccion: number;
-  scoreHospitalidad: number;
+  scoreRentabilidad: number | null;  // null = No aplica (NP)
+  scoreResponseTime: number | null;  // null = No aplica (NP)
+  scorePuntualidadPago: number | null;  // null = No aplica (NP)
+  scoreNegociacion: number | null;  // null = No aplica (NP)
+  scoreProduccion: number | null;  // null = No aplica (NP)
+  scoreHospitalidad: number | null;  // null = No aplica (NP)
   contactoPrincipalId?: string; // Direct field in venues as requested (eliminating es_principal trigger complexity)
   providerIds?: string[]; // Associated providers/suppliers
   localBands?: string[]; // Support/local bands linked to this venue

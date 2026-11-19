@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Genera docs/diagrama-er.(svg|png) a partir de src/data/schemaSql.ts (esquema real). Requiere Graphviz (dot)."""
+"""Genera docs/diagrama-er.(svg|png) a partir de docs/database/schema_tables.json (esquema real). Requiere Graphviz (dot)."""
 import json, re, subprocess, pathlib, html
 
 root = pathlib.Path(__file__).resolve().parent.parent
-src = (root / 'src/data/schemaSql.ts').read_text(encoding='utf-8')
-m = re.search(r'SCHEMA_TABLES: SchemaTableDef\[\] = (\[.*?\]);\nexport const SCHEMA_SQL', src, re.S)
-tables = json.loads(m.group(1))
+tables = json.loads((root / 'docs/database/schema_tables.json').read_text(encoding='utf-8'))
 
 COLORS = {  # color de cabecera por grupo
     'artistas': '#E84A2E', 'artista_generos': '#E84A2E', 'artista_contactos': '#E84A2E', 'tours': '#E84A2E', 'tour_artistas': '#E84A2E', 'proyectos_grabacion': '#E84A2E',

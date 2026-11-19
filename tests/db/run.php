@@ -390,6 +390,18 @@ t_throws(fn() => $pdo->exec("INSERT INTO proyecto_pagos (proyecto_id, pago_id, o
 t_throws(fn() => $pdo->exec("INSERT INTO artista_redes (artista_id, plataforma, enlace) VALUES ('art-1','myspace','x')"), 'la base rechaza una red social fuera del dominio');
 t_eq($count("SELECT COUNT(*) FROM artistas WHERE id IN ('art-x')") + $count("SELECT COUNT(*) FROM proyectos_grabacion WHERE id IN ('rec-x','rec-y')"), 0, 'los lotes rechazados no dejan nada a medias');
 
+t_section('20b. «No aplica» (NP) en las métricas del venue');
+$fresh(); migrate_up($pdo);
+$sync($up('venues', $ven('v-np', 'Foro NP', ['scoreRentabilidad' => null, 'scoreResponseTime' => 80])));
+$rv = $byId(load_all($pdo)['venues'], 'v-np');
+t_ok(array_key_exists('scoreRentabilidad', $rv) && $rv['scoreRentabilidad'] === null, 'null se guarda como NULL y vuelve como null (No aplica)');
+t_eq($rv['scoreResponseTime'], 80, 'las demás métricas conservan su valor');
+t_eq($count("SELECT COUNT(*) FROM venues WHERE id='v-np' AND score_rentabilidad IS NULL"), 1, 'en la base es NULL (no 0)');
+$v2 = $ven('v-np2', 'Foro sin campo'); unset($v2['scoreRentabilidad']);
+$sync($up('venues', $v2));
+t_eq($byId(load_all($pdo)['venues'], 'v-np2')['scoreRentabilidad'], 0, 'si el campo ni viene (clientes antiguos), vale 0 y NO se vuelve NP');
+t_throws(fn() => $sync($up('venues', $ven('v-np3', 'Foro 500', ['scoreRentabilidad' => 500]))), 'sigue rechazando valores fuera de 0–100', '0 y 100');
+
 // ═══════════════════════════════════════════════════════════
 t_section('21. Fase 4: contracción (retirar lo obsoleto) con verificación previa y rollback');
 $fresh(); migrate_up($pdo, 1); seed_v1($pdo); migrate_up($pdo, 4);

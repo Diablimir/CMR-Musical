@@ -118,9 +118,9 @@
 
 **Llaves foráneas:**
 
-- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -151,8 +151,8 @@
 
 **Llaves foráneas:**
 
-- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `genero_id` → `cat_generos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `artista_id` → `artistas(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -503,8 +503,8 @@
 
 **Llaves foráneas:**
 
-- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Índices:** `idx_cartistas_artista` (artista_id)
 
@@ -525,8 +525,8 @@
 
 **Llaves foráneas:**
 
-- `evento_id` → `eventos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `evento_id` → `eventos(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Índices:** `idx_ceventos_evento` (evento_id)
 
@@ -569,8 +569,8 @@
 
 **Llaves foráneas:**
 
-- `tour_id` → `tours(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `tour_id` → `tours(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Índices:** `idx_ctours_tour` (tour_id)
 
@@ -591,8 +591,8 @@
 
 **Llaves foráneas:**
 
-- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `contrato_id` → `contratos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `idx_cvenues_venue` (venue_id)
 
@@ -631,8 +631,8 @@
 
 **Llaves foráneas:**
 
-- `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `tour_id` → `tours(id)` · al borrar el padre: **SET NULL**
+- `venue_id` → `venues(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Restricciones CHECK:**
 
@@ -671,9 +671,9 @@
 
 **Llaves foráneas:**
 
-- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `moneda` → `cat_monedas(codigo)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `evento_id` → `eventos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -785,9 +785,9 @@
 
 **Llaves foráneas:**
 
-- `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `proveedor_id` → `proveedores(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -1046,8 +1046,8 @@
 
 **Llaves foráneas:**
 
-- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 - `tour_id` → `tours(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `artista_id` → `artistas(id)` · al borrar el padre: **RESTRICT** (protege el historial)
 
 **Unicidad:**
 
@@ -1081,12 +1081,12 @@
 | `latitud` | `decimal(10,8)` | sí | `NULL` |  | Latitud (−90 a 90). |
 | `longitud` | `decimal(11,8)` | sí | `NULL` |  | Longitud (−180 a 180). |
 | `rating` | `decimal(3,1)` | sí | `0.0` |  | Calificación 0–5. |
-| `score_rentabilidad` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de rentabilidad. |
-| `score_respuesta` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de tiempo de respuesta. |
-| `score_puntualidad_pago` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de puntualidad de pago. |
-| `score_negociacion` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de negociación. |
-| `score_produccion` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de producción. |
-| `score_hospitalidad` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de hospitalidad. |
+| `score_rentabilidad` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de rentabilidad. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar. |
+| `score_respuesta` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de tiempo de respuesta. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar. |
+| `score_puntualidad_pago` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de puntualidad de pago. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar. |
+| `score_negociacion` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de negociación. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar. |
+| `score_produccion` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de producción. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar. |
+| `score_hospitalidad` | `smallint(6)` | sí | `0` |  | Puntaje 0–100 de hospitalidad. NULL = No aplica (NP): no cuenta en el Flamo Score; 0 = sin evaluar. |
 | `version` | `int(11)` | NN | `1` |  | Número de versión del registro: base del bloqueo optimista (sube en cada guardado). |
 | `created_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de creación (UTC, milisegundos). |
 | `updated_at` | `datetime(3)` | NN | `current_timestamp(3)` |  | Fecha y hora de la última modificación (UTC). |
@@ -1151,9 +1151,9 @@
 
 **Llaves foráneas:**
 
-- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `contacto_id` → `contactos(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `rol_id` → `cat_roles_contacto(id)` · al borrar el padre: **RESTRICT** (protege el historial)
+- `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Unicidad:**
 
@@ -1202,8 +1202,8 @@
 
 **Llaves foráneas:**
 
-- `proveedor_id` → `proveedores(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 - `venue_id` → `venues(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
+- `proveedor_id` → `proveedores(id)` · al borrar el padre: **CASCADE** (el dependiente carece de sentido sin su padre)
 
 **Índices:** `proveedor_id` (proveedor_id)
 

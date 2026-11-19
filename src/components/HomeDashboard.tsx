@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, MapPin, Eye, Info, List, CalendarDays, X, Phone, Globe, Star
 } from 'lucide-react';
 import LeafletMap from './LeafletMap';
+import { computeGlobalScore } from '../lib/venueScoreRubric';
 import { Event, EventArtist, EventArtistRole, Artist, Venue, Tour } from '../types';
 
 interface HomeDashboardProps {
@@ -479,14 +480,7 @@ export default function HomeDashboard({
                     <div className="bg-white border border-slate-200 px-2 py-1 rounded-xl text-center shadow-2xs shrink-0">
                       <span className="text-[9px] text-slate-400 block font-bold">FLAMO SCORE</span>
                       <span className="text-xs font-black text-indigo-600 font-mono">
-                        {Math.round(
-                          (selectedVenueDetail.scoreRentabilidad * 0.25) +
-                          (selectedVenueDetail.scoreResponseTime * 0.15) +
-                          (selectedVenueDetail.scorePuntualidadPago * 0.20) +
-                          (selectedVenueDetail.scoreNegociacion * 0.15) +
-                          (selectedVenueDetail.scoreProduccion * 0.15) +
-                          (selectedVenueDetail.scoreHospitalidad * 0.10)
-                        )}
+                        {computeGlobalScore(selectedVenueDetail)}
                       </span>
                     </div>
                   </div>
@@ -504,9 +498,9 @@ export default function HomeDashboard({
                         <span className="text-[8px] text-slate-400 block uppercase font-bold">Rentabilidad</span>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="bg-emerald-500 h-full" style={{ width: `${selectedVenueDetail.scoreRentabilidad}%` }} />
+                            <div className="bg-emerald-500 h-full" style={{ width: `${selectedVenueDetail.scoreRentabilidad ?? 0}%` }} />
                           </div>
-                          <span className="font-mono font-bold text-slate-700">{selectedVenueDetail.scoreRentabilidad}%</span>
+                          <span className="font-mono font-bold text-slate-700">{selectedVenueDetail.scoreRentabilidad === null ? 'NP' : `${selectedVenueDetail.scoreRentabilidad}%`}</span>
                         </div>
                       </div>
 

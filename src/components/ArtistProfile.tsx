@@ -22,7 +22,6 @@ interface ArtistProfileProps {
   contracts?: Contract[];
   onAddContract?: (contract: Contract) => void;
   recordingProjects?: RecordingProject[];
-  showDevInfo?: boolean;
 }
 
 export default function ArtistProfile({
@@ -34,8 +33,7 @@ export default function ArtistProfile({
   onDeleteArtist,
   contracts = [],
   onAddContract,
-  recordingProjects = [],
-  showDevInfo = false
+  recordingProjects = []
 }: ArtistProfileProps) {
   const [activeSubTab, setActiveSubTab] = useState<'360' | 'pipeline' | 'contracts' | 'shows' | 'history' | 'social'>('360');
   const [isSyncingSocial, setIsSyncingSocial] = useState(false);
@@ -116,7 +114,6 @@ export default function ArtistProfile({
   const [activeOAuthModal, setActiveOAuthModal] = useState<'instagram' | 'tiktok' | null>(null);
   const [hashtagSearch, setHashtagSearch] = useState('#GiraFlamo2026');
   const [postFilter, setPostFilter] = useState<'all' | 'high' | 'low'>('all');
-  const [dbTab, setDbTab] = useState<'ER' | 'SQL' | 'ORM'>('ER');
   const [isCopied, setIsCopied] = useState(false);
 
   // Apify Scraper States
@@ -1562,137 +1559,6 @@ export default function ArtistProfile({
                     </div>
                   </div>
                 </div>
-
-                {/* 2. DATABASE SCHEMA BLUEPRINT */}
-                {showDevInfo && (
-<div className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 shadow-sm space-y-4">
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Database className="w-4 h-4 text-indigo-600" />
-                      <span>Arquitectura & Base de Datos CRM</span>
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-medium">Especificación técnica del modelo de datos para persistir tokens de redes, demografía y posts.</p>
-                  </div>
-
-                  {/* Schema Tab Toggles */}
-                  <div className="flex border-b border-slate-200">
-                    {[
-                      { id: 'ER', label: 'Diagrama E-R' },
-                      { id: 'SQL', label: 'Raw SQL DDL' },
-                      { id: 'ORM', label: 'ORM (Drizzle TS)' }
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setDbTab(tab.id as any)}
-                        className={`px-3 py-1.5 text-[10px] font-bold border-b-2 transition-colors cursor-pointer ${
-                          dbTab === tab.id
-                            ? 'border-indigo-600 text-indigo-600'
-                            : 'border-transparent text-slate-400 hover:text-slate-600'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Render Tab Contents */}
-                  {dbTab === 'ER' && (
-                    <div className="space-y-3 pt-1 text-[10px] leading-relaxed text-slate-600">
-                      <p className="font-medium text-[11px]">
-                        Para implementar este dashboard de forma persistente, diseñamos una arquitectura relacional en base de datos PostgreSQL:
-                      </p>
-                      
-                      <div className="overflow-hidden border border-slate-200 rounded-xl bg-white shadow-3xs p-3 font-mono space-y-3.5">
-                        <div className="space-y-1">
-                          <p className="font-bold text-indigo-600">1. Table: artist_social_credentials</p>
-                          <p className="text-slate-500 text-[9px] pl-3">Stores OAuth tokens. PK: id, FK: artist_id {"->"} artists.id. Unique constraint on (artist_id, platform).</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-bold text-indigo-600">2. Table: audience_demographics</p>
-                          <p className="text-slate-500 text-[9px] pl-3">Saves age, gender, and geo percentages. Unique on (artist_id, platform, metric_type, metric_key).</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-bold text-indigo-600">3. Table: campaign_posts_metrics</p>
-                          <p className="text-slate-500 text-[9px] pl-3">Stores engagement & insights for posts filterable by campaign hashtag. FK: artist_id.</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {dbTab === 'SQL' && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex justify-between items-center text-[9px] text-slate-400">
-                        <span>PostgreSQL DDL Scripts</span>
-                        <button
-                          onClick={() => {
-                            const sqlCode = `-- Tabla de credenciales OAuth de Redes Sociales\nCREATE TABLE artist_social_credentials (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  artist_id UUID NOT NULL REFERENCES artists(id) ON DELETE CASCADE,\n  platform VARCHAR(50) NOT NULL,\n  connected_user VARCHAR(100) NOT NULL,\n  access_token TEXT NOT NULL,\n  refresh_token TEXT,\n  expires_at TIMESTAMP WITH TIME ZONE,\n  scopes TEXT[],\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,\n  UNIQUE(artist_id, platform)\n);\n\n-- Tabla de demografía de audiencia\nCREATE TABLE audience_demographics (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  artist_id UUID NOT NULL REFERENCES artists(id) ON DELETE CASCADE,\n  platform VARCHAR(50) NOT NULL,\n  metric_type VARCHAR(50) NOT NULL, -- 'age_group', 'gender', 'city', 'country'\n  metric_key VARCHAR(100) NOT NULL,\n  metric_value DECIMAL(5,2) NOT NULL,\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP\n);`;
-                            navigator.clipboard.writeText(sqlCode);
-                            setIsCopied(true);
-                            setTimeout(() => setIsCopied(false), 2000);
-                          }}
-                          className="text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Copy className="w-3 h-3" />
-                          <span>{isCopied ? '¡Copiado!' : 'Copiar SQL'}</span>
-                        </button>
-                      </div>
-                      
-                      <div className="bg-slate-900 text-slate-300 p-3 rounded-xl font-mono text-[9px] max-h-[180px] overflow-y-auto leading-normal">
-                        <span className="text-emerald-400">-- Credenciales OAuth</span><br />
-                        <span className="text-purple-400">CREATE TABLE</span> artist_social_credentials (<br />
-                        &nbsp;&nbsp;id UUID <span className="text-amber-400">PRIMARY KEY</span> DEFAULT gen_random_uuid(),<br />
-                        &nbsp;&nbsp;artist_id UUID <span className="text-amber-400">REFERENCES</span> artists(id) <span className="text-red-400">ON DELETE CASCADE</span>,<br />
-                        &nbsp;&nbsp;platform VARCHAR(<span className="text-blue-400">50</span>) NOT NULL,<br />
-                        &nbsp;&nbsp;connected_user VARCHAR(<span className="text-blue-400">100</span>) NOT NULL,<br />
-                        &nbsp;&nbsp;access_token TEXT NOT NULL,<br />
-                        &nbsp;&nbsp;expires_at TIMESTAMP WITH TIME ZONE,<br />
-                        &nbsp;&nbsp;scopes TEXT[]<br />
-                        );<br />
-                        <span className="text-emerald-400">-- Demografía de Seguidores</span><br />
-                        <span className="text-purple-400">CREATE TABLE</span> audience_demographics (<br />
-                        &nbsp;&nbsp;id UUID <span className="text-amber-400">PRIMARY KEY</span>,<br />
-                        &nbsp;&nbsp;artist_id UUID <span className="text-amber-400">REFERENCES</span> artists(id),<br />
-                        &nbsp;&nbsp;metric_type VARCHAR(<span className="text-blue-400">50</span>),<br />
-                        &nbsp;&nbsp;metric_key VARCHAR(<span className="text-blue-400">100</span>),<br />
-                        &nbsp;&nbsp;metric_value DECIMAL(<span className="text-blue-400">5,2</span>)<br />
-                        );
-                      </div>
-                    </div>
-                  )}
-
-                  {dbTab === 'ORM' && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex justify-between items-center text-[9px] text-slate-400">
-                        <span>Drizzle Schema definition</span>
-                        <button
-                          onClick={() => {
-                            const ormCode = `import { pgTable, uuid, varchar, text, timestamp } from 'drizzle-orm/pg-core';\nimport { artists } from './schema';\n\nexport const artistSocialCredentials = pgTable('artist_social_credentials', {\n  id: uuid('id').primaryKey().defaultRandom(),\n  artistId: uuid('artist_id').notNull().references(() => artists.id, { onDelete: 'cascade' }),\n  platform: varchar('platform', { length: 50 }).notNull(),\n  connectedUser: varchar('connected_user', { length: 100 }).notNull(),\n  accessToken: text('access_token').notNull(),\n  updatedAt: timestamp('updated_at').defaultNow()\n});`;
-                            navigator.clipboard.writeText(ormCode);
-                            setIsCopied(true);
-                            setTimeout(() => setIsCopied(false), 2000);
-                          }}
-                          className="text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Copy className="w-3 h-3" />
-                          <span>{isCopied ? '¡Copiado!' : 'Copiar Código'}</span>
-                        </button>
-                      </div>
-
-                      <div className="bg-slate-900 text-slate-300 p-3 rounded-xl font-mono text-[9px] max-h-[180px] overflow-y-auto leading-normal">
-                        <span className="text-amber-400">import</span> &#123; pgTable, uuid, varchar, text, timestamp &#125; <span className="text-amber-400">from</span> <span className="text-emerald-400">'drizzle-orm/pg-core'</span>;<br />
-                        <span className="text-amber-400">import</span> &#123; artists &#125; <span className="text-amber-400">from</span> <span className="text-emerald-400">'./schema'</span>;<br /><br />
-                        <span className="text-purple-400">export const</span> artistSocialCredentials = pgTable(<span className="text-emerald-400">'artist_social_credentials'</span>, &#123;<br />
-                        &nbsp;&nbsp;id: uuid(<span className="text-emerald-400">'id'</span>).primaryKey().defaultRandom(),<br />
-                        &nbsp;&nbsp;artistId: uuid(<span className="text-emerald-400">'artist_id'</span>).notNull().references(() =&gt; artists.id),<br />
-                        &nbsp;&nbsp;platform: varchar(<span className="text-emerald-400">'platform'</span>, &#123; length: 50 &#125;),<br />
-                        &nbsp;&nbsp;connectedUser: varchar(<span className="text-emerald-400">'connected_user'</span>, &#123; length: 100 &#125;),<br />
-                        &nbsp;&nbsp;accessToken: text(<span className="text-emerald-400">'access_token'</span>).notNull()<br />
-                        &#125;);
-                      </div>
-                    </div>
-                  )}
-                </div>
-)}
               </div>
             </div>
           )}
